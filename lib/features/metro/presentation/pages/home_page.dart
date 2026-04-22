@@ -17,7 +17,6 @@ import 'nearby_stations_page.dart';
 import 'subscription_optimizer_page.dart';
 import 'ar_navigation_page.dart';
 import '../../../community/presentation/pages/community_page.dart';
-import 'nfc_wallet_page.dart';
 import '../widgets/tourist_translator_modal.dart';
 import '../widgets/live_radar_widget.dart';
 import '../../../community/presentation/pages/lost_and_found_page.dart';
@@ -521,18 +520,6 @@ class _HomePageState extends State<HomePage> {
         color: AppColors.primary,
         onTap: () {
           Navigator.push(context, MaterialPageRoute(builder: (_) => const NewsPage()));
-        },
-      ),
-      FeatureCard(
-        title: 'nfc_wallet'.tr(),
-        subtitle: isAr ? 'شحن ومتابعة رصيد الكارت' : 'Manage your metro card',
-        icon: Icons.contactless_outlined,
-        color: AppColors.line3,
-        onTap: () {
-          GamificationService.recordNfcUse();
-          GamificationService.unlockBadge(BadgeType.nfcPro);
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const NfcWalletPage()))
-              .then((_) => _loadStats());
         },
       ),
       FeatureCard(

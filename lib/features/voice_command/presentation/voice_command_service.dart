@@ -8,7 +8,6 @@ import '../../metro/presentation/pages/map_page.dart';
 import '../../metro/presentation/pages/subscription_optimizer_page.dart';
 import '../../community/presentation/pages/community_page.dart';
 import '../../news/presentation/pages/news_page.dart';
-import '../../metro/presentation/pages/nfc_wallet_page.dart';
 import '../../ai_assistant/presentation/pages/ai_assistant_page.dart';
 import '../../crowd_prediction/presentation/pages/crowd_prediction_page.dart';
 import '../../gamification/presentation/pages/achievements_page.dart';
@@ -189,8 +188,6 @@ class VoiceCommandServiceState extends State<VoiceCommandService>
       destination = const CommunityPage();
     } else if (_has(cmd, ['أخبار', 'news'])) {
       destination = const NewsPage();
-    } else if (_has(cmd, ['nfc', 'محفظة', 'wallet', 'كارت'])) {
-      destination = const NfcWalletPage();
     } else if (_has(cmd, ['اشتراك', 'subscription', 'optimize'])) {
       destination = const SubscriptionOptimizerPage();
     } else if (_has(cmd, ['ذكاء', 'ai', 'مساعد', 'assistant', 'رفيق'])) {
