@@ -57,6 +57,7 @@ class MetroApp extends StatelessWidget {
             themeMode: themeMode,
             theme: ThemeData(
               useMaterial3: true,
+              scaffoldBackgroundColor: AppColors.background,
               colorScheme: ColorScheme.fromSeed(
                 seedColor: AppColors.primary,
                 primary: AppColors.primary,
@@ -66,29 +67,44 @@ class MetroApp extends StatelessWidget {
               ),
               textTheme: GoogleFonts.outfitTextTheme(Theme.of(context).textTheme),
               appBarTheme: const AppBarTheme(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
+                backgroundColor: AppColors.surface,
+                foregroundColor: AppColors.textPrimary,
                 elevation: 0,
                 centerTitle: true,
+                scrolledUnderElevation: 0,
+              ),
+              bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+                backgroundColor: AppColors.surface,
+                selectedItemColor: AppColors.primary,
+                unselectedItemColor: AppColors.textSecondary,
+                elevation: 8,
               ),
             ),
             darkTheme: ThemeData(
               useMaterial3: true,
               brightness: Brightness.dark,
+              scaffoldBackgroundColor: AppColors.backgroundDark,
               colorScheme: ColorScheme.fromSeed(
                 seedColor: AppColors.primary,
                 brightness: Brightness.dark,
-                primary: AppColors.primary,
+                primary: AppColors.accent, // Use accent for primary pop in dark mode
                 secondary: AppColors.accent,
                 surface: AppColors.surfaceDark,
                 background: AppColors.backgroundDark,
               ),
               textTheme: GoogleFonts.outfitTextTheme(ThemeData.dark().textTheme),
               appBarTheme: const AppBarTheme(
-                backgroundColor: Color(0xFF1F1F1F),
+                backgroundColor: AppColors.surfaceDark,
                 foregroundColor: Colors.white,
                 elevation: 0,
                 centerTitle: true,
+                scrolledUnderElevation: 0,
+              ),
+              bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+                backgroundColor: AppColors.surfaceDark,
+                selectedItemColor: AppColors.accent,
+                unselectedItemColor: AppColors.textSecondaryDark,
+                elevation: 8,
               ),
             ),
             home: const SplashScreen(),

@@ -121,7 +121,7 @@ class MetroData {
       latitude: 30.0444, longitude: 31.2357,
       isTransfer: true,
       connectedTo: ['l1_saad_zaghloul', 'l1_nasser', 'l2_sadat'],
-      facilities: ['atm', 'wc', 'elevator', 'police_station'],
+      facilities: ['atm', 'wc', 'elevator'],
       exits: [
         {'ar': 'مخرج مجمع التحرير', 'en': 'Mogamma El Tahrir Exit'},
         {'ar': 'مخرج الجامعة الأمريكية', 'en': 'AUC Exit'},
@@ -288,7 +288,7 @@ class MetroData {
       latitude: 30.0444, longitude: 31.2357,
       isTransfer: true,
       connectedTo: ['l2_mohamed_naguib', 'l2_opera', 'l1_sadat'],
-      facilities: ['atm', 'wc', 'elevator', 'police_station'],
+      facilities: ['atm', 'wc', 'elevator'],
       exits: [
         {'ar': 'مخرج مجمع التحرير', 'en': 'Mogamma El Tahrir Exit'},
         {'ar': 'مخرج الجامعة الأمريكية', 'en': 'AUC Exit'},

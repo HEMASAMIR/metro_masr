@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../domain/entities/news_article.dart';
@@ -13,26 +14,30 @@ class ArticleWebViewPage extends StatefulWidget {
 }
 
 class _ArticleWebViewPageState extends State<ArticleWebViewPage> {
-  late final WebViewController _controller;
+  WebViewController? _controller;
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageFinished: (String url) {
-            if (mounted) {
-              setState(() {
-                _isLoading = false;
-              });
-            }
-          },
-        ),
-      )
-      ..loadRequest(Uri.parse(widget.article.url));
+    if (!kIsWeb) {
+      _controller = WebViewController()
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..setNavigationDelegate(
+          NavigationDelegate(
+            onPageFinished: (String url) {
+              if (mounted) {
+                setState(() {
+                  _isLoading = false;
+                });
+              }
+            },
+          ),
+        )
+        ..loadRequest(Uri.parse(widget.article.url));
+    } else {
+      _isLoading = false;
+    }
   }
 
   @override
@@ -67,13 +72,35 @@ class _ArticleWebViewPageState extends State<ArticleWebViewPage> {
               ),
             ),
           Expanded(
-            child: Stack(
-              children: [
-                WebViewWidget(controller: _controller),
-                if (_isLoading)
-                  const Center(child: CircularProgressIndicator()),
-              ],
-            ),
+            child: kIsWeb || _controller == null
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.web, size: 60, color: Colors.grey),
+                        const SizedBox(height: 16),
+                        const Text('Cannot display web page directly inside browser', style: TextStyle(color: Colors.grey, fontSize: 16)),
+                        const SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.open_in_new),
+                          label: const Text('Read Full Article'),
+                          onPressed: () async {
+                            final uri = Uri.parse(widget.article.url);
+                            if (await canLaunchUrl(uri)) {
+                              await launchUrl(uri, mode: LaunchMode.externalApplication);
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  )
+                : Stack(
+                    children: [
+                      WebViewWidget(controller: _controller!),
+                      if (_isLoading)
+                        const Center(child: CircularProgressIndicator()),
+                    ],
+                  ),
           ),
         ],
       ),

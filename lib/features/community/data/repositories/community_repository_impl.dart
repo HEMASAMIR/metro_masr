@@ -3,6 +3,7 @@ import 'package:rafiq_metrro/features/community/domain/entities/message.dart';
 import 'package:rafiq_metrro/features/community/domain/entities/report.dart';
 import 'package:rafiq_metrro/features/community/domain/entities/reward.dart';
 import 'package:rafiq_metrro/features/community/domain/repositories/community_repository.dart';
+import 'package:rafiq_metrro/core/utils/offline_storage.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/error/failures.dart';
 
@@ -15,15 +16,32 @@ class CommunityRepositoryImpl implements CommunityRepository {
 
   @override
   Future<Either<Failure, void>> saveReport(Report report) async {
-    // Save report offline
-    _localReports.add(report.copyWith(isSynced: false));
+    final reports = OfflineStorage.getReports();
+    reports.insert(0, report.copyWith(isSynced: false)); // newest first
+    await OfflineStorage.saveReports(reports);
     return const Right(null);
   }
 
   @override
   Future<Either<Failure, List<Report>>> getReports() async {
-    // Return all local reports (simulating an offline-first DB like Hive)
-    return Right(_localReports);
+    // Return all local reports from persistent storage
+    final reports = OfflineStorage.getReports();
+    
+    // Seed one starter item if completely empty to guide users
+    if (reports.isEmpty) {
+      final initial = Report(
+        id: const Uuid().v4(),
+        title: 'تم العثور على محفظة',
+        description: 'لقيت محفظة سوداء عند محطة السادات، سلمتها لمكتب الأمن.',
+        location: 'محطة السادات',
+        timestamp: DateTime.now().subtract(const Duration(hours: 1)),
+        category: 'Wallet',
+      );
+      await saveReport(initial);
+      return Right([initial]);
+    }
+    
+    return Right(reports);
   }
 
   @override

@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:rafiq_metrro/core/utils/gamification_service.dart';
 import 'package:uuid/uuid.dart';
 import '../../domain/entities/message.dart';
 import '../../domain/entities/report.dart';
@@ -83,8 +84,7 @@ class CommunityCubit extends Cubit<CommunityState> {
   }
 
   Future<void> collectTripPoints() async {
-    await OfflineStorage.addPoints(50);
-    await OfflineStorage.addTrip();
+    await GamificationService.recordTrip();
     await repository.addTripPoint();
     loadCommunityData();
   }

@@ -1,33 +1,33 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Brand Colors
-  static const Color primary = Color(0xFF1A237E); // Deep Indigo for premium look
-  static const Color accent = Color(0xFFC62828);  // Deep Red
+  // Brand Colors - Ultra Minimalist (Apple/Uber vibe)
+  static const Color primary = Color(0xFF000000); // Pure Black
+  static const Color accent = Color(0xFF007AFF);  // System Blue
 
-  // Metro Line Colors (Cairo Metro Standard)
-  static const Color line1 = Color(0xFFE91E63); // Line 1: Pink/Red
-  static const Color line2 = Color(0xFFFF9800); // Line 2: Orange
-  static const Color line3 = Color(0xFF4CAF50); // Line 3: Green
+  // Metro Line Colors (Unchanged for logic/identification)
+  static const Color line1 = Color(0xFFE11D48); 
+  static const Color line2 = Color(0xFFF59E0B); 
+  static const Color line3 = Color(0xFF10B981); 
 
   // Background & Surface
-  static const Color background = Color(0xFFF8F9FA);
-  static const Color surface = Colors.white;
+  static const Color background = Color(0xFFF9F9F9); // Very light grey for main scaffold
+  static const Color surface = Colors.white;         // Pure white for cards/elements
   
-  // Dark Mode Tokens
-  static const Color backgroundDark = Color(0xFF121212);
-  static const Color surfaceDark = Color(0xFF1E1E1E);
-  static const Color textPrimaryDark = Color(0xFFE0E0E0);
-  static const Color textSecondaryDark = Color(0xFFB0B0B0);
+  // Dark Mode Tokens (Muted grayscale)
+  static const Color backgroundDark = Color(0xFF000000); // True black
+  static const Color surfaceDark = Color(0xFF121212);    // Very dark grey
+  static const Color textPrimaryDark = Color(0xFFFFFFFF);
+  static const Color textSecondaryDark = Color(0xFFA1A1AA); // Zinc 400
 
   // Text Colors
-  static const Color textPrimary = Color(0xFF212121);
-  static const Color textSecondary = Color(0xFF757575);
+  static const Color textPrimary = Color(0xFF000000);
+  static const Color textSecondary = Color(0xFF71717A); // Zinc 500
   static const Color textOnPrimary = Colors.white;
 
   // Status Colors
-  static const Color success = Color(0xFF2E7D32);
-  static const Color warning = Color(0xFFF9A825);
-  static const Color error = Color(0xFFC62828);
-  static const Color info = Color(0xFF0277BD);
+  static const Color success = Color(0xFF34C759); // iOS Green
+  static const Color warning = Color(0xFFFF9500); // iOS Orange
+  static const Color error = Color(0xFFFF3B30);   // iOS Red
+  static const Color info = Color(0xFF007AFF);    // System Blue
 }

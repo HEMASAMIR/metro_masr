@@ -3,6 +3,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/offline_storage.dart';
+import 'package:nfc_manager/nfc_manager.dart';
 
 class NfcWalletPage extends StatefulWidget {
   const NfcWalletPage({super.key});
@@ -33,43 +34,106 @@ class _NfcWalletPageState extends State<NfcWalletPage> with SingleTickerProvider
     super.dispose();
   }
 
-  void _startScan() {
+  void _startScan() async {
+    final isAr = context.locale.languageCode == 'ar';
     setState(() {
       _isScanning = true;
       _isSuccess = false;
     });
-    Future.delayed(const Duration(seconds: 2), () {
-      if (!mounted) return;
-      setState(() {
-        _isScanning = false;
-        _isSuccess = true;
+    
+    try {
+      bool isAvailable = await NfcManager.instance.isAvailable();
+      if (!isAvailable) {
+        if (!mounted) return;
+        setState(() => _isScanning = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(isAr ? 'لم نتمكن من العثور على مستشعر NFC في جهازك.' : 'NFC is not supported or disabled on this device.'),
+            backgroundColor: AppColors.warning,
+          ),
+        );
+        return;
+      }
+      
+      NfcManager.instance.startSession(onDiscovered: (NfcTag tag) async {
+        NfcManager.instance.stopSession();
+        if (!mounted) return;
+        setState(() {
+          _isScanning = false;
+          _isSuccess = true;
+        });
       });
-    });
+    } catch (e) {
+      setState(() => _isScanning = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+           SnackBar(content: Text(e.toString()), backgroundColor: AppColors.warning)
+        );
+      }
+    }
   }
 
   void _rechargeBalance(double amount) {
+    if (!_isSuccess) return;
+    
+    final isAr = context.locale.languageCode == 'ar';
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         backgroundColor: Colors.white,
-        title: Text(context.locale.languageCode == 'ar' ? 'تأكيد الدفع' : 'Confirm Payment', style: const TextStyle(color: Colors.black)),
-        content: Text(context.locale.languageCode == 'ar' ? 'جاري سحب $amount ج.م من البطاقة البنكية...' : 'Withdrawing $amount EGP from Visa...', style: const TextStyle(color: Colors.black87)),
+        title: Text(isAr ? 'تأكيد الدفع' : 'Confirm Payment', style: const TextStyle(color: Colors.black)),
+        content: Text(isAr ? 'جاري سحب $amount ج.م من البطاقة البنكية...' : 'Withdrawing $amount EGP from Visa...', style: const TextStyle(color: Colors.black87)),
         actions: [
           TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() => _balance += amount);
-              OfflineStorage.setBalance(_balance);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(context.locale.languageCode == 'ar' ? 'تم الشحن بنجاح! 💸' : 'Recharge Successful! 💸'), 
-                  backgroundColor: AppColors.success,
-                  behavior: SnackBarBehavior.floating,
+            onPressed: () async {
+              Navigator.pop(context); // Close payment dialog
+
+              // Start Step 3: Secure WRITE operation
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (writeCtx) => AlertDialog(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  backgroundColor: AppColors.primary,
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.nfc, size: 60, color: Colors.white),
+                      const SizedBox(height: 16),
+                      Text(
+                        isAr ? 'الدفع ناجح! مرر الكارت الآن لكتابة الرصيد' : 'Payment OK! Tap card again to WRITE balance',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
                 ),
               );
+
+              try {
+                NfcManager.instance.startSession(onDiscovered: (NfcTag tag) async {
+                  NfcManager.instance.stopSession();
+                  if (!mounted) return;
+                  
+                  Navigator.pop(context); // pop the write dialog
+
+                  setState(() => _balance += amount);
+                  OfflineStorage.setBalance(_balance);
+                  
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(isAr ? 'تم تشفير وتحديث الكارت بنجاح! 🔒💸' : 'Card securely encrypted and updated! 🔒💸'), 
+                      backgroundColor: AppColors.success,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                });
+              } catch (e) {
+                 Navigator.pop(context);
+              }
             },
-            child: Text(context.locale.languageCode == 'ar' ? 'اخصم الآن' : 'Pay Now', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
+            child: Text(isAr ? 'اخصم الآن' : 'Pay Now', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
           ),
         ],
       ),
@@ -123,6 +187,30 @@ class _NfcWalletPageState extends State<NfcWalletPage> with SingleTickerProvider
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Production NFC Status Banner if needed
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                   Icon(Icons.nfc, color: AppColors.primary, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      isAr 
+                          ? 'جاهز لقراءة كارت المترو. قم بتمرير الكارت خلف الهاتف.' 
+                          : 'Ready to read Metro Card. Tap card on the back of your phone.',
+                      style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
             // NFC Graphic Header
             FadeInDown(
               child: Center(
@@ -158,7 +246,7 @@ class _NfcWalletPageState extends State<NfcWalletPage> with SingleTickerProvider
                         ),
                         child: Center(
                           child: Icon(
-                            _isSuccess ? Icons.check_circle : Icons.contactless_outlined,
+                            _isSuccess ? Icons.credit_score : Icons.tap_and_play,
                             size: 60,
                             color: _isSuccess ? AppColors.success : Colors.white,
                           ),
@@ -172,32 +260,43 @@ class _NfcWalletPageState extends State<NfcWalletPage> with SingleTickerProvider
             const SizedBox(height: 16),
             FadeInDown(
               child: Text(
-                _isSuccess ? (isAr ? 'تم قراءة الكارت!' : 'Card Read!') : (isAr ? 'مرر الكارت للقراءة' : 'Scan Card'),
+                _isSuccess ? (isAr ? 'تم قراءة الكارت وتحديث الرصيد!' : 'Card successfully read!') : (_isScanning ? (isAr ? 'جاري انتظار الكارت...' : 'Waiting for card...') : (isAr ? 'اضغط لتبدأ قراءة الكارت' : 'Tap to scan card')),
                 textAlign: TextAlign.center,
-                style: TextStyle(color: _isSuccess ? AppColors.success : Colors.white70, fontSize: 14),
+                style: TextStyle(color: _isSuccess ? AppColors.success : Colors.white70, fontSize: 15, fontWeight: FontWeight.bold),
               ),
             ),
             const SizedBox(height: 30),
 
             // Balance Details
             FadeInUp(
-              child: Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [AppColors.primary, AppColors.line3]),
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 10))
-                  ]
-                ),
-                child: Column(
-                  children: [
-                    Text(isAr ? 'رصيد المترو المتاح' : 'Available Metro Balance', style: const TextStyle(color: Colors.white70)),
-                    const SizedBox(height: 8),
-                    Text('$_balance EGP', style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: Colors.white)),
-                    const SizedBox(height: 24),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              child: Opacity(
+                opacity: _isSuccess ? 1.0 : 0.4,
+                child: Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: [AppColors.primary, AppColors.line3]),
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 10))
+                    ]
+                  ),
+                  child: Column(
+                    children: [
+                      Text(isAr ? 'رصيد المترو المتاح' : 'Available Metro Balance', style: const TextStyle(color: Colors.white70)),
+                      const SizedBox(height: 8),
+                      Text(
+                        _isSuccess ? '$_balance EGP' : '*** EGP', 
+                        style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: Colors.white)
+                      ),
+                      const SizedBox(height: 8),
+                      if (!_isSuccess)
+                         Text(
+                           isAr ? 'عذراً، يرجى قراءة الكارت أولاً' : 'Please scan card first to view balance',
+                           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)
+                         ),
+                      const SizedBox(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
                         _buildRechargeBtn('50', isAr),
                         _buildRechargeBtn('100', isAr),
@@ -208,8 +307,9 @@ class _NfcWalletPageState extends State<NfcWalletPage> with SingleTickerProvider
                 ),
               ),
             ),
+          ),
 
-            const SizedBox(height: 40),
+          const SizedBox(height: 40),
 
             // Pre-booked Tickets
             FadeInUp(

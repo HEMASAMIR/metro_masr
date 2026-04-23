@@ -27,23 +27,16 @@ class FeatureCard extends StatelessWidget {
         width: double.infinity,
         padding: EdgeInsets.all(r.isTablet ? 20 : r.isLandscape ? 16 : 24),
         decoration: BoxDecoration(
-          color: color,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(r.cardRadius),
+          border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
           boxShadow: [
             BoxShadow(
-              color: color.withValues(alpha: 0.3),
-              blurRadius: 15,
-              offset: const Offset(0, 8),
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
           ],
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              color,
-              color.withValues(alpha: 0.85),
-            ],
-          ),
         ),
         child: Row(
           children: [
@@ -54,9 +47,9 @@ class FeatureCard extends StatelessWidget {
                   Text(
                     title,
                     style: TextStyle(
-                      color: Colors.white,
-                      fontSize: r.fontSize(r.isLandscape ? 20 : 24),
-                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).textTheme.titleLarge?.color,
+                      fontSize: r.fontSize(r.isLandscape ? 17 : 19),
+                      fontWeight: FontWeight.w700,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -66,8 +59,8 @@ class FeatureCard extends StatelessWidget {
                     Text(
                       subtitle,
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        fontSize: r.fontSize(r.isLandscape ? 13 : 15),
+                        color: Theme.of(context).textTheme.bodySmall?.color,
+                        fontSize: r.fontSize(r.isLandscape ? 13 : 14),
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -80,13 +73,13 @@ class FeatureCard extends StatelessWidget {
             Container(
               padding: EdgeInsets.all(r.isLandscape ? 10 : 14),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
+                color: Theme.of(context).cardColor, // White base
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 icon,
-                color: Colors.white,
-                size: r.iconSize(r.isLandscape ? 32 : 40),
+                color: color,
+                size: r.iconSize(r.isLandscape ? 28 : 32),
               ),
             ),
           ],

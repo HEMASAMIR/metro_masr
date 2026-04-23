@@ -27,6 +27,9 @@ class TouristAttraction {
   final String admissionEGP; // "free" or "25 EGP" etc.
   final String walkingMinutes;
   final List<String> tags;
+  final String? imageUrl;
+  final String? wikiUrl;
+  final List<String>? galleryUrls;
 
   const TouristAttraction({
     required this.id,
@@ -40,6 +43,9 @@ class TouristAttraction {
     required this.admissionEGP,
     required this.walkingMinutes,
     required this.tags,
+    this.imageUrl,
+    this.wikiUrl,
+    this.galleryUrls,
   });
 }
 
@@ -80,6 +86,13 @@ class TourismDatabase {
           admissionEGP: '200 EGP',
           walkingMinutes: '3',
           tags: ['UNESCO', 'Tutankhamun', 'Mummies', 'Pharaohs'],
+          imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/e/e5/Egyptian_Museum_Cairo_2020.jpg',
+          wikiUrl: 'https://ar.wikipedia.org/wiki/المتحف_المصري',
+          galleryUrls: [
+            'https://upload.wikimedia.org/wikipedia/commons/e/e5/Egyptian_Museum_Cairo_2020.jpg',
+            'https://upload.wikimedia.org/wikipedia/commons/b/b5/Egyptian_Museum_Cairo.jpg',
+            'https://upload.wikimedia.org/wikipedia/commons/1/1c/Cairo_Egyptian_Museum_Statue_of_Khafre.jpg',
+          ],
         ),
         TouristAttraction(
           id: 'tahrir_square',
@@ -462,6 +475,13 @@ class TourismDatabase {
           admissionEGP: '500 EGP (Pyramids + Sphinx)',
           walkingMinutes: '25 (by taxi/bus)',
           tags: ['UNESCO', 'World Wonder', 'Ancient', 'Must-See'],
+          imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/e/e3/Kheops-Pyramid.jpg',
+          wikiUrl: 'https://ar.wikipedia.org/wiki/أهرام_الجيزة',
+          galleryUrls: [
+            'https://upload.wikimedia.org/wikipedia/commons/e/e3/Kheops-Pyramid.jpg',
+            'https://upload.wikimedia.org/wikipedia/commons/a/af/All_Gizah_Pyramids.jpg',
+            'https://upload.wikimedia.org/wikipedia/commons/f/f6/Great_Sphinx_of_Giza_-_20080716a.jpg',
+          ],
         ),
       ],
     ),

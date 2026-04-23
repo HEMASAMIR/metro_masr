@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../cubits/community_cubit.dart';
+import '../cubits/community_state.dart';
+import '../../domain/entities/report.dart';
 
 class LostAndFoundPage extends StatelessWidget {
   const LostAndFoundPage({super.key});
@@ -9,41 +13,6 @@ class LostAndFoundPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isAr = context.locale.languageCode == 'ar';
-    final items = [
-      {
-        'titleEn': 'Found Black Wallet',
-        'titleAr': 'تم العثور على محفظة سوداء',
-        'descAr': 'لقيت محفظة سوداء فيها بطاقة باسم "أحمد" عند محطة أنور السادات، سلمتها لمكتب الأمن.',
-        'descEn': 'Found a black wallet with an ID for "Ahmed" at Anwar El Sadat station, returned to security.',
-        'station': 'Anwar El Sadat',
-        'time': '10 mins ago',
-        'category': 'Wallet',
-        'icon': Icons.wallet,
-        'color': Colors.blue
-      },
-      {
-        'titleEn': 'Lost Keys',
-        'titleAr': 'مفاتيح ضايعة',
-        'descAr': 'ميدالية مفاتيح ضاعت مني على الخط الثالث اتجاه عدلي منصور، ياريت اللي يلاقيها يكلمني.',
-        'descEn': 'Lost a keychain on Line 3 towards Adly Mansour. Please contact if found.',
-        'station': 'Line 3',
-        'time': '2 hours ago',
-        'category': 'Keys',
-        'icon': Icons.vpn_key,
-        'color': Colors.orange
-      },
-      {
-        'titleEn': 'Found Student Bag',
-        'titleAr': 'لقيت شنطة مدرسة',
-        'descAr': 'تم العثور على شنطة مدرسة في محطة الشهداء، موجودة مع عامل النظافة ع الرصيف.',
-        'descEn': 'Found a school bag at El Shohada. Left it with the cleaning staff.',
-        'station': 'El Shohada',
-        'time': 'Yesterday',
-        'category': 'Bag',
-        'icon': Icons.backpack,
-        'color': Colors.purple
-      },
-    ];
 
     return Scaffold(
       appBar: AppBar(
@@ -53,41 +22,128 @@ class LostAndFoundPage extends StatelessWidget {
         backgroundColor: AppColors.accent,
         label: Text(isAr ? 'إبلاغ عن مفقود/معثور' : 'Report Item'),
         icon: const Icon(Icons.add),
-        onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(isAr ? 'قريباً: إضافة عنصر' : 'Coming soon: Add item')),
-          );
-        },
+        onPressed: () => _showAddReportDialog(context, isAr),
       ),
-      body: ListView.separated(
-        padding: const EdgeInsets.all(16),
-        itemCount: items.length,
-        separatorBuilder: (context, index) => const SizedBox(height: 16),
-        itemBuilder: (context, index) {
-          final item = items[index];
-          return FadeInUp(
-            delay: Duration(milliseconds: 100 * index),
-            child: _buildItemCard(
-              title: isAr ? item['titleAr'] as String : item['titleEn'] as String,
-              description: isAr ? item['descAr'] as String : item['descEn'] as String,
-              station: item['station'] as String,
-              time: item['time'] as String,
-              icon: item['icon'] as IconData,
-              color: item['color'] as Color,
-            ),
-          );
+      body: BlocBuilder<CommunityCubit, CommunityState>(
+        builder: (context, state) {
+          if (state is CommunityLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (state is CommunityError) {
+            return Center(child: Text(state.message, style: const TextStyle(color: Colors.red)));
+          }
+          if (state is CommunityLoaded) {
+            final reports = state.reports;
+            if (reports.isEmpty) {
+              return Center(
+                child: Text(
+                  isAr ? 'لا توجد مفقودات مسجلة بعد' : 'No items reported yet',
+                  style: const TextStyle(color: Colors.grey, fontSize: 16),
+                ),
+              );
+            }
+
+            return ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemCount: reports.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 16),
+              itemBuilder: (context, index) {
+                final report = reports[index];
+                return FadeInUp(
+                  delay: Duration(milliseconds: 100 * index),
+                  child: _buildItemCard(report, isAr),
+                );
+              },
+            );
+          }
+          return const SizedBox();
         },
       ),
     );
   }
 
-  Widget _buildItemCard({required String title, required String description, required String station, required String time, required IconData icon, required Color color}) {
+  void _showAddReportDialog(BuildContext context, bool isAr) {
+    final titleCtrl = TextEditingController();
+    final descCtrl = TextEditingController();
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 20, right: 20, top: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              isAr ? 'إبلاغ عن شيء' : 'Report an Item',
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.primary),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: titleCtrl,
+              decoration: InputDecoration(
+                labelText: isAr ? 'عنوان البلاغ (مثل: محفظة سوداء)' : 'Title (e.g., Black Wallet)',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: descCtrl,
+              maxLines: 3,
+              decoration: InputDecoration(
+                labelText: isAr ? 'التفاصيل (المحطة، المواصفات...)' : 'Details (Station, Specs...)',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () {
+                  if (titleCtrl.text.isNotEmpty) {
+                     context.read<CommunityCubit>().addReport(titleCtrl.text, descCtrl.text, 'Wallet');
+                     Navigator.pop(context);
+                  }
+                },
+                child: Text(isAr ? 'نشر البلاغ' : 'Submit Report', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildItemCard(Report report, bool isAr) {
+    Color cardColor = Colors.blue;
+    IconData cardIcon = Icons.info_outline;
+
+    if (report.title.toLowerCase().contains('wallet') || report.title.contains('محفظة')) {
+      cardColor = Colors.blue;
+      cardIcon = Icons.wallet;
+    } else if (report.title.toLowerCase().contains('key') || report.title.contains('مفاتيح')) {
+      cardColor = Colors.orange;
+      cardIcon = Icons.vpn_key;
+    } else if (report.title.toLowerCase().contains('bag') || report.title.contains('شنطة')) {
+      cardColor = Colors.purple;
+      cardIcon = Icons.backpack;
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
-        border: Border.all(color: color.withValues(alpha: 0.2)),
+        border: Border.all(color: cardColor.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -95,15 +151,15 @@ class LostAndFoundPage extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
+              color: cardColor.withValues(alpha: 0.1),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
             ),
             child: Row(
               children: [
-                Icon(icon, color: color),
+                Icon(cardIcon, color: cardColor),
                 const SizedBox(width: 12),
-                Expanded(child: Text(title, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 16))),
-                Text(time, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                Expanded(child: Text(report.title, style: TextStyle(color: cardColor, fontWeight: FontWeight.bold, fontSize: 16))),
+                Text(_formatDate(report.timestamp, isAr), style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
               ],
             ),
           ),
@@ -112,13 +168,13 @@ class LostAndFoundPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(description, style: const TextStyle(height: 1.5, fontSize: 14)),
+                Text(report.description, style: const TextStyle(height: 1.5, fontSize: 14)),
                 const SizedBox(height: 16),
                 Row(
                   children: [
                     const Icon(Icons.location_on, size: 16, color: AppColors.textSecondary),
                     const SizedBox(width: 4),
-                    Text(station, style: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.bold)),
+                    Text(report.location, style: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.bold)),
                   ],
                 ),
               ],
@@ -127,5 +183,12 @@ class LostAndFoundPage extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _formatDate(DateTime date, bool isAr) {
+    final diff = DateTime.now().difference(date);
+    if (diff.inMinutes < 60) return isAr ? 'منذ ${diff.inMinutes} دقيقة' : '${diff.inMinutes} mins ago';
+    if (diff.inHours < 24) return isAr ? 'منذ ${diff.inHours} ساعة' : '${diff.inHours} hours ago';
+    return '${date.day}/${date.month}/${date.year}';
   }
 }

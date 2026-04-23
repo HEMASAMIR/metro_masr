@@ -10,10 +10,30 @@ class NewsRemoteDataSourceImpl implements NewsRemoteDataSource {
 
   NewsRemoteDataSourceImpl({required this.dio});
 
+  static const String _baseUrl = 'https://newsapi.org/v2';
+  static const String _apiKey = 'YOUR_API_KEY';
+
   @override
   Future<List<NewsArticleModel>> getTopHeadlines(String countryCode) async {
-    // Using curated local news for demo — no external API dependency
-    return _getMockArticles();
+    try {
+      final response = await dio.get(
+        '$_baseUrl/top-headlines',
+        queryParameters: {
+          'country': countryCode,
+          'apiKey': _apiKey,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final List articles = response.data['articles'];
+        return articles.map((e) => NewsArticleModel.fromJson(e)).toList();
+      } else {
+        return _getMockArticles();
+      }
+    } catch (e) {
+      // Fallback with mock data for local testing / graduation project demo when API Key is missing or rate limited
+      return _getMockArticles();
+    }
   }
 
   List<NewsArticleModel> _getMockArticles() {

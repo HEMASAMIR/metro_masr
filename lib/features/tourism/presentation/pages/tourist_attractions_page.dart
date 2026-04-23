@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:easy_localization/easy_localization.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/tourism_data.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'attraction_detail_page.dart';
 
 class TouristAttractionsPage extends StatefulWidget {
@@ -91,7 +92,7 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
     final filtered = _filteredAttractions;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0E27),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: NestedScrollView(
         headerSliverBuilder: (_, __) => [
           // ── App bar ──────────────────────────────────────────────────────────
@@ -99,16 +100,16 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
             expandedHeight: 160,
             pinned: true,
             stretch: true,
-            backgroundColor: const Color(0xFF0A0E27),
-            iconTheme: const IconThemeData(color: Colors.white),
+            backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+            iconTheme: Theme.of(context).iconTheme,
             flexibleSpace: FlexibleSpaceBar(
               stretchModes: const [StretchMode.zoomBackground],
               background: _buildHeader(isAr),
             ),
             title: Text(
               isAr ? '🗺️ الأماكن السياحية' : '🗺️ Tourist Attractions',
-              style: const TextStyle(
-                color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+              style: TextStyle(
+                color: Theme.of(context).textTheme.titleLarge?.color, fontWeight: FontWeight.bold, fontSize: 18),
             ),
             bottom: PreferredSize(
               preferredSize: const Size.fromHeight(56),
@@ -128,13 +129,39 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
             Expanded(
               child: filtered.isEmpty
                   ? _buildEmptyState(isAr)
-                  : ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-                      itemCount: filtered.length,
-                      itemBuilder: (_, i) => _buildAttractionCard(
-                        filtered[i], lang, isAr, i,
-                        stationName: _currentStationData?.stationName[isAr ? 'ar' : 'en'] ?? '',
-                      ),
+                  : LayoutBuilder(
+                      builder: (context, constraints) {
+                        int count = constraints.maxWidth > 1300 ? 4 : (constraints.maxWidth > 900 ? 3 : (constraints.maxWidth > 650 ? 2 : 1));
+                        if (count == 1) {
+                          return ListView.builder(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                            itemCount: filtered.length,
+                            itemBuilder: (_, i) => _buildAttractionCard(
+                              filtered[i], lang, isAr, i,
+                              stationName: _currentStationData?.stationName[isAr ? 'ar' : 'en'] ?? '',
+                            ),
+                          );
+                        } else {
+                          double spacing = 16.0;
+                          double width = (constraints.maxWidth - (spacing * (count + 1))) / count;
+                          return SingleChildScrollView(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                            child: Wrap(
+                              spacing: spacing,
+                              runSpacing: spacing,
+                              children: List.generate(filtered.length, (i) {
+                                return SizedBox(
+                                  width: width,
+                                  child: _buildAttractionCard(
+                                    filtered[i], lang, isAr, i,
+                                    stationName: _currentStationData?.stationName[isAr ? 'ar' : 'en'] ?? '',
+                                  ),
+                                );
+                              }),
+                            ),
+                          );
+                        }
+                      },
                     ),
             ),
           ],
@@ -155,32 +182,21 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
   // ── Header ─────────────────────────────────────────────────────────────────
   Widget _buildHeader(bool isAr) {
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF1A2A6C), Color(0xFF0A0E27)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
+      color: Theme.of(context).scaffoldBackgroundColor,
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 50, 20, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ShaderMask(
-                shaderCallback: (r) => const LinearGradient(
-                  colors: [Color(0xFFFFB800), Color(0xFFFF6B6B)],
-                ).createShader(r),
-                child: Text(
-                  isAr
-                    ? '🌍 اكتشف مصر من المترو'
-                    : '🌍 Discover Egypt by Metro',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                  ),
+              Text(
+                isAr
+                  ? '🌍 اكتشف مصر من المترو'
+                  : '🌍 Discover Egypt by Metro',
+                style: TextStyle(
+                  color: Theme.of(context).textTheme.titleLarge?.color,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
               const SizedBox(height: 4),
@@ -188,7 +204,7 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                 isAr
                   ? 'مزارات في كل محطة • 4 لغات • دليل ذكي'
                   : 'Landmarks at every station • 4 languages • Smart guide',
-                style: const TextStyle(color: Color(0xFF8899CC), fontSize: 12),
+                style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 13),
               ),
             ],
           ),
@@ -199,24 +215,19 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
 
   // ── Search bar ─────────────────────────────────────────────────────────────
   Widget _buildSearchBar(bool isAr) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
       child: TextField(
         controller: _searchCtrl,
-        style: const TextStyle(color: Colors.white),
-        textDirection: isAr ? ui.TextDirection.rtl : ui.TextDirection.ltr,
+        style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
         decoration: InputDecoration(
-          hintText: isAr ? '🔍 ابحث عن محطة أو مكان...' : '🔍 Search station or place...',
-          hintStyle: const TextStyle(color: Color(0xFF556080)),
+          hintText: isAr ? 'ابحث عن محطة (مثال: الأوبرا)' : 'Search station (e.g. Opera)',
+          hintStyle: const TextStyle(color: Colors.grey),
           filled: true,
-          fillColor: const Color(0xFF0D1530),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: Color(0xFF1E2D5A)),
-          ),
+          fillColor: Theme.of(context).cardColor,
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: Color(0xFF1E2D5A)),
+            borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
@@ -225,13 +236,13 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           suffixIcon: _searchCtrl.text.isNotEmpty
               ? IconButton(
-                  icon: const Icon(Icons.clear, color: Colors.white54),
+                  icon: const Icon(Icons.clear, color: Colors.grey),
                   onPressed: () {
                     _searchCtrl.clear();
                     _loadAllTopPicks();
                   },
                 )
-              : const Icon(Icons.search, color: Color(0xFF556080)),
+              : const Icon(Icons.search, color: Colors.grey),
         ),
         onSubmitted: (v) {
           if (v.trim().isNotEmpty) _selectStationByName(v.trim());
@@ -259,14 +270,14 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
               selected: _selectedCategory == null,
               label: Text(lang == 'ar' ? 'الكل' : 'All'),
               onSelected: (_) => setState(() => _selectedCategory = null),
-              backgroundColor: const Color(0xFF0D1530),
-              selectedColor: AppColors.primary.withOpacity(0.3),
+              backgroundColor: Theme.of(context).cardColor,
+              selectedColor: AppColors.primary.withValues(alpha: 0.1),
               labelStyle: TextStyle(
-                color: _selectedCategory == null ? AppColors.primary : Colors.white70,
+                color: _selectedCategory == null ? AppColors.primary : Colors.grey,
                 fontSize: 12,
               ),
               side: BorderSide(
-                color: _selectedCategory == null ? AppColors.primary : const Color(0xFF1E2D5A),
+                color: _selectedCategory == null ? AppColors.primary : Colors.grey.withValues(alpha: 0.2),
               ),
             ),
           ),
@@ -282,13 +293,13 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                 onSelected: (_) => setState(() {
                   _selectedCategory = isSelected ? null : cat;
                 }),
-                backgroundColor: const Color(0xFF0D1530),
-                selectedColor: color.withOpacity(0.2),
+                backgroundColor: Theme.of(context).cardColor,
+                selectedColor: color.withValues(alpha: 0.1),
                 labelStyle: TextStyle(
-                  color: isSelected ? color : Colors.white70,
+                  color: isSelected ? color : Colors.grey,
                   fontSize: 12,
                 ),
-                side: BorderSide(color: isSelected ? color : const Color(0xFF1E2D5A)),
+                side: BorderSide(color: isSelected ? color : Colors.grey.withValues(alpha: 0.2)),
               ),
             );
           }),
@@ -305,11 +316,9 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1A2A6C), Color(0xFF0D1530)],
-        ),
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.primary.withOpacity(0.4)),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
@@ -321,13 +330,13 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
               children: [
                 Text(
                   st.stationName[isAr ? 'ar' : 'en'] ?? '',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: Theme.of(context).textTheme.titleSmall?.color, fontWeight: FontWeight.bold),
                 ),
                 Text(
                   isAr
                     ? '$count مكان سياحي قريب'
                     : '$count nearby attractions',
-                  style: const TextStyle(color: Color(0xFF8899CC), fontSize: 12),
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
                 ),
               ],
             ),
@@ -336,7 +345,7 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
             icon: const Icon(Icons.clear, size: 14),
             label: Text(isAr ? 'الكل' : 'All'),
             style: TextButton.styleFrom(
-              foregroundColor: Colors.white54,
+              foregroundColor: Colors.grey,
               textStyle: const TextStyle(fontSize: 11),
             ),
             onPressed: _loadAllTopPicks,
@@ -411,13 +420,13 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
       child: Container(
         margin: const EdgeInsets.only(bottom: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFF0D1530),
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: color.withOpacity(0.25)),
+          border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
           boxShadow: [
             BoxShadow(
-              color: color.withOpacity(0.07),
-              blurRadius: 16, spreadRadius: 2,
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 10, spreadRadius: 0,
             ),
           ],
         ),
@@ -429,11 +438,7 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
               height: 110,
               decoration: BoxDecoration(
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
-                gradient: LinearGradient(
-                  colors: [color.withOpacity(0.3), color.withOpacity(0.05)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                color: color.withValues(alpha: 0.05),
               ),
               child: Stack(
                 children: [
@@ -444,7 +449,7 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                       attraction.emoji,
                       style: TextStyle(
                         fontSize: 90,
-                        color: Colors.white.withOpacity(0.07),
+                        color: color.withValues(alpha: 0.1),
                       ),
                     ),
                   ),
@@ -511,8 +516,8 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                   Text(
                     name,
                     textAlign: isAr ? TextAlign.right : TextAlign.left,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: Theme.of(context).textTheme.titleMedium?.color,
                       fontWeight: FontWeight.w800,
                       fontSize: 16,
                     ),
@@ -523,7 +528,7 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                     textAlign: isAr ? TextAlign.right : TextAlign.left,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Color(0xFF8899CC), fontSize: 13, height: 1.5),
+                    style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 13, height: 1.5),
                   ),
                   const SizedBox(height: 12),
                   // Info pills row
@@ -542,18 +547,42 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                     ],
                   ),
                   const SizedBox(height: 8),
-                  // Tags
-                  Wrap(
-                    spacing: 6,
-                    children: attraction.tags.take(3).map((t) => Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(6),
+                    Wrap(
+                      spacing: 6,
+                      children: attraction.tags.take(3).map((t) => Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).cardColor,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+                        ),
+                        child: Text('#$t', style: const TextStyle(color: Colors.grey, fontSize: 10)),
+                      )).toList(),
+                    ),
+                    const SizedBox(height: 12),
+                    // Web View Link
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: color,
+                          side: BorderSide(color: color.withValues(alpha: 0.3)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        icon: const Icon(Icons.language, size: 16),
+                        label: Text(
+                          isAr ? 'عرض التفاصيل في الويب' : 'View in Web',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                        onPressed: () async {
+                          final query = Uri.encodeComponent('$name Cairo');
+                          final url = Uri.parse('https://www.google.com/search?q=$query');
+                          if (await canLaunchUrl(url)) {
+                            await launchUrl(url, mode: LaunchMode.inAppWebView);
+                          }
+                        },
                       ),
-                      child: Text('#$t', style: const TextStyle(color: Color(0xFF556080), fontSize: 10)),
-                    )).toList(),
-                  ),
+                    ),
                 ],
               ),
             ),
@@ -588,7 +617,7 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
         const SizedBox(height: 12),
         Text(
           isAr ? 'لا توجد أماكن في هذه الفئة' : 'No places in this category',
-          style: const TextStyle(color: Color(0xFF8899CC), fontSize: 14),
+          style: const TextStyle(color: Colors.grey, fontSize: 14),
         ),
       ],
     ),
@@ -613,8 +642,8 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
               .toList();
           return Container(
             height: MediaQuery.of(context).size.height * 0.75,
-            decoration: const BoxDecoration(
-              color: Color(0xFF0D1530),
+            decoration:  BoxDecoration(
+              color: Theme.of(context).cardColor,
               borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
             child: Column(
@@ -622,19 +651,19 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                 // Handle
                 Container(
                   width: 40, height: 4, margin: const EdgeInsets.only(top: 12, bottom: 16),
-                  decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+                  decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2)),
                 ),
                 // Title
                 Text(
                   isAr ? '🚇 اختر محطة' : '🚇 Select a Station',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                  style: TextStyle(color: Theme.of(context).textTheme.titleLarge?.color, fontWeight: FontWeight.bold, fontSize: 18),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   isAr
                     ? 'المحطات التالية بها بيانات سياحية'
                     : 'Stations with tourism data',
-                  style: const TextStyle(color: Color(0xFF8899CC), fontSize: 12),
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
                 ),
                 const SizedBox(height: 12),
                 // Search
@@ -642,15 +671,16 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: TextField(
                     controller: searchCtrl,
-                    style: const TextStyle(color: Colors.white),
+                    style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
                     decoration: InputDecoration(
                       hintText: isAr ? 'ابحث...' : 'Search...',
-                      hintStyle: const TextStyle(color: Color(0xFF556080)),
+                      hintStyle: const TextStyle(color: Colors.grey),
                       filled: true,
-                      fillColor: const Color(0xFF1A2A6C).withOpacity(0.3),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      fillColor: Theme.of(context).scaffoldBackgroundColor,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      prefixIcon: const Icon(Icons.search, color: Color(0xFF556080)),
+                      prefixIcon: const Icon(Icons.search, color: Colors.grey),
                     ),
                     onChanged: (_) => setLocalState(() {}),
                   ),
@@ -675,11 +705,11 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                         ),
                         title: Text(
                           st.stationName[isAr ? 'ar' : 'en'] ?? '',
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                          style: TextStyle(color: Theme.of(context).textTheme.titleMedium?.color, fontWeight: FontWeight.w600),
                         ),
                         subtitle: Text(
                           isAr ? '$count أماكن سياحية' : '$count attractions',
-                          style: const TextStyle(color: Color(0xFF8899CC), fontSize: 11),
+                          style: const TextStyle(color: Colors.grey, fontSize: 11),
                         ),
                         trailing: const Icon(Icons.chevron_right, color: AppColors.primary),
                         onTap: () {

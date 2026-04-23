@@ -13,13 +13,15 @@ import '../cubits/route_planner/route_planner_cubit.dart';
 import '../cubits/route_planner/route_planner_state.dart';
 import '../../../../core/utils/ai_prediction_service.dart';
 import '../../domain/entities/station.dart';
-import '../widgets/sos_button.dart';
+
 import '../widgets/trip_rating_dialog.dart';
 import '../widgets/blind_assist_fab.dart';
 import '../widgets/last_mile_transit_widget.dart';
 
 class RoutePlannerPage extends StatefulWidget {
-  const RoutePlannerPage({super.key});
+  final String? initialFrom;
+  final String? initialTo;
+  const RoutePlannerPage({super.key, this.initialFrom, this.initialTo});
 
   @override
   State<RoutePlannerPage> createState() => _RoutePlannerPageState();
@@ -31,6 +33,13 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
 
   // Which field is currently being listened to: 'from', 'to', or null
   String? _listeningField;
+
+  @override
+  void initState() {
+    super.initState();
+    _startStationId = widget.initialFrom;
+    _endStationId = widget.initialTo;
+  }
 
   @override
   void dispose() {
@@ -165,8 +174,6 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
           ),
           const SizedBox(height: 16),
           const BlindAssistFab(),
-          const SizedBox(height: 16),
-          const SosFloatingButton(),
         ],
       ),
     );
@@ -243,13 +250,28 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              onPressed: (_startStationId != null && _endStationId != null)
-                  ? () {
-                      context
-                          .read<RoutePlannerCubit>()
-                          .findPath(_startStationId!, _endStationId!);
-                    }
-                  : null,
+              onPressed: () {
+                final isAr = context.locale.languageCode == 'ar';
+                if (_startStationId == null || _endStationId == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(isAr ? 'من فضلك اختار محطة البداية والنهاية' : 'Please select both stations'),
+                    backgroundColor: AppColors.error,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ));
+                  return;
+                }
+                if (_startStationId == _endStationId) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(isAr ? '⚠️ اختار محطة وصول مختلفة عن محطة البداية!' : '⚠️ Choose a different destination station!'),
+                    backgroundColor: AppColors.warning,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ));
+                  return;
+                }
+                context.read<RoutePlannerCubit>().findPath(_startStationId!, _endStationId!);
+              },
               child: Text(
                 'search_route'.tr(),
                 style: TextStyle(fontSize: r.fontSize(15), fontWeight: FontWeight.bold),
@@ -392,7 +414,7 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
 
   Widget _buildPathResult(RoutePlannerLoaded state) {
     return FadeInUp(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -400,7 +422,11 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildInfoTag(Icons.timer_outlined, 'estimated'.tr(), '25 min'),
+                _buildInfoTag(
+                  Icons.timer_outlined,
+                  'estimated'.tr(),
+                  '${(state.stationCount * 2.5 + state.transfers * 3).round()} min',
+                ),
                 _buildInfoTag(Icons.stairs_outlined, 'stations_count'.tr(args: [state.stationCount.toString()]), ''),
                 _buildInfoTag(Icons.payments_outlined, 'ticket_price'.tr(args: [state.ticketPrice.toString()]), ''),
               ],
@@ -446,87 +472,87 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
-            Expanded(
-              child: ListView.builder(
-                itemCount: state.path.length,
-                itemBuilder: (context, index) {
-                  final station = state.path[index];
-                  final name = context.locale.languageCode == 'ar' ? station.nameAr : station.nameEn;
-                  bool isLast = index == state.path.length - 1;
-                  return InkWell(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => StationDetailsPage(station: station),
-                        ),
-                      );
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Column(
-                            children: [
-                              Container(
-                                width: 20,
-                                height: 20,
-                                decoration: BoxDecoration(
-                                  color: _getStationColor(station.line),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white, width: 3),
-                                ),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: state.path.length,
+              itemBuilder: (context, index) {
+                final station = state.path[index];
+                final name = context.locale.languageCode == 'ar' ? station.nameAr : station.nameEn;
+                bool isLast = index == state.path.length - 1;
+                return InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => StationDetailsPage(station: station),
+                      ),
+                    );
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Column(
+                          children: [
+                            Container(
+                              width: 20,
+                              height: 20,
+                              decoration: BoxDecoration(
+                                color: _getStationColor(station.line),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 3),
                               ),
-                              if (!isLast)
-                                Container(
-                                  width: 2,
-                                  height: 48,
-                                  color: Colors.grey[300],
-                                ),
-                            ],
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        name,
-                                        style: TextStyle(
-                                          fontWeight: (index == 0 || isLast)
-                                              ? FontWeight.bold
-                                              : FontWeight.normal,
-                                          fontSize: (index == 0 || isLast) ? 16 : 14,
-                                        ),
+                            ),
+                            if (!isLast)
+                              Container(
+                                width: 2,
+                                height: 48,
+                                color: Colors.grey[300],
+                              ),
+                          ],
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      name,
+                                      style: TextStyle(
+                                        fontWeight: (index == 0 || isLast)
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
+                                        fontSize: (index == 0 || isLast) ? 16 : 14,
                                       ),
                                     ),
-                                    IconButton(
-                                      icon: const Icon(Icons.volume_up, size: 20),
-                                      onPressed: () {
-                                        VoiceService.speak(name, context.locale.languageCode);
-                                      },
-                                    ),
-                                  ],
-                                ),
-                                if (station.isTransfer)
-                                   Text(
-                                     'transfer_station'.tr(),
-                                     style: const TextStyle(color: AppColors.accent, fontSize: 12, fontWeight: FontWeight.bold),
-                                   ),
-                                const SizedBox(height: 16),
-                              ],
-                            ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.volume_up, size: 20),
+                                    onPressed: () {
+                                      VoiceService.speak(name, context.locale.languageCode);
+                                    },
+                                  ),
+                                ],
+                              ),
+                              if (station.isTransfer)
+                                 Text(
+                                   'transfer_station'.tr(),
+                                   style: const TextStyle(color: AppColors.accent, fontSize: 12, fontWeight: FontWeight.bold),
+                                 ),
+                              const SizedBox(height: 16),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  );
-                },
-              ),
+                  ),
+                );
+              },
             ),
           ],
         ),

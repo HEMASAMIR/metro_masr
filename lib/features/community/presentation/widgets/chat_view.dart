@@ -1,3 +1,7 @@
+import 'dart:math';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../cubits/community_cubit.dart';
+import '../cubits/community_state.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:flutter/material.dart';
 import 'package:rafiq_metrro/core/theme/app_colors.dart';
@@ -11,12 +15,14 @@ class ChatView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Mock station groups
+    final now = DateTime.now();
+    final random = Random(now.hour);
+
     final groups = [
-      {'name': 'جروب محطة الشهداء', 'line': 'الخط الأول والثاني', 'online': 120, 'color': AppColors.primary},
-      {'name': 'جروب خط حلوان', 'line': 'الخط الأول', 'online': 340, 'color': AppColors.line1},
-      {'name': 'جروب محطة العتبة', 'line': 'الخط الثاني والثالث', 'online': 85, 'color': AppColors.line3},
-      {'name': 'جروب خط المطار (قريباً)', 'line': 'الخط الثالث', 'online': 42, 'color': AppColors.line3},
+      {'name': 'جروب محطة الشهداء', 'line': 'الخط الأول والثاني', 'online': random.nextInt(300) + 100, 'color': AppColors.primary},
+      {'name': 'جروب خط حلوان', 'line': 'الخط الأول', 'online': random.nextInt(200) + 50, 'color': AppColors.line1},
+      {'name': 'جروب محطة العتبة', 'line': 'الخط الثاني والثالث', 'online': random.nextInt(400) + 150, 'color': AppColors.line3},
+      {'name': 'جروب خط المطار', 'line': 'الخط الثالث', 'online': random.nextInt(100) + 20, 'color': AppColors.line3},
     ];
 
     final isAr = context.locale.languageCode == 'ar';
@@ -24,17 +30,63 @@ class ChatView extends StatelessWidget {
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.all(12),
-          color: AppColors.primary.withValues(alpha: 0.1),
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF0088cc), Color(0xFF00aaff)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0088cc).withValues(alpha: 0.3),
+                blurRadius: 15,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
           child: Row(
             children: [
-              const Icon(Icons.groups, color: AppColors.primary),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  isAr ? 'تواصل مع الركاب في نفس محطتك و مسارك 💬' : 'Connect with passengers in your station!',
-                  style: const TextStyle(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.bold),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
                 ),
+                child: const Icon(Icons.send_rounded, color: Color(0xFF0088cc), size: 32),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isAr ? 'جروب رفيق عالتليجرام 🚀' : 'Rafiq Telegram Group 🚀',
+                      style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      isAr ? 'انضم لأكثر من 50,000 راكب لمتابعة حركة المترو والزحمة لحظة بلحظة!' : 'Join 50k+ riders for live crowd & delay updates!',
+                      style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: const Color(0xFF0088cc),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () {
+                   ScaffoldMessenger.of(context).showSnackBar(
+                     SnackBar(content: Text(isAr ? 'جاري تحويلك لجروب التليجرام الرسمي...' : 'Redirecting to Official Telegram...'))
+                   );
+                },
+                child: Text(isAr ? 'انضم' : 'Join', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
               ),
             ],
           ),
@@ -125,39 +177,167 @@ class ChatView extends StatelessWidget {
   }
 
   void _openChatRoom(BuildContext context, String roomName, Color themeColor) {
+    final textCtrl = TextEditingController();
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => Container(
-        height: MediaQuery.of(context).size.height * 0.85,
-        decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-        ),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      builder: (_) {
+        return BlocBuilder<CommunityCubit, CommunityState>(
+          bloc: context.read<CommunityCubit>(), // Bind to existing cubit
+          builder: (context, state) {
+            List<Message> currentMessages = messages; // fallback
+            if (state is CommunityLoaded) {
+              currentMessages = state.messages;
+            }
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.85,
+              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
               decoration: BoxDecoration(
-                color: themeColor.withValues(alpha: 0.1),
+                color: Theme.of(context).scaffoldBackgroundColor,
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
               ),
-              child: Row(
+              child: Column(
                 children: [
-                  IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
-                  Text(roomName, style: TextStyle(color: themeColor, fontSize: 18, fontWeight: FontWeight.bold)),
+                  // App Bar Modal Header
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    decoration: BoxDecoration(
+                      color: themeColor.withValues(alpha: 0.1),
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+                    ),
+                    child: Row(
+                      children: [
+                        IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                        Expanded(
+                          child: Text(
+                            roomName,
+                            style: TextStyle(color: themeColor, fontSize: 18, fontWeight: FontWeight.bold),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(color: AppColors.success.withOpacity(0.2), borderRadius: BorderRadius.circular(10)),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.circle, color: AppColors.success, size: 8),
+                              SizedBox(width: 4),
+                              Text('Live', style: TextStyle(color: AppColors.success, fontSize: 12, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        )
+                      ],
+                    ),
+                  ),
+
+                  // Chat Message Area
+                  Expanded(
+                    child: currentMessages.isEmpty
+                        ? Center(child: Text('ابدأ الدردشة في $roomName...', style: const TextStyle(color: Colors.grey)))
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: currentMessages.length,
+                            reverse: false,
+                            itemBuilder: (context, index) {
+                              final msg = currentMessages[index];
+                              final isMe = msg.senderId == 'me';
+                              return Align(
+                                alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                                child: Container(
+                                  margin: const EdgeInsets.only(bottom: 10),
+                                  constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  decoration: BoxDecoration(
+                                    color: isMe ? themeColor : Colors.white,
+                                    boxShadow: isMe ? [] : [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5)],
+                                    borderRadius: BorderRadius.circular(16).copyWith(
+                                      bottomRight: isMe ? const Radius.circular(0) : null,
+                                      bottomLeft: !isMe ? const Radius.circular(0) : null,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      if (!isMe)
+                                        Padding(
+                                          padding: const EdgeInsets.only(bottom: 4),
+                                          child: Text(
+                                            msg.senderName,
+                                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: themeColor),
+                                          ),
+                                        ),
+                                      Text(
+                                        msg.content,
+                                        style: TextStyle(color: isMe ? Colors.white : Colors.black87, fontSize: 15),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '${msg.timestamp.hour}:${msg.timestamp.minute.toString().padLeft(2, '0')}',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: isMe ? Colors.white70 : Colors.grey[500],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+
+                  // Input Box
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))],
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: textCtrl,
+                            decoration: InputDecoration(
+                              hintText: 'اكتب لتسأل مجتمع المحطة...',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
+                              fillColor: Colors.grey[100],
+                              filled: true,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            ),
+                            onSubmitted: (val) {
+                              if (val.trim().isNotEmpty) {
+                                context.read<CommunityCubit>().sendMessage(val.trim());
+                                textCtrl.clear();
+                              }
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        CircleAvatar(
+                          backgroundColor: themeColor,
+                          child: IconButton(
+                            icon: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                            onPressed: () {
+                              if (textCtrl.text.trim().isNotEmpty) {
+                                context.read<CommunityCubit>().sendMessage(textCtrl.text.trim());
+                                textCtrl.clear();
+                              }
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
-            ),
-            Expanded(
-              child: Center(
-                child: Text('الدردشة الحية لـ $roomName ستظهر هنا.', style: const TextStyle(color: Colors.grey)),
-              ),
-            ),
-          ],
-        ),
-      ),
+            );
+          },
+        );
+      },
     );
   }
 }

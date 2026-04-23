@@ -264,9 +264,9 @@ class _ImpactDashboardPageState extends State<ImpactDashboardPage>
                   const SizedBox(height: 8),
                   Opacity(
                     opacity: (v * 2 - 1).clamp(0.0, 1.0),
-                    child: const Text(
-                      'Cairo Metro Master • مشروع تخرج 2024',
-                      style: TextStyle(
+                    child: Text(
+                      'Cairo Metro Master • مشروع تخرج ${DateTime.now().year}',
+                      style: const TextStyle(
                         color: Color(0xFF8899CC), fontSize: 13,
                         letterSpacing: 1.5,
                       ),

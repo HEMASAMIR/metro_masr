@@ -50,8 +50,46 @@ class NewsCardWidget extends StatelessWidget {
                       errorBuilder: (context, error, stackTrace) => Container(
                         height: 180,
                         width: double.infinity,
-                        color: Colors.grey[200],
-                        child: const Icon(Icons.broken_image, size: 50, color: Colors.grey),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Theme.of(context).primaryColor.withOpacity(0.8),
+                              Theme.of(context).primaryColor.withOpacity(0.4),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                        ),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Positioned(
+                              right: -30,
+                              bottom: -30,
+                              child: Icon(
+                                Icons.newspaper_rounded,
+                                size: 140,
+                                color: Colors.white.withOpacity(0.1),
+                              ),
+                            ),
+                            Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.newspaper_rounded, size: 48, color: Colors.white.withOpacity(0.8)),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'أخبار رفيق',
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.8),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 18,
+                                    letterSpacing: 1.2,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),

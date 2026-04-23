@@ -273,22 +273,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
       );
     }
 
-    // ── Emergency
-    if (_contains(input, ['طوارئ', 'emergency', 'مساعدة', 'help', 'خطر', 'danger', 'sos'])) {
-      return _BotResponse(
-        text: isAr
-            ? '🆘 في حالة الطوارئ:\n\n'
-                '• رقم إدارة المترو: 19258\n'
-                '• الإسعاف: 123\n'
-                '• الشرطة: 122\n\n'
-                '⚠️ استخدم زر SOS في الصفحة الرئيسية لإرسال موقعك فوراً!'
-            : '🆘 In case of emergency:\n\n'
-                '• Metro control: 19258\n'
-                '• Ambulance: 123\n'
-                '• Police: 122\n\n'
-                '⚠️ Use the SOS button on the home screen to share your location instantly!',
-      );
-    }
+
 
     // ── Default
     return _BotResponse(

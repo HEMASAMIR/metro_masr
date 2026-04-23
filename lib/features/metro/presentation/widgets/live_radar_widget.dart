@@ -39,12 +39,12 @@ class _LiveRadarWidgetState extends State<LiveRadarWidget> with TickerProviderSt
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 20,
             offset: const Offset(0, 10),
           )
         ],
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -52,11 +52,11 @@ class _LiveRadarWidgetState extends State<LiveRadarWidget> with TickerProviderSt
           Row(
             children: [
               FadeIn(
-                child: const Icon(Icons.radar, color: AppColors.success),
+                child: const Icon(Icons.location_on, color: AppColors.primary),
               ),
               const SizedBox(width: 8),
               Text(
-                isAr ? 'الرادار المباشر (Simulation)' : 'Live Train Radar',
+                isAr ? 'أقرب محطة لك' : 'Nearest Station',
                 style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
               ),
               const Spacer(),
@@ -66,17 +66,17 @@ class _LiveRadarWidgetState extends State<LiveRadarWidget> with TickerProviderSt
                   return Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppColors.error.withValues(alpha: 0.2 * _pulseController.value + 0.1),
+                      color: AppColors.success.withValues(alpha: 0.2 * _pulseController.value + 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
                       children: [
                         Container(
                           width: 8, height: 8,
-                          decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle),
+                          decoration: const BoxDecoration(color: AppColors.success, shape: BoxShape.circle),
                         ),
                         const SizedBox(width: 4),
-                        const Text('LIVE', style: TextStyle(color: AppColors.error, fontSize: 10, fontWeight: FontWeight.bold)),
+                        Text(isAr ? 'مباشر' : 'LIVE', style: const TextStyle(color: AppColors.success, fontSize: 10, fontWeight: FontWeight.bold)),
                       ],
                     ),
                   );
@@ -84,72 +84,70 @@ class _LiveRadarWidgetState extends State<LiveRadarWidget> with TickerProviderSt
               )
             ],
           ),
+          const SizedBox(height: 16),
+          // Station Name
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                isAr ? 'السادات (تحرير)' : 'Sadat (Tahrir)',
+                style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                isAr ? 'يبعد ٤٠٠ متر' : '400m away',
+                style: const TextStyle(color: Colors.white54, fontSize: 14),
+              ),
+            ],
+          ),
           const SizedBox(height: 24),
-          _buildRadarLine('Line 1', AppColors.line1, 0.2, 0.7),
-          const SizedBox(height: 20),
-          _buildRadarLine('Line 2', AppColors.line2, 0.4, 0.9),
-          const SizedBox(height: 20),
-          _buildRadarLine('Line 3', AppColors.line3, 0.1, 0.5),
+          // Departures list
+          _buildDepartureRow(isAr ? 'الخط الأول' : 'Line 1', AppColors.line1, isAr ? 'اتجاه حلوان' : 'To Helwan', '2', isAr),
+          const Divider(color: Colors.white12, height: 24),
+          _buildDepartureRow(isAr ? 'الخط الأول' : 'Line 1', AppColors.line1, isAr ? 'اتجاه المرج' : 'To El Marg', '4', isAr),
+          const Divider(color: Colors.white12, height: 24),
+          _buildDepartureRow(isAr ? 'الخط الثاني' : 'Line 2', AppColors.line2, isAr ? 'اتجاه المنيب' : 'To Mounib', '1', isAr),
         ],
       ),
     );
   }
 
-  Widget _buildRadarLine(String name, Color color, double train1Pos, double train2Pos) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildDepartureRow(String lineName, Color color, String direction, String mins, bool isAr) {
+    return Row(
       children: [
-        Text(name, style: TextStyle(color: color.withValues(alpha: 0.8), fontSize: 12, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 16,
-          child: Stack(
-            alignment: Alignment.centerLeft,
+        Container(
+          width: 4,
+          height: 36,
+          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // The track line
-              Container(
-                height: 4,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              // Moving train 1
-              _buildPulseTrain(color, train1Pos),
-              // Moving train 2
-              _buildPulseTrain(color, train2Pos),
+              Text(lineName, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
+              Text(direction, style: const TextStyle(color: Colors.white70, fontSize: 15)),
             ],
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: RichText(
+            text: TextSpan(
+              children: [
+                TextSpan(text: mins, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                TextSpan(text: isAr ? ' د' : ' m', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+              ],
+            ),
           ),
         ),
       ],
     );
   }
-
-  Widget _buildPulseTrain(Color color, double progress) {
-    return Positioned(
-      left: MediaQuery.of(context).size.width * 0.7 * progress, // scaled to container approx
-      child: AnimatedBuilder(
-        animation: _pulseController,
-        builder: (context, child) {
-          return Container(
-            width: 14 + (4 * _pulseController.value),
-            height: 14 + (4 * _pulseController.value),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              border: Border.all(color: color, width: 3),
-              boxShadow: [
-                BoxShadow(
-                  color: color.withValues(alpha: 0.5 * _pulseController.value),
-                  blurRadius: 10,
-                  spreadRadius: 2,
-                )
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
 }
+

@@ -1,4 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../features/community/domain/entities/report.dart';
 
 class OfflineStorage {
   static late SharedPreferences _prefs;
@@ -42,5 +43,16 @@ class OfflineStorage {
   static Future<void> addTrip() async {
     final current = getTrips();
     await _prefs.setInt('user_trips', current + 1);
+  }
+
+  // --- Reports Data ---
+  static List<Report> getReports() {
+    final lists = _prefs.getStringList('community_reports') ?? [];
+    return lists.map((e) => Report.fromJson(e)).toList();
+  }
+
+  static Future<void> saveReports(List<Report> reports) async {
+    final encoded = reports.map((e) => e.toJson()).toList();
+    await _prefs.setStringList('community_reports', encoded);
   }
 }

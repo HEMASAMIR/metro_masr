@@ -360,7 +360,7 @@ class _SettingsPageState extends State<SettingsPage> {
         icon: Icons.info_outline_rounded,
         iconColor: AppColors.primary,
         title: isAr ? 'رفيق المترو — الإصدار 2.0' : 'Rafiq Metro — Version 2.0',
-        subtitle: isAr ? 'مشروع تخرج 2024' : 'Graduation Project 2024',
+        subtitle: isAr ? 'مشروع تخرج ${DateTime.now().year}' : 'Graduation Project ${DateTime.now().year}',
       ),
       const Divider(height: 1),
       _tileRow(

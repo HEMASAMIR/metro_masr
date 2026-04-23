@@ -2,25 +2,62 @@ import 'package:animate_do/animate_do.dart';
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:rafiq_metrro/core/theme/app_colors.dart';
+import '../../domain/entities/reward.dart';
 
 class LeaderboardView extends StatelessWidget {
-  const LeaderboardView({super.key});
+  final Reward reward;
+  const LeaderboardView({super.key, required this.reward});
 
   @override
   Widget build(BuildContext context) {
-    // Mock Leaderboard Data
-    final topThree = [
+    final isAr = context.locale.languageCode == 'ar';
+    final userPoints = reward.currentPoints;
+
+    // Generate a simulated pool of competitors
+    List<Map<String, dynamic>> competitors = [
+      {'name': 'سلمى فريد', 'points': 9200, 'avatar': '👧'},
       {'name': 'أحمد حسن', 'points': 8400, 'avatar': '👨'},
-      {'name': 'سلمى فريد', 'points': 9200, 'avatar': '👧'}, // #1
       {'name': 'عمر خالد', 'points': 7800, 'avatar': '👦'},
+      {'name': 'منى ياسر', 'points': 7100, 'avatar': '👩'},
+      {'name': 'كريم شوقي', 'points': 6500, 'avatar': '🧑'},
+      {'name': 'ياسين علي', 'points': 5900, 'avatar': '👨'},
+      {'name': 'هدى محمود', 'points': 4800, 'avatar': '👧'},
+      {'name': 'نادر سيف', 'points': 3200, 'avatar': '👨'},
+      {'name': 'هالة صدقي', 'points': 1500, 'avatar': '👩'},
+      {'name': 'باسم كمال', 'points': 800, 'avatar': '🧑'},
+      {'name': 'دنيا وائل', 'points': 150, 'avatar': '👧'},
     ];
-    final others = [
-      {'rank': 4, 'name': 'منى ياسر', 'points': 7100, 'avatar': '👩'},
-      {'rank': 5, 'name': 'كريم شوقي', 'points': 6500, 'avatar': '🧑'},
-      {'rank': 6, 'name': 'ياسين علي', 'points': 5900, 'avatar': '👨'},
-      {'rank': 7, 'name': 'أنت', 'points': 5400, 'avatar': '😎', 'isMe': true},
-      {'rank': 8, 'name': 'هدى محمود', 'points': 4800, 'avatar': '👧'},
-    ];
+
+    // Inject the REAL user into the pool!
+    competitors.add({
+      'name': isAr ? 'أنت' : 'You',
+      'points': userPoints,
+      'avatar': '😎',
+      'isMe': true,
+    });
+
+    // Sort by points descending organically!
+    competitors.sort((a, b) => (b['points'] as int).compareTo(a['points'] as int));
+
+    // Assign canonical ranks safely after sorting
+    for (int i = 0; i < competitors.length; i++) {
+      competitors[i]['rank'] = i + 1;
+    }
+
+    final topThree = competitors.take(3).toList();
+    final others = competitors.skip(3).toList();
+
+    // Dynamic Level Computation
+    int nextTarget = 1000;
+    String nextLevel = isAr ? 'الفضية' : 'Silver';
+    if (userPoints >= 1000 && userPoints < 5000) {
+      nextTarget = 5000;
+      nextLevel = isAr ? 'الذهبية' : 'Gold';
+    } else if (userPoints >= 5000) {
+      nextTarget = 10000;
+      nextLevel = isAr ? 'البلاتينية' : 'Platinum';
+    }
+    final pointsNeeded = nextTarget > userPoints ? nextTarget - userPoints : 0;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -45,9 +82,9 @@ class LeaderboardView extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  _buildPodiumUser(topThree[0], 2, 100, const Color(0xFFC0C0C0)), // Silver
-                  _buildPodiumUser(topThree[1], 1, 140, const Color(0xFFFFD700), isFirst: true), // Gold
-                  _buildPodiumUser(topThree[2], 3, 80, const Color(0xFFCD7F32)), // Bronze
+                  if (topThree.length > 1) _buildPodiumUser(topThree[1], 2, 100, const Color(0xFFC0C0C0)), // Silver
+                  if (topThree.isNotEmpty) _buildPodiumUser(topThree[0], 1, 140, const Color(0xFFFFD700), isFirst: true), // Gold
+                  if (topThree.length > 2) _buildPodiumUser(topThree[2], 3, 80, const Color(0xFFCD7F32)), // Bronze
                 ],
               ),
             ),
@@ -73,7 +110,9 @@ class LeaderboardView extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              context.locale.languageCode == 'ar' ? 'ينقصك 500 نقطة لتصل للفضية 🚀' : '500 points to reach Silver 🚀',
+                              isAr
+                                  ? 'ينقصك $pointsNeeded نقطة لتصل للدرجة $nextLevel 🚀'
+                                  : '$pointsNeeded points to reach $nextLevel 🚀',
                               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                             ),
                           ],

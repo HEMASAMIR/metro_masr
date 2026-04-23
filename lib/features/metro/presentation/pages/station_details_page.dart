@@ -401,7 +401,6 @@ class StationDetailsPage extends StatelessWidget {
       case 'wc': return Icons.wc;
       case 'elevator': return Icons.elevator;
       case 'ticket_office': return Icons.confirmation_number_outlined;
-      case 'police_station': return Icons.local_police_outlined;
       default: return Icons.info_outline;
     }
   }

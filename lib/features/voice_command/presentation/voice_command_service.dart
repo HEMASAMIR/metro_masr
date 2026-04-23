@@ -8,12 +8,13 @@ import '../../metro/presentation/pages/map_page.dart';
 import '../../metro/presentation/pages/subscription_optimizer_page.dart';
 import '../../community/presentation/pages/community_page.dart';
 import '../../news/presentation/pages/news_page.dart';
+import '../../metro/presentation/pages/nfc_wallet_page.dart';
 import '../../ai_assistant/presentation/pages/ai_assistant_page.dart';
 import '../../crowd_prediction/presentation/pages/crowd_prediction_page.dart';
 import '../../gamification/presentation/pages/achievements_page.dart';
 import '../../trip_scheduler/presentation/pages/trip_scheduler_page.dart';
 import '../../pricing_calculator/presentation/pages/pricing_calculator_page.dart';
-import '../../emergency/presentation/pages/emergency_page.dart';
+
 
 
 enum VoiceCommandState { idle, listening, processing, done }
@@ -147,8 +148,9 @@ class VoiceCommandServiceState extends State<VoiceCommandService>
               Wrap(
                 spacing: 8,
                 children: (isAr
-                        ? ['الخريطة', 'مخطط الرحلة', 'المجتمع', 'الطوارئ', 'إنجازاتي', 'المفقودات']
-                        : ['Map', 'Route Planner', 'Community', 'Emergency', 'Achievements', 'Lost & Found'])
+                        ? ['الخريطة', 'مخطط الرحلة', 'المجتمع', 'إنجازاتي', 'المفقودات']
+                        : ['Map', 'Route Planner', 'Community', 'Achievements', 'Lost & Found'])
+
                     .map(
                       (cmd) => ActionChip(
                         label: Text(cmd, style: const TextStyle(fontSize: 12)),
@@ -188,6 +190,8 @@ class VoiceCommandServiceState extends State<VoiceCommandService>
       destination = const CommunityPage();
     } else if (_has(cmd, ['أخبار', 'news'])) {
       destination = const NewsPage();
+    } else if (_has(cmd, ['nfc', 'محفظة', 'wallet', 'كارت'])) {
+      destination = const NfcWalletPage();
     } else if (_has(cmd, ['اشتراك', 'subscription', 'optimize'])) {
       destination = const SubscriptionOptimizerPage();
     } else if (_has(cmd, ['ذكاء', 'ai', 'مساعد', 'assistant', 'رفيق'])) {
@@ -200,8 +204,7 @@ class VoiceCommandServiceState extends State<VoiceCommandService>
       destination = const TripSchedulerPage();
     } else if (_has(cmd, ['تكلفة', 'سعر', 'price', 'calculator', 'حاسبة'])) {
       destination = const PricingCalculatorPage();
-    } else if (_has(cmd, ['طوارئ', 'sos', 'emergency', 'help', 'مساعدة'])) {
-      destination = const EmergencyPage();
+
     }
 
     Future.delayed(const Duration(milliseconds: 200), () {
