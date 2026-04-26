@@ -1,7 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/offline_storage.dart';
 import 'onboarding_screen.dart';
 import '../../metro/presentation/pages/home_page.dart';
 
@@ -114,8 +114,7 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _navigate() async {
-    final prefs = await SharedPreferences.getInstance();
-    final seenOnboarding = prefs.getBool('seen_onboarding') ?? false;
+    final seenOnboarding = AppStorage.hasSeenOnboarding();
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(

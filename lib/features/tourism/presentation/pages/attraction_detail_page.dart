@@ -5,8 +5,10 @@ import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:rafiq_metrro/features/news/domain/entities/news_article.dart';
 import 'package:rafiq_metrro/features/news/presentation/pages/article_webview_page.dart';
+import '../../../../core/models/user_review.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/tourism_data.dart';
+import '../widgets/attraction_reviews_section.dart';
 
 class AttractionDetailPage extends StatefulWidget {
   final TouristAttraction attraction;
@@ -31,6 +33,10 @@ class _AttractionDetailPageState extends State<AttractionDetailPage>
   late Animation<double> _heroScale;
   late Animation<double> _contentFade;
 
+  // Parallax scroll
+  final ScrollController _scrollCtrl = ScrollController();
+  double _scrollOffset = 0;
+
   // AI Chat
   final _chatCtrl = TextEditingController();
   final List<_ChatMessage> _messages = [];
@@ -38,6 +44,10 @@ class _AttractionDetailPageState extends State<AttractionDetailPage>
 
   // Gallery
   int _currentGalleryIndex = 0;
+
+  // Live user rating
+  double? _userAvgRating;
+  int _reviewCount = 0;
 
   // Quick questions in 4 languages
   late List<String> _quickQuestions;
@@ -65,8 +75,25 @@ class _AttractionDetailPageState extends State<AttractionDetailPage>
       () => _contentCtrl.forward(),
     );
 
+    _scrollCtrl.addListener(() {
+      if (mounted) setState(() => _scrollOffset = _scrollCtrl.offset);
+    });
+
     _setupQuickQuestions();
     _addSystemMessage();
+    _loadUserRating();
+  }
+
+  Future<void> _loadUserRating() async {
+    final reviews = await UserReviewService.getReviews(widget.attraction.id);
+    if (mounted) {
+      setState(() {
+        _reviewCount = reviews.length;
+        _userAvgRating = reviews.isEmpty
+            ? null
+            : reviews.fold<double>(0, (a, r) => a + r.rating) / reviews.length;
+      });
+    }
   }
 
   @override
@@ -74,12 +101,11 @@ class _AttractionDetailPageState extends State<AttractionDetailPage>
     _heroCtrl.dispose();
     _contentCtrl.dispose();
     _chatCtrl.dispose();
+    _scrollCtrl.dispose();
     super.dispose();
   }
 
   void _setupQuickQuestions() {
-    final name =
-        widget.attraction.name[widget.lang] ?? widget.attraction.name['en']!;
     _quickQuestions =
         {
           'ar': [
@@ -294,19 +320,45 @@ class _AttractionDetailPageState extends State<AttractionDetailPage>
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(
+        controller: _scrollCtrl,
         slivers: [
           // ── Hero ──────────────────────────────────────────────────────────
           SliverAppBar(
-            expandedHeight: 240,
+            expandedHeight: 300,
             pinned: true,
-            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-            iconTheme: Theme.of(context).iconTheme,
+            automaticallyImplyLeading: false,
+            backgroundColor: Colors.transparent,
+            elevation: 0,
             flexibleSpace: FlexibleSpaceBar(
+              collapseMode: CollapseMode.parallax,
               background: AnimatedBuilder(
                 animation: _heroScale,
-                builder: (_, _) => Transform.scale(
+                builder: (_, __) => Transform.scale(
                   scale: _heroScale.value,
                   child: _buildHero(a, color, name, isAr),
+                ),
+              ),
+            ),
+            leading: Padding(
+              padding: const EdgeInsets.all(8),
+              child: GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: BackdropFilter(
+                    filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.35),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white.withOpacity(0.2)),
+                      ),
+                      child: const Icon(Icons.arrow_back_ios_new_rounded,
+                          color: Colors.white, size: 18),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -344,32 +396,47 @@ class _AttractionDetailPageState extends State<AttractionDetailPage>
                               ),
                             ),
                             const SizedBox(width: 12),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.amber.withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.star_rounded,
-                                    color: Colors.amber,
-                                    size: 16,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    a.rating.toStringAsFixed(1),
-                                    style: const TextStyle(
-                                      color: Colors.amber,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
+                            // Dynamic rating badge
+                            GestureDetector(
+                              onTap: () {}, // scroll to reviews
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                      color: Colors.amber.withOpacity(0.3)),
+                                ),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.star_rounded,
+                                            color: Colors.amber, size: 16),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          (_userAvgRating ?? a.rating)
+                                              .toStringAsFixed(1),
+                                          style: const TextStyle(
+                                            color: Colors.amber,
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ),
-                                ],
+                                    if (_reviewCount > 0)
+                                      Text(
+                                        '$_reviewCount ${isAr ? 'تقييم' : 'reviews'}',
+                                        style: const TextStyle(
+                                            color: Colors.amber,
+                                            fontSize: 9),
+                                      ),
+                                  ],
+                                ),
                               ),
                             ),
                           ],
@@ -401,23 +468,8 @@ class _AttractionDetailPageState extends State<AttractionDetailPage>
                   // ── Quick info cards ──────────────────────────────────────
                   _buildQuickInfoRow(a, color, isAr, lang),
 
-                  // ── Description ───────────────────────────────────────────
-                  _buildSection(
-                    icon: '📖',
-                    title: isAr ? 'عن المكان' : 'About',
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Text(
-                        desc,
-                        textAlign: isAr ? TextAlign.right : TextAlign.left,
-                        style: TextStyle(
-                          color: Theme.of(context).textTheme.bodySmall?.color,
-                          fontSize: 14,
-                          height: 1.8,
-                        ),
-                      ),
-                    ),
-                  ),
+                  // ── About (Premium) ────────────────────────────────────────
+                  _buildAboutSection(a, desc, color, isAr, lang),
 
                   // ── Tags ─────────────────────────────────────────────────
                   Padding(
@@ -457,6 +509,14 @@ class _AttractionDetailPageState extends State<AttractionDetailPage>
                     icon: '🤖',
                     title: isAr ? 'اسأل رفيق الذكي' : 'Ask Rafiq AI',
                     child: _buildAiChat(isAr, color),
+                  ),
+
+                  // ── User Reviews ─────────────────────────────────────────
+                  AttractionReviewsSection(
+                    attractionId: a.id,
+                    isAr: isAr,
+                    accentColor: color,
+                    onReviewsChanged: _loadUserRating,
                   ),
 
                   // ── Web View Button ─────────────────────────────────────
@@ -739,6 +799,213 @@ class _AttractionDetailPageState extends State<AttractionDetailPage>
     );
   }
 
+  // ── Premium About Section ─────────────────────────────────────────────────
+  Widget _buildAboutSection(
+    TouristAttraction a,
+    String desc,
+    Color color,
+    bool isAr,
+    String lang,
+  ) {
+    final highlights = _extractHighlights(a, lang, isAr);
+    final didYouKnow = _getDidYouKnow(a, lang, isAr);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        crossAxisAlignment: isAr
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
+        children: [
+          // Section header with glowing underline
+          _buildAboutHeader(color, isAr),
+          const SizedBox(height: 16),
+
+          // Stat chips row
+          if (highlights.isNotEmpty) ..._buildHighlightChips(highlights, color),
+          const SizedBox(height: 16),
+
+          // ── "Did You Know?" shimmer card ──────────────────────────────
+          if (didYouKnow != null) ...[_buildDidYouKnowCard(didYouKnow, color, isAr), const SizedBox(height: 16)],
+
+          // ── Expandable description ────────────────────────────────────
+          _AboutExpandable(desc: desc, color: color, isAr: isAr),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAboutHeader(Color color, bool isAr) {
+    return Column(
+      crossAxisAlignment:
+          isAr ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      children: [
+        Row(
+          textDirection: isAr ? ui.TextDirection.rtl : ui.TextDirection.ltr,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [color, color.withOpacity(0.6)],
+                ),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withOpacity(0.4),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Text('📖', style: TextStyle(fontSize: 16)),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              isAr ? 'عن المكان' : 'About',
+              style: const TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 18,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Container(
+          height: 3,
+          width: 60,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [color, color.withOpacity(0)]),
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+      ],
+    );
+  }
+
+  List<Widget> _buildHighlightChips(
+      List<_HighlightStat> stats, Color color) {
+    return [
+      SizedBox(
+        height: 90,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: stats.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 10),
+          itemBuilder: (context, i) {
+            final s = stats[i];
+            return _AnimatedStatChip(stat: s, color: color, index: i);
+          },
+        ),
+      ),
+    ];
+  }
+
+  Widget _buildDidYouKnowCard(String text, Color color, bool isAr) {
+    return _ShimmerCard(
+      color: color,
+      child: Row(
+        textDirection: isAr ? ui.TextDirection.rtl : ui.TextDirection.ltr,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('💡', style: const TextStyle(fontSize: 22)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: isAr
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isAr ? 'هل تعلم؟' : 'Did you know?',
+                  style: TextStyle(
+                    color: color,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  text,
+                  textDirection:
+                      isAr ? ui.TextDirection.rtl : ui.TextDirection.ltr,
+                  style: TextStyle(
+                    color: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.color
+                        ?.withOpacity(0.85),
+                    fontSize: 12.5,
+                    height: 1.6,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<_HighlightStat> _extractHighlights(
+      TouristAttraction a, String lang, bool isAr) {
+    final stats = <_HighlightStat>[];
+    // Founded year from description
+    final yearMatch = RegExp(r'(\d{3,4})\s*(AD|ميلادي|\bBC\b)?')
+        .firstMatch(a.description['en'] ?? '');
+    if (yearMatch != null) {
+      final yr = yearMatch.group(1)!;
+      stats.add(_HighlightStat(
+        icon: '🏛️',
+        value: yr,
+        label: isAr ? 'تأسس' : 'Founded',
+      ));
+    }
+    // Rating
+    stats.add(_HighlightStat(
+      icon: '⭐',
+      value: '${a.rating}',
+      label: isAr ? 'تقييم' : 'Rating',
+    ));
+    // Walking distance
+    stats.add(_HighlightStat(
+      icon: '🚶',
+      value: '${a.walkingMinutes}m',
+      label: isAr ? 'مشياً' : 'Walk',
+    ));
+    // Admission
+    stats.add(_HighlightStat(
+      icon: a.isFree ? '🆓' : '🎟️',
+      value: a.isFree ? (isAr ? 'مجاني' : 'Free') : a.admissionEGP,
+      label: isAr ? 'الدخول' : 'Entry',
+    ));
+    return stats;
+  }
+
+  String? _getDidYouKnow(TouristAttraction a, String lang, bool isAr) {
+    // pick most interesting sentence from description
+    final desc = a.description[lang] ?? a.description['en'] ?? '';
+    // Find first sentence containing a number or superlative
+    final sentences = desc.split(RegExp(r'[.!؟]'));
+    for (final s in sentences) {
+      final trimmed = s.trim();
+      if (trimmed.length > 30 &&
+          (RegExp(r'\d').hasMatch(trimmed) ||
+              trimmed.toLowerCase().contains('oldest') ||
+              trimmed.toLowerCase().contains('largest') ||
+              trimmed.toLowerCase().contains('world') ||
+              trimmed.contains('أقدم') ||
+              trimmed.contains('أكبر') ||
+              trimmed.contains('أول') ||
+              trimmed.contains('العالم'))) {
+        return '$trimmed.';
+      }
+    }
+    return null;
+  }
+
   Widget _buildAiChat(bool isAr, Color color) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
@@ -961,6 +1228,330 @@ class _ChatMessage {
   final String text;
   final bool isUser;
   _ChatMessage({required this.text, required this.isUser});
+}
+
+// ── Data class for stat chips ────────────────────────────────────────────────
+class _HighlightStat {
+  final String icon;
+  final String value;
+  final String label;
+  const _HighlightStat({required this.icon, required this.value, required this.label});
+}
+
+// ── Animated stat chip ────────────────────────────────────────────────────────
+class _AnimatedStatChip extends StatefulWidget {
+  final _HighlightStat stat;
+  final Color color;
+  final int index;
+  const _AnimatedStatChip({required this.stat, required this.color, required this.index});
+  @override
+  State<_AnimatedStatChip> createState() => _AnimatedStatChipState();
+}
+
+class _AnimatedStatChipState extends State<_AnimatedStatChip>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _anim = CurvedAnimation(parent: _ctrl, curve: Curves.elasticOut);
+    Future.delayed(Duration(milliseconds: 100 + widget.index * 120), () {
+      if (mounted) _ctrl.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ScaleTransition(
+      scale: _anim,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              widget.color.withOpacity(0.12),
+              widget.color.withOpacity(0.06),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: widget.color.withOpacity(0.3)),
+          boxShadow: [
+            BoxShadow(
+              color: widget.color.withOpacity(0.15),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(widget.stat.icon, style: const TextStyle(fontSize: 16)),
+            const SizedBox(height: 2),
+            Text(
+              widget.stat.value,
+              style: TextStyle(
+                color: widget.color,
+                fontWeight: FontWeight.w900,
+                fontSize: 11,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            Text(
+              widget.stat.label,
+              style: const TextStyle(fontSize: 9, color: Color(0xFF8899BB)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Shimmer glow card for Did You Know ─────────────────────────────────────
+class _ShimmerCard extends StatefulWidget {
+  final Color color;
+  final Widget child;
+  const _ShimmerCard({required this.color, required this.child});
+  @override
+  State<_ShimmerCard> createState() => _ShimmerCardState();
+}
+
+class _ShimmerCardState extends State<_ShimmerCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    )..repeat(reverse: true);
+    _anim = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _anim,
+      builder: (_, child) => Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            colors: [
+              widget.color.withOpacity(0.04 + 0.06 * _anim.value),
+              widget.color.withOpacity(0.1 + 0.1 * _anim.value),
+              widget.color.withOpacity(0.04 + 0.06 * _anim.value),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          border: Border.all(
+            color: widget.color.withOpacity(0.2 + 0.3 * _anim.value),
+            width: 1.2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: widget.color.withOpacity(0.1 * _anim.value),
+              blurRadius: 20,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: child,
+      ),
+      child: widget.child,
+    );
+  }
+}
+
+// ── Expandable description ────────────────────────────────────────────────────
+class _AboutExpandable extends StatefulWidget {
+  final String desc;
+  final Color color;
+  final bool isAr;
+  const _AboutExpandable({required this.desc, required this.color, required this.isAr});
+  @override
+  State<_AboutExpandable> createState() => _AboutExpandableState();
+}
+
+class _AboutExpandableState extends State<_AboutExpandable>
+    with SingleTickerProviderStateMixin {
+  bool _expanded = false;
+  late AnimationController _ctrl;
+  late Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _anim = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _toggle() {
+    setState(() => _expanded = !_expanded);
+    if (_expanded) {
+      _ctrl.forward();
+    } else {
+      _ctrl.reverse();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const collapsedLines = 3;
+    return Column(
+      crossAxisAlignment: widget.isAr
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
+      children: [
+        // Description text with gradient fade when collapsed
+        GestureDetector(
+          onTap: _toggle,
+          child: AnimatedCrossFade(
+            duration: const Duration(milliseconds: 400),
+            crossFadeState: _expanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            firstChild: Stack(
+              children: [
+                Text(
+                  widget.desc,
+                  textDirection: widget.isAr
+                      ? ui.TextDirection.rtl
+                      : ui.TextDirection.ltr,
+                  maxLines: collapsedLines,
+                  overflow: TextOverflow.clip,
+                  style: TextStyle(
+                    color:
+                        Theme.of(context).textTheme.bodySmall?.color,
+                    fontSize: 14,
+                    height: 1.85,
+                  ),
+                ),
+                // Gradient fade overlay
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  height: 50,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Theme.of(context)
+                              .scaffoldBackgroundColor
+                              .withOpacity(0),
+                          Theme.of(context)
+                              .scaffoldBackgroundColor
+                              .withOpacity(0.95),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            secondChild: Text(
+              widget.desc,
+              textDirection:
+                  widget.isAr ? ui.TextDirection.rtl : ui.TextDirection.ltr,
+              style: TextStyle(
+                color: Theme.of(context).textTheme.bodySmall?.color,
+                fontSize: 14,
+                height: 1.85,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        // Read more / less button
+        GestureDetector(
+          onTap: _toggle,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  widget.color.withOpacity(0.15),
+                  widget.color.withOpacity(0.08),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: widget.color.withOpacity(0.35),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              textDirection: widget.isAr
+                  ? ui.TextDirection.rtl
+                  : ui.TextDirection.ltr,
+              children: [
+                AnimatedRotation(
+                  duration: const Duration(milliseconds: 300),
+                  turns: _expanded ? 0.5 : 0,
+                  child: Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: widget.color,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  _expanded
+                      ? (widget.isAr ? 'عرض أقل' : 'Show less')
+                      : (widget.isAr ? 'اقرأ المزيد' : 'Read more'),
+                  style: TextStyle(
+                    color: widget.color,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 // Animated typing dots

@@ -1,28 +1,40 @@
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/crowd_prediction_service.dart';
 import '../../../../core/utils/metro_data.dart';
+import '../../../../core/utils/responsive.dart';
 import '../../domain/entities/station.dart';
+import 'route_planner_page.dart';
 import 'station_details_page.dart';
 
+
+
 /// Metro Map using InteractiveViewer + CustomPainter
-/// Does not require Google Maps API Key
+/// Supports optional [highlightedRoute] to glow a path on the map.
 class MapPage extends StatefulWidget {
-  const MapPage({super.key});
+  final List<String>? highlightedRoute; // list of station IDs in order
+  const MapPage({super.key, this.highlightedRoute});
   @override
   State<MapPage> createState() => _MapPageState();
 }
 
-class _MapPageState extends State<MapPage> {
+class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   final TransformationController _transformController = TransformationController();
   
   int _selectedLineFilter = 0; // 0=All, 1/2/3=Lines, 4=Capital
   Station? _selectedStation;
+  late AnimationController _cardCtrl;
+  late Animation<double> _cardAnim;
+  bool _isDark = true;
 
   @override
   void initState() {
     super.initState();
+    _cardCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
+    _cardAnim = CurvedAnimation(parent: _cardCtrl, curve: Curves.easeOutBack);
     // Center the map initially
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final screenSize = MediaQuery.of(context).size;
@@ -31,12 +43,21 @@ class _MapPageState extends State<MapPage> {
           -400.0 + screenSize.width / 2,
           -400.0 + screenSize.height / 2,
         );
+      // If route was passed, auto-highlight line
+      if (widget.highlightedRoute != null && widget.highlightedRoute!.isNotEmpty) {
+        final firstId = widget.highlightedRoute!.first;
+        final station = MetroData.stations[firstId];
+        if (station != null) {
+          setState(() => _selectedLineFilter = 0);
+        }
+      }
     });
   }
 
   @override
   void dispose() {
     _transformController.dispose();
+    _cardCtrl.dispose();
     super.dispose();
   }
 
@@ -49,20 +70,38 @@ class _MapPageState extends State<MapPage> {
       );
   }
 
+  void _selectStation(Station s) {
+    setState(() => _selectedStation = s);
+    _cardCtrl.reset();
+    _cardCtrl.forward();
+  }
+
+  void _dismissStation() {
+    _cardCtrl.reverse().then((_) {
+      if (mounted) setState(() => _selectedStation = null);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final isAr = context.locale.languageCode == 'ar';
+    final hasRoute = widget.highlightedRoute != null && widget.highlightedRoute!.length > 1;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F4F8), // light background for map
+      backgroundColor: _isDark ? const Color(0xFF1A1E2E) : const Color(0xFFEEF2F8),
       appBar: AppBar(
-        title: Text(isAr ? 'خريطة تفاعلية لخطوط المترو' : 'Interactive Metro Map'),
-        backgroundColor: AppColors.primary,
+        title: Text(isAr ? 'خريطة المترو التفاعلية' : 'Interactive Metro Map'),
+        backgroundColor: const Color(0xFF0D1117),
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
+          // Dark/light toggle
           IconButton(
-            icon: const Icon(Icons.center_focus_strong_rounded),
+            icon: Icon(_isDark ? Icons.wb_sunny_rounded : Icons.nights_stay_rounded, color: Colors.white),
+            onPressed: () => setState(() => _isDark = !_isDark),
+          ),
+          IconButton(
+            icon: const Icon(Icons.center_focus_strong_rounded, color: Colors.white),
             tooltip: isAr ? 'توسيط الخريطة' : 'Center Map',
             onPressed: _recenter,
           ),
@@ -74,20 +113,21 @@ class _MapPageState extends State<MapPage> {
           Positioned.fill(
             child: InteractiveViewer(
               transformationController: _transformController,
-              minScale: 0.5,
-              maxScale: 3.5,
+              minScale: 0.4,
+              maxScale: 4.0,
               boundaryMargin: const EdgeInsets.all(800),
               child: Center(
                 child: SizedBox(
                   width: 1200,
                   height: 1200,
-                  // The CustomPaint draws lines & stations
                   child: Stack(
                     children: [
                       Positioned.fill(
                         child: CustomPaint(
                           painter: MetroMapPainter(
                             selectedLineFilter: _selectedLineFilter,
+                            highlightedRoute: widget.highlightedRoute ?? [],
+                            isDark: _isDark,
                           ),
                         ),
                       ),
@@ -99,6 +139,15 @@ class _MapPageState extends State<MapPage> {
               ),
             ),
           ),
+
+          // ── Route highlight banner ────────────────────────────────────
+          if (hasRoute)
+            Positioned(
+              top: 60,
+              left: 12,
+              right: 12,
+              child: _buildRouteBanner(isAr),
+            ),
 
           // ── Line filter chips (top overlay) ──────────────────────────
           Positioned(
@@ -114,7 +163,11 @@ class _MapPageState extends State<MapPage> {
               bottom: 0,
               left: 0,
               right: 0,
-              child: _buildStationCard(context, isAr),
+              child: ScaleTransition(
+                scale: _cardAnim,
+                alignment: Alignment.bottomCenter,
+                child: _buildStationCard(context, isAr),
+              ),
             ),
         ],
       ),
@@ -125,7 +178,11 @@ class _MapPageState extends State<MapPage> {
   List<Widget> _buildStationTapAreas(bool isAr) {
     final List<Widget> widgets = [];
     final all = MetroData.stations.values.toList();
-    final painter = MetroMapPainter(selectedLineFilter: _selectedLineFilter);
+    final painter = MetroMapPainter(
+      selectedLineFilter: _selectedLineFilter,
+      highlightedRoute: widget.highlightedRoute ?? [],
+      isDark: _isDark,
+    );
 
     for (var s in all) {
       if (_selectedLineFilter != 0 && s.line != _selectedLineFilter) continue;
@@ -133,22 +190,63 @@ class _MapPageState extends State<MapPage> {
       final pos = painter.getStationPosition(s.id);
       if (pos == null) continue;
 
+      // highlight border for route stations
+      final isOnRoute = (widget.highlightedRoute ?? []).contains(s.id);
+
       widgets.add(
         Positioned(
-          left: pos.dx - 15,
-          top: pos.dy - 15,
+          left: pos.dx - 18,
+          top: pos.dy - 18,
           child: GestureDetector(
-            onTap: () => setState(() => _selectedStation = s),
-            child: Container(
-              width: 30,
-              height: 30,
-              color: Colors.transparent, // transparent touch target
-            ),
+            onTap: () => _selectStation(s),
+            child: isOnRoute
+                ? Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.amber.withOpacity(0.25),
+                      border: Border.all(color: Colors.amber, width: 2),
+                    ),
+                  )
+                : Container(
+                    width: 36,
+                    height: 36,
+                    color: Colors.transparent,
+                  ),
           ),
         ),
       );
     }
     return widgets;
+  }
+
+  Widget _buildRouteBanner(bool isAr) {
+    final route = widget.highlightedRoute!;
+    final fromStation = MetroData.stations[route.first];
+    final toStation = MetroData.stations[route.last];
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.amber.withOpacity(0.95),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.amber.withOpacity(0.4), blurRadius: 12, offset: const Offset(0, 4))],
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.route_rounded, color: Colors.black87, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              isAr
+                  ? '🚇 مسارك: ${fromStation?.nameAr ?? ''} ← ${toStation?.nameAr ?? ''} (${route.length} محطة)'
+                  : '🚇 Route: ${fromStation?.nameEn ?? ''} → ${toStation?.nameEn ?? ''} (${route.length} stops)',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black87),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildLineFilterChips(bool isAr) {
@@ -215,79 +313,162 @@ class _MapPageState extends State<MapPage> {
     final s = _selectedStation!;
     final name = isAr ? s.nameAr : s.nameEn;
     final lineColor = s.line == 1 ? AppColors.line1 : s.line == 2 ? AppColors.line2 : AppColors.line3;
+    final now = DateTime.now();
+    final crowdLevel = CrowdPredictionService.getCrowdLevel(
+      hour: now.hour, weekday: now.weekday, lineNumber: s.line);
+    final crowdCat = CrowdPredictionService.getCrowdCategory(crowdLevel);
+    final crowdColor = crowdCat == CrowdLevel.high ? Colors.red
+        : crowdCat == CrowdLevel.moderate ? Colors.orange : Colors.green;
+    final crowdLabel = crowdCat == CrowdLevel.high
+        ? (isAr ? 'مزدحم' : 'Crowded')
+        : crowdCat == CrowdLevel.moderate
+            ? (isAr ? 'متوسط' : 'Moderate')
+            : (isAr ? 'هادي' : 'Calm');
 
     return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(18),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 20, offset: const Offset(0, -4))],
+        border: Border.all(color: lineColor.withOpacity(0.3)),
+        boxShadow: [
+          BoxShadow(color: lineColor.withOpacity(0.2), blurRadius: 24, offset: const Offset(0, -6)),
+          BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 20, offset: const Offset(0, -4)),
+        ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 48, height: 48,
-                decoration: BoxDecoration(color: lineColor.withValues(alpha: 0.12), shape: BoxShape.circle),
-                child: Icon(Icons.train_rounded, color: lineColor, size: 26),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          // Top drag handle
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.withOpacity(0.3), borderRadius: BorderRadius.circular(2)),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                    Row(
-                      children: [
-                        Container(width: 8, height: 8, decoration: BoxDecoration(color: lineColor, shape: BoxShape.circle)),
-                        const SizedBox(width: 6),
-                        Text(isAr ? 'الخط ${s.line}' : 'Line ${s.line}', style: TextStyle(color: lineColor, fontSize: 13, fontWeight: FontWeight.w600)),
-                        if (s.isTransfer) ...[
-                          const SizedBox(width: 10),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: AppColors.accent.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(isAr ? '🔄 محطة تبديل' : '🔄 Transfer Station', style: const TextStyle(fontSize: 11, color: AppColors.accent, fontWeight: FontWeight.bold)),
+                    // Line color pill
+                    Container(
+                      width: 52, height: 52,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [lineColor, lineColor.withOpacity(0.6)],
+                          begin: Alignment.topLeft, end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [BoxShadow(color: lineColor.withOpacity(0.4), blurRadius: 12)],
+                      ),
+                      child: const Icon(Icons.train_rounded, color: Colors.white, size: 26),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(name, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Container(width: 8, height: 8,
+                                decoration: BoxDecoration(color: lineColor, shape: BoxShape.circle)),
+                              const SizedBox(width: 6),
+                              Text(
+                                isAr ? 'الخط ${s.line}' : 'Line ${s.line}',
+                                style: TextStyle(color: lineColor, fontWeight: FontWeight.bold, fontSize: 12)),
+                              if (s.isTransfer) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.purple.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(6)),
+                                  child: Text(
+                                    isAr ? '🔄 تبديل' : '🔄 Transfer',
+                                    style: const TextStyle(fontSize: 10, color: Colors.purple, fontWeight: FontWeight.bold)),
+                                ),
+                              ],
+                            ],
                           ),
                         ],
+                      ),
+                    ),
+                    // Crowd badge
+                    Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: crowdColor.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: crowdColor.withOpacity(0.4)),
+                          ),
+                          child: Column(
+                            children: [
+                              Text(CrowdPredictionService.getCrowdEmoji(crowdCat),
+                                style: const TextStyle(fontSize: 18)),
+                              Text(crowdLabel,
+                                style: TextStyle(color: crowdColor, fontSize: 10, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded, size: 18, color: Colors.grey),
+                          onPressed: _dismissStation,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                        ),
                       ],
                     ),
                   ],
                 ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary),
-                onPressed: () => setState(() => _selectedStation = null),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: lineColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    elevation: 0,
-                  ),
-                  icon: const Icon(Icons.info_outline_rounded, size: 20),
-                  label: Text(isAr ? 'التفاصيل كاملة' : 'Full Details', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => StationDetailsPage(station: s)),
-                  ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: lineColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          elevation: 0,
+                        ),
+                        icon: const Icon(Icons.info_outline_rounded, size: 18),
+                        label: Text(isAr ? 'تفاصيل المحطة' : 'Station Details',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        onPressed: () => Navigator.push(
+                          context, MaterialPageRoute(builder: (_) => StationDetailsPage(station: s))),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: lineColor),
+                          foregroundColor: lineColor,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        icon: const Icon(Icons.alt_route_rounded, size: 18),
+                        label: Text(isAr ? 'خطط رحلة' : 'Plan Route',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        onPressed: () => Navigator.push(
+                          context, MaterialPageRoute(
+                            builder: (_) => RoutePlannerPage(initialFrom: s.id))),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -300,8 +481,14 @@ class _MapPageState extends State<MapPage> {
 
 class MetroMapPainter extends CustomPainter {
   final int selectedLineFilter;
+  final List<String> highlightedRoute;
+  final bool isDark;
 
-  MetroMapPainter({required this.selectedLineFilter});
+  MetroMapPainter({
+    required this.selectedLineFilter,
+    this.highlightedRoute = const [],
+    this.isDark = true,
+  });
 
   // Base map parameters
   static const double cx = 600; // center x of the 1200x1200 canvas
@@ -433,6 +620,9 @@ class MetroMapPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final bgLabelColor = isDark ? const Color(0xFF1E2235) : Colors.white;
+
     final paintLine1 = Paint()..color = AppColors.line1..strokeWidth = 8..style = PaintingStyle.stroke..strokeCap = StrokeCap.round..strokeJoin = StrokeJoin.round;
     final paintLine2 = Paint()..color = AppColors.line2..strokeWidth = 8..style = PaintingStyle.stroke..strokeCap = StrokeCap.round..strokeJoin = StrokeJoin.round;
     final paintLine3 = Paint()..color = AppColors.line3..strokeWidth = 8..style = PaintingStyle.stroke..strokeCap = StrokeCap.round..strokeJoin = StrokeJoin.round;
@@ -446,26 +636,19 @@ class MetroMapPainter extends CustomPainter {
       final lineStations = all.where((s) => s.line == lineNum).toList();
       if (lineStations.isEmpty) return;
 
-      // Group into continuous chunks by connectedTo relationship,
-      // or simply connect sequentially based on _customPositions availability
       final path = Path();
-      
       Offset? lastPos;
-      
-      // We will just draw lines between adjacent stations in the list for simplicity,
-      // assuming MetroData.stations defines them roughly in order.
       for (var s in lineStations) {
         final pos = getStationPosition(s.id);
         if (pos == null) continue;
-        
-        if (lastPos == null) {
-          path.moveTo(pos.dx, pos.dy);
-        } else {
-          path.lineTo(pos.dx, pos.dy);
-        }
+        if (lastPos == null) { path.moveTo(pos.dx, pos.dy); } else { path.lineTo(pos.dx, pos.dy); }
         lastPos = pos;
       }
-      
+      // Slightly dimmed when showing a route highlight
+      if (highlightedRoute.isNotEmpty) {
+        paint = Paint()..color = paint.color.withOpacity(0.3)..strokeWidth = 6
+          ..style = PaintingStyle.stroke..strokeCap = StrokeCap.round..strokeJoin = StrokeJoin.round;
+      }
       canvas.drawPath(path, paint);
     }
 
@@ -473,6 +656,34 @@ class MetroMapPainter extends CustomPainter {
     drawRoute(1, paintLine1);
     drawRoute(2, paintLine2);
     drawRoute(3, paintLine3);
+
+    // Draw highlighted route on top (glowing)
+    if (highlightedRoute.length > 1) {
+      final glowPaint = Paint()
+        ..color = Colors.amber.withOpacity(0.35)
+        ..strokeWidth = 18
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+      final solidPaint = Paint()
+        ..color = Colors.amber
+        ..strokeWidth = 6
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round;
+
+      final routePath = Path();
+      bool first = true;
+      for (final id in highlightedRoute) {
+        final pos = getStationPosition(id);
+        if (pos == null) continue;
+        if (first) { routePath.moveTo(pos.dx, pos.dy); first = false; }
+        else { routePath.lineTo(pos.dx, pos.dy); }
+      }
+      canvas.drawPath(routePath, glowPaint);
+      canvas.drawPath(routePath, solidPaint);
+    }
 
     // Capital Metro Monorail
     if (selectedLineFilter == 0 || selectedLineFilter == 4) {
@@ -482,10 +693,9 @@ class MetroMapPainter extends CustomPainter {
       path.lineTo(start.dx + 40, start.dy - 10);
       path.lineTo(start.dx + 90, start.dy + 30);
       path.lineTo(start.dx + 160, start.dy + 80);
-      path.lineTo(start.dx + 250, start.dy + 150); // New Capital
+      path.lineTo(start.dx + 250, start.dy + 150);
       canvas.drawPath(path, paintCapital);
       
-      // Draw Capital endpoints
       final markPaint = Paint()..color = Colors.white..style = PaintingStyle.fill;
       final strokePaint = Paint()..color = const Color(0xFF9C27B0)..style = PaintingStyle.stroke..strokeWidth = 4;
       canvas.drawCircle(start, 7, markPaint);
@@ -496,7 +706,7 @@ class MetroMapPainter extends CustomPainter {
     }
 
     // 2. Draw Stations
-    final stationFill = Paint()..color = Colors.white..style = PaintingStyle.fill;
+    final stationFill = Paint()..color = isDark ? const Color(0xFF1E2235) : Colors.white..style = PaintingStyle.fill;
     
     for (var s in all) {
       if (selectedLineFilter != 0 && s.line != selectedLineFilter) continue;
@@ -504,46 +714,65 @@ class MetroMapPainter extends CustomPainter {
       final pos = getStationPosition(s.id);
       if (pos == null) continue;
 
-      final strokePaint = Paint()
-        ..color = s.line == 1 ? AppColors.line1 : s.line == 2 ? AppColors.line2 : AppColors.line3
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = s.isTransfer ? 5 : 3;
+      final isOnRoute = highlightedRoute.contains(s.id);
+      final isFirst = highlightedRoute.isNotEmpty && s.id == highlightedRoute.first;
+      final isLast = highlightedRoute.isNotEmpty && s.id == highlightedRoute.last;
 
-      if (s.isTransfer) {
-        canvas.drawCircle(pos, 10, stationFill);
-        strokePaint.color = Colors.black87; // make transfers stand out
-        canvas.drawCircle(pos, 10, strokePaint);
-        // inner dot
-        canvas.drawCircle(pos, 4, Paint()..color = Colors.black87);
-      } else {
-        canvas.drawCircle(pos, 7, stationFill);
-        canvas.drawCircle(pos, 7, strokePaint);
+      final strokePaint = Paint()
+        ..color = isOnRoute
+            ? Colors.amber
+            : (s.line == 1 ? AppColors.line1 : s.line == 2 ? AppColors.line2 : AppColors.line3)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = isOnRoute ? 4 : (s.isTransfer ? 5 : 3);
+
+      final radius = isFirst || isLast ? 11.0 : (s.isTransfer ? 10.0 : 7.0);
+
+      canvas.drawCircle(pos, radius, stationFill);
+      canvas.drawCircle(pos, radius, strokePaint);
+
+      if (s.isTransfer && !isOnRoute) {
+        canvas.drawCircle(pos, 4, Paint()..color = isDark ? Colors.white54 : Colors.black54);
+      }
+      if (isFirst) {
+        canvas.drawCircle(pos, 5, Paint()..color = Colors.green);
+      } else if (isLast) {
+        canvas.drawCircle(pos, 5, Paint()..color = Colors.red);
       }
 
-      // We only draw text if they are zoomed in enough, but CustomPainter
-      // doesn't easily know zoom without passing it. Let's draw text for
-      // transfers and terminal stations always for orientation.
-      if (s.isTransfer || s.id == 'marg_new' || s.id == 'helwan' || s.id == 'shubra_el_kheima' || s.id == 'el_mounib' || s.id == 'adly_mansour' || s.id == 'kit_kat') {
-        const textStyle = TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.bold);
+      // Labels
+      final showLabel = isOnRoute || s.isTransfer
+          || s.id == 'marg_new' || s.id == 'helwan'
+          || s.id == 'shubra_el_kheima' || s.id == 'el_mounib'
+          || s.id == 'adly_mansour' || s.id == 'kit_kat';
+
+      if (showLabel) {
+        final textStyle = TextStyle(
+          color: isOnRoute ? Colors.amber : textColor,
+          fontSize: isOnRoute ? 14 : 13,
+          fontWeight: isOnRoute ? FontWeight.w900 : FontWeight.bold,
+        );
         final textSpan = TextSpan(text: s.nameAr, style: textStyle);
         final textPainter = TextPainter(text: textSpan, textDirection: ui.TextDirection.rtl);
         textPainter.layout();
         
-        // draw shadow container behind text for readability
         canvas.drawRRect(
-           RRect.fromRectAndRadius(
-             Rect.fromLTWH(pos.dx + 12, pos.dy - textPainter.height/2 - 2, textPainter.width + 8, textPainter.height + 4),
-             const Radius.circular(4)
-           ),
-           Paint()..color = Colors.white.withValues(alpha: 0.8)
+          RRect.fromRectAndRadius(
+            Rect.fromLTWH(pos.dx + 14, pos.dy - textPainter.height/2 - 3,
+              textPainter.width + 10, textPainter.height + 6),
+            const Radius.circular(5)
+          ),
+          Paint()..color = bgLabelColor.withOpacity(0.9),
         );
-        textPainter.paint(canvas, Offset(pos.dx + 16, pos.dy - textPainter.height/2));
+        textPainter.paint(canvas, Offset(pos.dx + 19, pos.dy - textPainter.height/2));
       }
     }
   }
 
   @override
   bool shouldRepaint(covariant MetroMapPainter oldDelegate) {
-    return oldDelegate.selectedLineFilter != selectedLineFilter;
+    return oldDelegate.selectedLineFilter != selectedLineFilter
+        || oldDelegate.highlightedRoute != highlightedRoute
+        || oldDelegate.isDark != isDark;
   }
 }
+

@@ -17,6 +17,7 @@ import '../../domain/entities/station.dart';
 import '../widgets/trip_rating_dialog.dart';
 import '../widgets/blind_assist_fab.dart';
 import '../widgets/last_mile_transit_widget.dart';
+import 'blind_journey_page.dart';
 
 class RoutePlannerPage extends StatefulWidget {
   final String? initialFrom;
@@ -438,6 +439,11 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
             ],
             _buildSmartAlarm(context, state.path),
             const SizedBox(height: 16),
+
+            // ── Blind Assist Mode button ──────────────────────────────
+            _buildBlindAssistButton(context, state.path, state.ticketPrice),
+            const SizedBox(height: 16),
+
             LastMileTransitWidget(destination: state.path.last),
             if (state.transfers > 0)
                Padding(
@@ -566,6 +572,93 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
         : line == 2
             ? AppColors.line2
             : AppColors.line3;
+  }
+
+  // ── Blind Assist Mode launcher ────────────────────────────────────────────
+  Widget _buildBlindAssistButton(
+      BuildContext context, List<dynamic> path, int price) {
+    final isAr = context.locale.languageCode == 'ar';
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => BlindJourneyPage(
+            path: path.cast<Station>(),
+            ticketPrice: price,
+          ),
+        ),
+      ),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF0A0D1A), Color(0xFF1A2040)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.white24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white30),
+              ),
+              child: const Icon(Icons.accessibility_new_rounded,
+                  color: Colors.white, size: 34),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isAr ? '♿ وضع المكفوفين' : '♿ Blind Assist Mode',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    isAr
+                        ? 'توجيه صوتي خطوة بخطوة مع اهتزاز'
+                        : 'Step-by-step voice guidance + haptics',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.65),
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(Icons.play_arrow_rounded,
+                  color: Color(0xFF0A0D1A), size: 22),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildInfoTag(IconData icon, String value, String label) {

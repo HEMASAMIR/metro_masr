@@ -8,6 +8,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_cubit.dart';
 import '../../../../core/utils/gamification_service.dart';
 import '../../../../core/utils/metro_data.dart';
+import '../../../../core/utils/crowd_prediction_service.dart';
 import '../../../../core/utils/notification_service.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../../core/utils/voice_service.dart';
@@ -34,6 +35,7 @@ import '../../../pricing_calculator/presentation/pages/pricing_calculator_page.d
 import '../../../voice_command/presentation/voice_command_service.dart';
 import '../../../impact/presentation/pages/impact_dashboard_page.dart';
 import '../../../tourism/presentation/pages/tourist_attractions_page.dart';
+import 'line_alerts_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -175,6 +177,13 @@ class _HomePageState extends State<_HomePageView> {
                   FadeInUp(
                     delay: const Duration(milliseconds: 140),
                     child: _buildNearestStationLive(context, isAr),
+                  ),
+                  SizedBox(height: r.sectionSpacing),
+
+                  // ── Live Crowd + Map shortcut ──────────────────────────────
+                  FadeInUp(
+                    delay: const Duration(milliseconds: 180),
+                    child: _buildLiveCrowdAndMapRow(context, isAr),
                   ),
                   SizedBox(height: r.sectionSpacing * 1.5),
 
@@ -669,7 +678,131 @@ class _HomePageState extends State<_HomePageView> {
     );
   }
 
+  // ── Live Crowd mini-bar + Map shortcut ───────────────────────────────────
+  Widget _buildLiveCrowdAndMapRow(BuildContext context, bool isAr) {
+    final now = DateTime.now();
+    final lineColors = [AppColors.line1, AppColors.line2, AppColors.line3];
+    final lineNames = isAr
+        ? ['خط 1', 'خط 2', 'خط 3']
+        : ['Line 1', 'Line 2', 'Line 3'];
 
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header row
+        Row(
+          children: [
+            Text(
+              isAr ? '📊 ازدحام الخطوط الآن' : '📊 Live Crowd Status',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const Spacer(),
+            GestureDetector(
+              onTap: () => Navigator.push(
+                context, MaterialPageRoute(builder: (_) => const MapPage())),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.map_rounded, size: 14, color: AppColors.primary),
+                    const SizedBox(width: 4),
+                    Text(
+                      isAr ? 'الخريطة' : 'Map',
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        // 3 line crowd bars
+        Row(
+          children: List.generate(3, (i) {
+            final lineNum = i + 1;
+            final color = lineColors[i];
+            final level = CrowdPredictionService.getCrowdLevel(
+              hour: now.hour, weekday: now.weekday, lineNumber: lineNum);
+            final cat = CrowdPredictionService.getCrowdCategory(level);
+            final barColor = cat == CrowdLevel.high
+                ? Colors.red
+                : cat == CrowdLevel.moderate ? Colors.orange : Colors.green;
+            final emoji = CrowdPredictionService.getCrowdEmoji(cat);
+
+            return Expanded(
+              child: Container(
+                margin: EdgeInsets.only(right: i < 2 ? 10 : 0),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardColor,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: color.withOpacity(0.2)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withOpacity(0.08),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 8, height: 8,
+                          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(lineNames[i],
+                          style: TextStyle(
+                            color: color, fontSize: 11, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(emoji, style: const TextStyle(fontSize: 22)),
+                    const SizedBox(height: 6),
+                    // Progress bar
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: level,
+                        minHeight: 6,
+                        backgroundColor: barColor.withOpacity(0.15),
+                        valueColor: AlwaysStoppedAnimation<Color>(barColor),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${(level * 100).toInt()}%',
+                      style: TextStyle(
+                        color: barColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ),
+      ],
+    );
+  }
 
   String _getRealisticLineStatus(int lineId) {
     final now = DateTime.now();
@@ -957,6 +1090,17 @@ class _HomePageState extends State<_HomePageView> {
         color: const Color(0xFFFFB800),
         onTap: () {
           Navigator.push(context, MaterialPageRoute(builder: (_) => const TouristAttractionsPage()));
+        },
+      ),
+
+      // Line Alerts
+      FeatureCard(
+        title: isAr ? 'تنبيهات الخطوط 🔔' : 'Line Alerts 🔔',
+        subtitle: isAr ? 'نوتيفيكيشن فوري لأي تأخير أو ازدحام' : 'Instant alerts for delays & crowd',
+        icon: Icons.notifications_active_outlined,
+        color: Colors.red[700]!,
+        onTap: () {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const LineAlertsPage()));
         },
       ),
       Container(

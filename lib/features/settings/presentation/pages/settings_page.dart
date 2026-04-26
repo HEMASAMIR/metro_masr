@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_cubit.dart';
 import '../../../../core/utils/gamification_service.dart';
+import '../../../../core/utils/offline_storage.dart';
 import '../../../gamification/presentation/pages/achievements_page.dart';
 import '../../../splash/presentation/onboarding_screen.dart';
 
@@ -31,12 +31,11 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _loadSettings() async {
-    final prefs = await SharedPreferences.getInstance();
     await GamificationService.init();
     setState(() {
-      _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
-      _crowdAlerts = prefs.getBool('crowd_alerts') ?? true;
-      _tripReminders = prefs.getBool('trip_reminders') ?? true;
+      _notificationsEnabled = AppStorage.getNotificationsEnabled();
+      _crowdAlerts = AppStorage.getCrowdAlerts();
+      _tripReminders = AppStorage.getTripReminders();
       _selectedLang = context.locale.languageCode;
       _points = GamificationService.getPoints();
       _trips = GamificationService.getTrips();
@@ -45,12 +44,22 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _saveSetting(String key, bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(key, value);
+    switch (key) {
+      case 'notifications_enabled':
+        await AppStorage.setNotificationsEnabled(value);
+        break;
+      case 'crowd_alerts':
+        await AppStorage.setCrowdAlerts(value);
+        break;
+      case 'trip_reminders':
+        await AppStorage.setTripReminders(value);
+        break;
+    }
   }
 
   void _changeLanguage(String lang) {
     context.setLocale(Locale(lang));
+    AppStorage.saveLanguage(lang);
     setState(() => _selectedLang = lang);
   }
 

@@ -63,21 +63,42 @@ class MetroApp extends StatelessWidget {
                 primary: AppColors.primary,
                 secondary: AppColors.accent,
                 surface: AppColors.surface,
-                background: AppColors.background,
+                brightness: Brightness.light,
               ),
-              textTheme: GoogleFonts.outfitTextTheme(Theme.of(context).textTheme),
+              textTheme: GoogleFonts.outfitTextTheme(Theme.of(context).textTheme).apply(
+                bodyColor: AppColors.textPrimary,
+                displayColor: AppColors.textPrimary,
+              ),
               appBarTheme: const AppBarTheme(
-                backgroundColor: AppColors.surface,
-                foregroundColor: AppColors.textPrimary,
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
                 elevation: 0,
                 centerTitle: true,
                 scrolledUnderElevation: 0,
+                iconTheme: IconThemeData(color: Colors.white),
               ),
               bottomNavigationBarTheme: const BottomNavigationBarThemeData(
                 backgroundColor: AppColors.surface,
                 selectedItemColor: AppColors.primary,
                 unselectedItemColor: AppColors.textSecondary,
                 elevation: 8,
+              ),
+              cardTheme: CardThemeData(
+                color: AppColors.surface,
+                elevation: 2,
+                shadowColor: Color(0x221565C0),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(16)),
+                ),
+              ),
+              elevatedButtonTheme: ElevatedButtonThemeData(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(12)),
+                  ),
+                ),
               ),
             ),
             darkTheme: ThemeData(
@@ -87,24 +108,44 @@ class MetroApp extends StatelessWidget {
               colorScheme: ColorScheme.fromSeed(
                 seedColor: AppColors.primary,
                 brightness: Brightness.dark,
-                primary: AppColors.accent, // Use accent for primary pop in dark mode
+                primary: AppColors.accent,
                 secondary: AppColors.accent,
                 surface: AppColors.surfaceDark,
-                background: AppColors.backgroundDark,
               ),
-              textTheme: GoogleFonts.outfitTextTheme(ThemeData.dark().textTheme),
+              textTheme: GoogleFonts.outfitTextTheme(ThemeData.dark().textTheme).apply(
+                bodyColor: AppColors.textPrimaryDark,
+                displayColor: AppColors.textPrimaryDark,
+              ),
               appBarTheme: const AppBarTheme(
                 backgroundColor: AppColors.surfaceDark,
                 foregroundColor: Colors.white,
                 elevation: 0,
                 centerTitle: true,
                 scrolledUnderElevation: 0,
+                iconTheme: IconThemeData(color: Colors.white),
               ),
               bottomNavigationBarTheme: const BottomNavigationBarThemeData(
                 backgroundColor: AppColors.surfaceDark,
                 selectedItemColor: AppColors.accent,
                 unselectedItemColor: AppColors.textSecondaryDark,
                 elevation: 8,
+              ),
+              cardTheme: CardThemeData(
+                color: AppColors.surfaceDark,
+                elevation: 2,
+                shadowColor: Color(0x4442A5F5),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(16)),
+                ),
+              ),
+              elevatedButtonTheme: ElevatedButtonThemeData(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.accent,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(12)),
+                  ),
+                ),
               ),
             ),
             home: const SplashScreen(),

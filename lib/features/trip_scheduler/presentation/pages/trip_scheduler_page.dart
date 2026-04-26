@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/gamification_service.dart';
 import '../../../../core/utils/metro_data.dart';
+import '../../../../core/utils/offline_storage.dart';
 
 class ScheduledTrip {
   final String id;
@@ -52,7 +52,6 @@ class TripSchedulerPage extends StatefulWidget {
 
 class _TripSchedulerPageState extends State<TripSchedulerPage> {
   List<ScheduledTrip> _trips = [];
-  static const _prefsKey = 'scheduled_trips_v2';
 
   @override
   void initState() {
@@ -61,17 +60,14 @@ class _TripSchedulerPageState extends State<TripSchedulerPage> {
   }
 
   Future<void> _loadTrips() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getStringList(_prefsKey) ?? [];
+    final raw = AppStorage.getRawScheduledTrips();
     setState(() {
       _trips = raw.map((s) => ScheduledTrip.fromJson(jsonDecode(s))).toList();
     });
   }
 
   Future<void> _saveTrips() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(
-      _prefsKey,
+    await AppStorage.saveRawScheduledTrips(
       _trips.map((t) => jsonEncode(t.toJson())).toList(),
     );
   }

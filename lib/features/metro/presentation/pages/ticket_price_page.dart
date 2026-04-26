@@ -32,6 +32,7 @@ class _TicketPriceView extends StatefulWidget {
 class _TicketPriceViewState extends State<_TicketPriceView> {
   String? _fromId;
   String? _toId;
+  int _passengerCount = 1;
 
   List<Station> get _allStations => MetroData.stations.values.toList();
 
@@ -157,6 +158,11 @@ class _TicketPriceViewState extends State<_TicketPriceView> {
                             onChanged: (v) => setState(() => _toId = v),
                           ),
 
+                          const SizedBox(height: 16),
+
+                          // Passenger count
+                          _buildPassengerPicker(context, isAr),
+
                           const SizedBox(height: 20),
 
                           // Calculate button
@@ -255,6 +261,88 @@ class _TicketPriceViewState extends State<_TicketPriceView> {
     );
   }
 
+  // ── Passenger picker ─────────────────────────────────────────────────────
+  Widget _buildPassengerPicker(BuildContext context, bool isAr) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.withOpacity(0.25)),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.people_alt_outlined, color: AppColors.primary, size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              isAr ? 'عدد الأفراد' : 'Number of Passengers',
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            ),
+          ),
+          // Minus button
+          GestureDetector(
+            onTap: () {
+              if (_passengerCount > 1) setState(() => _passengerCount--);
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: _passengerCount > 1
+                    ? AppColors.primary.withOpacity(0.1)
+                    : Colors.grey.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: _passengerCount > 1
+                      ? AppColors.primary.withOpacity(0.3)
+                      : Colors.grey.withOpacity(0.15),
+                ),
+              ),
+              child: Icon(
+                Icons.remove_rounded,
+                size: 20,
+                color: _passengerCount > 1 ? AppColors.primary : Colors.grey,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Count display
+          SizedBox(
+            width: 32,
+            child: Text(
+              '$_passengerCount',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 22,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Plus button
+          GestureDetector(
+            onTap: () {
+              if (_passengerCount < 20) setState(() => _passengerCount++);
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+              ),
+              child: const Icon(Icons.add_rounded, size: 20, color: AppColors.primary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStationPicker({
     required BuildContext context,
     required bool isAr,
@@ -321,6 +409,10 @@ class _TicketPriceViewState extends State<_TicketPriceView> {
   }
 
   Widget _buildResultCard(BuildContext context, bool isAr, RoutePlannerLoaded state, int mins) {
+    final perPersonPrice = state.ticketPrice;
+    final totalPrice = perPersonPrice * _passengerCount;
+    final showTotal = _passengerCount > 1;
+
     return FadeInUp(
       child: Container(
         decoration: BoxDecoration(
@@ -330,25 +422,72 @@ class _TicketPriceViewState extends State<_TicketPriceView> {
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.30), blurRadius: 16, offset: const Offset(0, 6))],
+          boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.30), blurRadius: 16, offset: const Offset(0, 6))],
         ),
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
+            // Price display
+            if (showTotal) ...[
+              Text(
+                isAr ? 'سعر الفرد الواحد' : 'Per Person',
+                style: const TextStyle(color: Colors.white60, fontSize: 12),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                isAr ? '$perPersonPrice جنيه' : 'EGP $perPersonPrice',
+                style: const TextStyle(color: Colors.white70, fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Container(height: 1, color: Colors.white24),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.people_alt_outlined, color: Colors.white70, size: 18),
+                  const SizedBox(width: 6),
+                  Text(
+                    isAr ? '$_passengerCount أفراد' : '$_passengerCount people',
+                    style: const TextStyle(color: Colors.white70, fontSize: 14),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+            ] else ...[
+              Text(
+                isAr ? 'المبلغ اللي هتدفعه' : 'Amount to Pay',
+                style: const TextStyle(color: Colors.white70, fontSize: 13),
+              ),
+              const SizedBox(height: 4),
+            ],
+
             Text(
-              isAr ? 'المبلغ اللي هتدفع' : 'Amount to Pay',
-              style: const TextStyle(color: Colors.white70, fontSize: 13),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              isAr ? '${state.ticketPrice} جنيه' : 'EGP ${state.ticketPrice}',
+              isAr ? '$totalPrice جنيه' : 'EGP $totalPrice',
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
-                fontSize: 42,
+                fontSize: 46,
               ),
             ),
-            const SizedBox(height: 20),
+
+            if (showTotal)
+              Container(
+                margin: const EdgeInsets.only(top: 4, bottom: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  isAr ? 'الإجمالي لـ $_passengerCount أفراد' : 'Total for $_passengerCount passengers',
+                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+              ),
+
+            const SizedBox(height: 16),
+            Container(height: 1, color: Colors.white24),
+            const SizedBox(height: 16),
+
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -357,14 +496,20 @@ class _TicketPriceViewState extends State<_TicketPriceView> {
                   value: '${state.stationCount}',
                   label: isAr ? 'محطات' : 'Stations',
                 ),
-                Container(width: 1, height: 40, color: Colors.white.withValues(alpha: 0.3)),
+                Container(width: 1, height: 40, color: Colors.white30),
                 _resultStat(
                   icon: Icons.timer_outlined,
                   value: '$mins',
                   label: isAr ? 'دقيقة' : 'Minutes',
                 ),
+                Container(width: 1, height: 40, color: Colors.white30),
+                _resultStat(
+                  icon: Icons.people_alt_outlined,
+                  value: '$_passengerCount',
+                  label: isAr ? 'فرد' : 'People',
+                ),
                 if (state.transfers > 0) ...[
-                  Container(width: 1, height: 40, color: Colors.white.withValues(alpha: 0.3)),
+                  Container(width: 1, height: 40, color: Colors.white30),
                   _resultStat(
                     icon: Icons.swap_horiz_rounded,
                     value: '${state.transfers}',

@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
-enum AppTheme { light, dark }
+import '../utils/offline_storage.dart';
 
 class ThemeCubit extends Cubit<ThemeMode> {
-  ThemeCubit() : super(ThemeMode.light);
+  ThemeCubit() : super(AppStorage.getThemeMode());
 
   void toggleTheme() {
-    emit(state == ThemeMode.light ? ThemeMode.dark : ThemeMode.light);
+    final next = state == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+    AppStorage.saveThemeMode(next);
+    emit(next);
+  }
+
+  void setTheme(ThemeMode mode) {
+    AppStorage.saveThemeMode(mode);
+    emit(mode);
   }
 }
