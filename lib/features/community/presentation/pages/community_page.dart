@@ -7,7 +7,7 @@ import 'package:rafiq_metrro/core/theme/app_colors.dart';
 import '../cubits/community_cubit.dart';
 import '../cubits/community_state.dart';
 
-import '../widgets/chat_view.dart';
+import '../../chat/presentation/pages/groups_screen.dart'; // شاشة الشات الجديدة
 import '../widgets/leaderboard_view.dart';
 
 class CommunityPage extends StatelessWidget {
@@ -27,7 +27,7 @@ class CommunityPage extends StatelessWidget {
               labelColor: AppColors.accent,
               unselectedLabelColor: Colors.white70,
               tabs: [
-                Tab(icon: Icon(Icons.chat), text: 'شات قطار'),
+                Tab(icon: Icon(Icons.forum), text: 'مجتمع المترو'),
                 Tab(icon: Icon(Icons.leaderboard), text: 'ترتيب 🏆'),
               ],
             ),
@@ -39,7 +39,7 @@ class CommunityPage extends StatelessWidget {
               } else if (state is CommunityLoaded) {
                 return TabBarView(
                   children: [
-                    ChatView(messages: state.messages),
+                    const MetroGroupsScreen(), // تم إدراج الشاشة هنا
                     LeaderboardView(reward: state.reward),
                   ],
                 );

@@ -166,16 +166,16 @@ class _LineAlertsPageState extends State<LineAlertsPage>
     IconData icon;
     switch (s) {
       case 'delay':
-        color = Colors.red; label = isAr ? 'تأخير' : 'Delay'; icon = Icons.warning_rounded;
+        color = Colors.red; label = "Delay".tr(); icon = Icons.warning_rounded;
         break;
       case 'good':
-        color = Colors.green; label = isAr ? 'ممتاز' : 'Clear'; icon = Icons.check_circle;
+        color = Colors.green; label = "Clear".tr(); icon = Icons.check_circle;
         break;
       case 'normal':
-        color = Colors.orange; label = isAr ? 'عادي' : 'Normal'; icon = Icons.info_rounded;
+        color = Colors.orange; label = "Normal".tr(); icon = Icons.info_rounded;
         break;
       default:
-        color = Colors.grey; label = isAr ? 'جاري الفحص' : 'Checking'; icon = Icons.refresh;
+        color = Colors.grey; label = "Checking".tr(); icon = Icons.refresh;
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -199,7 +199,7 @@ class _LineAlertsPageState extends State<LineAlertsPage>
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text(isAr ? '🔔 تنبيهات الخطوط' : '🔔 Line Alerts'),
+        title: Text("🔔 Line Alerts".tr()),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -244,14 +244,12 @@ class _LineAlertsPageState extends State<LineAlertsPage>
                     const Icon(Icons.notifications_active_rounded, color: Colors.white, size: 32),
                     const SizedBox(height: 8),
                     Text(
-                      isAr ? 'اشترك في تنبيهات الخطوط' : 'Subscribe to Line Alerts',
+                      "Subscribe to Line Alerts".tr(),
                       style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      isAr
-                          ? 'هنبعتلك نوتيفيكيشن فوراً لو في تأخير أو ازدحام في الخط اللي بتستخدمه'
-                          : 'Get instant push notifications for delays & crowd on your lines',
+                      "Get instant push notifications for delays & crowd on your lines".tr(),
                       style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
                     ),
                   ],
@@ -262,7 +260,7 @@ class _LineAlertsPageState extends State<LineAlertsPage>
             const SizedBox(height: 24),
 
             // ── Line cards ────────────────────────────────────────────────
-            Text(isAr ? 'اختار الخطوط اللي بتستخدمها:' : 'Select your lines:',
+            Text("Select your lines:".tr(),
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
             const SizedBox(height: 12),
 
@@ -348,7 +346,7 @@ class _LineAlertsPageState extends State<LineAlertsPage>
             const SizedBox(height: 24),
 
             // ── Alert types ───────────────────────────────────────────────
-            Text(isAr ? 'نوع التنبيهات:' : 'Alert Types:',
+            Text("Alert Types:".tr(),
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
             const SizedBox(height: 10),
 
@@ -365,8 +363,8 @@ class _LineAlertsPageState extends State<LineAlertsPage>
                     _alertTile(
                       icon: Icons.warning_amber_rounded,
                       color: Colors.orange,
-                      title: isAr ? 'تأخير القطارات' : 'Train Delays',
-                      subtitle: isAr ? 'نبعتلك لو في تأخير عن المواعيد' : 'Notify when trains are delayed',
+                      title: "Train Delays".tr(),
+                      subtitle: "Notify when trains are delayed".tr(),
                       value: _alertDelays,
                       onChanged: (v) { setState(() => _alertDelays = v); _savePrefs(); },
                     ),
@@ -374,8 +372,8 @@ class _LineAlertsPageState extends State<LineAlertsPage>
                     _alertTile(
                       icon: Icons.people_rounded,
                       color: Colors.purple,
-                      title: isAr ? 'ازدحام المحطات' : 'Station Crowd',
-                      subtitle: isAr ? 'نبعتلك لو الزحمة عالية في خطك' : 'Alert when crowd is high on your line',
+                      title: "Station Crowd".tr(),
+                      subtitle: "Alert when crowd is high on your line".tr(),
                       value: _alertCrowd,
                       onChanged: (v) { setState(() => _alertCrowd = v); _savePrefs(); },
                     ),
@@ -383,8 +381,8 @@ class _LineAlertsPageState extends State<LineAlertsPage>
                     _alertTile(
                       icon: Icons.build_rounded,
                       color: Colors.blue,
-                      title: isAr ? 'أعمال الصيانة' : 'Maintenance',
-                      subtitle: isAr ? 'تنبيهات إغلاق المحطات والصيانة' : 'Station closures & maintenance alerts',
+                      title: "Maintenance".tr(),
+                      subtitle: "Station closures & maintenance alerts".tr(),
                       value: _alertMaintenance,
                       onChanged: (v) { setState(() => _alertMaintenance = v); _savePrefs(); },
                     ),
@@ -396,7 +394,7 @@ class _LineAlertsPageState extends State<LineAlertsPage>
             const SizedBox(height: 24),
 
             // ── Quiet hours ───────────────────────────────────────────────
-            Text(isAr ? 'ساعات الهدوء:' : 'Quiet Hours:',
+            Text("Quiet Hours:".tr(),
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
             const SizedBox(height: 10),
 
@@ -419,9 +417,9 @@ class _LineAlertsPageState extends State<LineAlertsPage>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(isAr ? 'وضع الهدوء' : 'Do Not Disturb',
+                              Text("Do Not Disturb".tr(),
                                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                              Text(isAr ? 'متبعتش نوتيفيكيشن في وقت النوم' : 'Silence alerts during sleep hours',
+                              Text("Silence alerts during sleep hours".tr(),
                                   style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                             ],
                           ),
@@ -441,7 +439,7 @@ class _LineAlertsPageState extends State<LineAlertsPage>
                         children: [
                           Expanded(
                             child: _timePicker(
-                              label: isAr ? 'من' : 'From',
+                              label: "From".tr(),
                               time: _quietStart,
                               onTap: () async {
                                 final t = await showTimePicker(context: context, initialTime: _quietStart);
@@ -452,7 +450,7 @@ class _LineAlertsPageState extends State<LineAlertsPage>
                           const SizedBox(width: 12),
                           Expanded(
                             child: _timePicker(
-                              label: isAr ? 'إلى' : 'To',
+                              label: "To".tr(),
                               time: _quietEnd,
                               onTap: () async {
                                 final t = await showTimePicker(context: context, initialTime: _quietEnd);
@@ -468,54 +466,7 @@ class _LineAlertsPageState extends State<LineAlertsPage>
               ),
             ),
 
-            const SizedBox(height: 24),
 
-            // ── Test button ───────────────────────────────────────────────
-            FadeInUp(
-              delay: const Duration(milliseconds: 200),
-              child: SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppColors.primary),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
-                  icon: const Icon(Icons.notifications_none_rounded, color: AppColors.primary),
-                  label: Text(
-                    isAr ? 'اختبار النوتيفيكيشن' : 'Test Notification',
-                    style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
-                  ),
-                  onPressed: () async {
-                    final activeLines = _subscribed.entries.where((e) => e.value).map((e) => e.key).toList();
-                    if (activeLines.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                        content: Text(isAr ? 'اشترك في خط أول!' : 'Subscribe to a line first!'),
-                        backgroundColor: AppColors.error,
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ));
-                      return;
-                    }
-                    await NotificationService.showLineDelayAlert(
-                      lineNumber: activeLines.first,
-                      delayMinutes: 7,
-                      isArabic: isAr,
-                    );
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                        content: Text(isAr ? '✅ تم إرسال نوتيفيكيشن تجريبي!' : '✅ Test notification sent!'),
-                        backgroundColor: AppColors.success,
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ));
-                    }
-                  },
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 30),
           ],
         ),
       ),

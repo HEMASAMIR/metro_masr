@@ -70,7 +70,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isAr ? 'الإعدادات' : 'Settings'),
+        title: Text("Settings".tr()),
         centerTitle: true,
       ),
       body: ListView(
@@ -81,27 +81,27 @@ class _SettingsPageState extends State<SettingsPage> {
           const SizedBox(height: 20),
 
           // ── Appearance ────────────────────────────────────────────────────
-          _sectionLabel(isAr ? 'المظهر' : 'Appearance'),
+          _sectionLabel("Appearance".tr()),
           _buildAppearanceCard(context, isDark, isAr),
           const SizedBox(height: 20),
 
           // ── Language ──────────────────────────────────────────────────────
-          _sectionLabel(isAr ? 'اللغة' : 'Language'),
+          _sectionLabel("Language".tr()),
           _buildLanguageCard(isAr),
           const SizedBox(height: 20),
 
           // ── Notifications ─────────────────────────────────────────────────
-          _sectionLabel(isAr ? 'الإشعارات' : 'Notifications'),
+          _sectionLabel("Notifications".tr()),
           _buildNotificationsCard(isAr),
           const SizedBox(height: 20),
 
           // ── Account ───────────────────────────────────────────────────────
-          _sectionLabel(isAr ? 'الحساب' : 'Account'),
+          _sectionLabel("Account".tr()),
           _buildAccountCard(isAr),
           const SizedBox(height: 20),
 
           // ── About ─────────────────────────────────────────────────────────
-          _sectionLabel(isAr ? 'عن التطبيق' : 'About'),
+          _sectionLabel("About".tr()),
           _buildAboutCard(isAr),
           const SizedBox(height: 40),
         ],
@@ -172,7 +172,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             const SizedBox(height: 14),
             Text(
-              isAr ? 'التقدم للمستوى التالي' : 'Progress to next level',
+              "Progress to next level".tr(),
               style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 11),
             ),
             const SizedBox(height: 6),
@@ -197,8 +197,8 @@ class _SettingsPageState extends State<SettingsPage> {
       _settingRow(
         icon: isDark ? Icons.dark_mode : Icons.light_mode,
         iconColor: isDark ? const Color(0xFF8899CC) : const Color(0xFFFFB800),
-        title: isAr ? 'الوضع الليلي' : 'Dark Mode',
-        subtitle: isDark ? (isAr ? 'مفعّل' : 'Enabled') : (isAr ? 'معطّل' : 'Disabled'),
+        title: "Dark Mode".tr(),
+        subtitle: isDark ? ("Enabled".tr()) : ("Disabled".tr()),
         trailing: Switch(
           value: isDark,
           activeColor: AppColors.primary,
@@ -269,8 +269,8 @@ class _SettingsPageState extends State<SettingsPage> {
       _settingRow(
         icon: Icons.notifications_outlined,
         iconColor: AppColors.primary,
-        title: isAr ? 'الإشعارات العامة' : 'General Notifications',
-        subtitle: isAr ? 'تنبيهات التطبيق الأساسية' : 'Core app alerts',
+        title: "General Notifications".tr(),
+        subtitle: "Core app alerts".tr(),
         trailing: Switch(
           value: _notificationsEnabled,
           activeColor: AppColors.primary,
@@ -284,8 +284,8 @@ class _SettingsPageState extends State<SettingsPage> {
       _settingRow(
         icon: Icons.people_outline,
         iconColor: Colors.teal,
-        title: isAr ? 'تنبيهات الازدحام' : 'Crowd Alerts',
-        subtitle: isAr ? 'تحذير عند ازدحام شديد' : 'Alert on heavy crowd',
+        title: "Crowd Alerts".tr(),
+        subtitle: "Alert on heavy crowd".tr(),
         trailing: Switch(
           value: _crowdAlerts && _notificationsEnabled,
           activeColor: AppColors.primary,
@@ -301,8 +301,8 @@ class _SettingsPageState extends State<SettingsPage> {
       _settingRow(
         icon: Icons.calendar_month_outlined,
         iconColor: Colors.indigo,
-        title: isAr ? 'تذكيرات الرحلات' : 'Trip Reminders',
-        subtitle: isAr ? 'تذكير قبل رحلتك المجدولة' : 'Remind before scheduled trip',
+        title: "Trip Reminders".tr(),
+        subtitle: "Remind before scheduled trip".tr(),
         trailing: Switch(
           value: _tripReminders && _notificationsEnabled,
           activeColor: AppColors.primary,
@@ -323,20 +323,18 @@ class _SettingsPageState extends State<SettingsPage> {
       _tileRow(
         icon: Icons.restart_alt_rounded,
         iconColor: Colors.orange,
-        title: isAr ? 'إعادة تعيين الإنجازات' : 'Reset Achievements',
+        title: "Reset Achievements".tr(),
         onTap: () async {
           final confirmed = await showDialog<bool>(
             context: context,
             builder: (ctx) => AlertDialog(
-              title: Text(isAr ? 'تأكيد الحذف' : 'Confirm Reset'),
-              content: Text(isAr
-                  ? 'هيتم مسح كل نقاطك وشاراتك. هل متأكد؟'
-                  : 'All your points and badges will be erased. Are you sure?'),
+              title: Text("Confirm Reset".tr()),
+              content: Text("All your points and badges will be erased. Are you sure?".tr()),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(isAr ? 'لأ' : 'Cancel')),
+                TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text("Cancel".tr())),
                 TextButton(
                   onPressed: () => Navigator.pop(ctx, true),
-                  child: Text(isAr ? 'امسح' : 'Reset', style: const TextStyle(color: Colors.red)),
+                  child: Text("Reset".tr(), style: const TextStyle(color: Colors.red)),
                 ),
               ],
             ),
@@ -345,7 +343,7 @@ class _SettingsPageState extends State<SettingsPage> {
             await GamificationService.reset();
             await _loadSettings();
             if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text(isAr ? '✅ تم إعادة التعيين' : '✅ Reset done'),
+              content: Text("✅ Reset done".tr()),
             ));
           }
         },
@@ -354,7 +352,7 @@ class _SettingsPageState extends State<SettingsPage> {
       _tileRow(
         icon: Icons.replay_rounded,
         iconColor: Colors.blue,
-        title: isAr ? 'إعادة عرض الترحيب' : 'Show Onboarding Again',
+        title: "Show Onboarding Again".tr(),
         onTap: () {
           Navigator.push(context, MaterialPageRoute(builder: (_) => const OnboardingScreen()));
         },
@@ -368,15 +366,15 @@ class _SettingsPageState extends State<SettingsPage> {
       _tileRow(
         icon: Icons.info_outline_rounded,
         iconColor: AppColors.primary,
-        title: isAr ? 'رفيق المترو — الإصدار 2.0' : 'Rafiq Metro — Version 2.0',
+        title: "Rafiq Metro — Version 2.0".tr(),
         subtitle: isAr ? 'مشروع تخرج ${DateTime.now().year}' : 'Graduation Project ${DateTime.now().year}',
       ),
       const Divider(height: 1),
       _tileRow(
         icon: Icons.train_rounded,
         iconColor: AppColors.line1,
-        title: isAr ? '3 خطوط • 85 محطة' : '3 Lines • 85 Stations',
-        subtitle: isAr ? 'مترو أنفاق القاهرة' : 'Cairo Metro Network',
+        title: "3 Lines • 85 Stations".tr(),
+        subtitle: "Cairo Metro Network".tr(),
       ),
     ]);
   }

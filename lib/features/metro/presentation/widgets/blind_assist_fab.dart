@@ -18,9 +18,9 @@ class _BlindAssistFabState extends State<BlindAssistFab> {
     setState(() => _isActive = !_isActive);
     final isAr = context.locale.languageCode == 'ar';
     if (_isActive) {
-      VoiceService.speak(isAr ? 'تم تفعيل العصا الذكية للمكفوفين. سأقوم بتوجيهك، المحطة القادمة هي المرج' : 'Blind Assist enabled. I will guide you verbally. Next stop is El Marg.', isAr ? 'ar-EG' : 'en-US');
+      VoiceService.speak("Blind Assist enabled. I will guide you verbally. Next stop is El Marg.".tr(), "en-US".tr());
     } else {
-      VoiceService.speak(isAr ? 'تم إيقاف وضع العصا الذكية.' : 'Blind Assist disabled.', isAr ? 'ar-EG' : 'en-US');
+      VoiceService.speak("Blind Assist disabled.".tr(), "en-US".tr());
     }
   }
 

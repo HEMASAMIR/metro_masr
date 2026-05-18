@@ -30,7 +30,7 @@ class LeaderboardView extends StatelessWidget {
 
     // Inject the REAL user into the pool!
     competitors.add({
-      'name': isAr ? 'أنت' : 'You',
+      'name': "You".tr(),
       'points': userPoints,
       'avatar': '😎',
       'isMe': true,
@@ -49,13 +49,13 @@ class LeaderboardView extends StatelessWidget {
 
     // Dynamic Level Computation
     int nextTarget = 1000;
-    String nextLevel = isAr ? 'الفضية' : 'Silver';
+    String nextLevel = "Silver".tr();
     if (userPoints >= 1000 && userPoints < 5000) {
       nextTarget = 5000;
-      nextLevel = isAr ? 'الذهبية' : 'Gold';
+      nextLevel = "Gold".tr();
     } else if (userPoints >= 5000) {
       nextTarget = 10000;
-      nextLevel = isAr ? 'البلاتينية' : 'Platinum';
+      nextLevel = "Platinum".tr();
     }
     final pointsNeeded = nextTarget > userPoints ? nextTarget - userPoints : 0;
 

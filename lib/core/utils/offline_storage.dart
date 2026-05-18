@@ -164,6 +164,17 @@ class AppStorage {
 
   // ── Clear All ──────────────────────────────────────────────────────────────
 
+  // Gamification (Metro Wrapped)
+  static int getTrips() => _prefs.getInt('wrapped_trips') ?? 128;
+  static int getStationsCrossed() => _prefs.getInt('wrapped_stations') ?? 845;
+  static double getMoneySaved() => _prefs.getDouble('wrapped_money') ?? 3250.0;
+
+  // Points
+  static const _kPoints = 'user_points';
+  static int getPoints() => _prefs.getInt(_kPoints) ?? 0;
+  static Future<void> setPoints(int value) => _prefs.setInt(_kPoints, value);
+  static Future<void> addPoints(int delta) => setPoints(getPoints() + delta);
+
   /// Clears everything EXCEPT theme and language preferences.
   static Future<void> clearUserData() async {
     await _prefs.remove(_kWalletBalance);
@@ -174,3 +185,6 @@ class AppStorage {
     await _prefs.remove(_kScheduledTrips);
   }
 }
+
+/// Backward-compatibility alias — use [AppStorage] in new code.
+typedef OfflineStorage = AppStorage;

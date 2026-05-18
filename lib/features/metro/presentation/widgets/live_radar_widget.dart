@@ -56,7 +56,7 @@ class _LiveRadarWidgetState extends State<LiveRadarWidget> with TickerProviderSt
               ),
               const SizedBox(width: 8),
               Text(
-                isAr ? 'أقرب محطة لك' : 'Nearest Station',
+                "Nearest Station".tr(),
                 style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
               ),
               const Spacer(),
@@ -76,7 +76,7 @@ class _LiveRadarWidgetState extends State<LiveRadarWidget> with TickerProviderSt
                           decoration: const BoxDecoration(color: AppColors.success, shape: BoxShape.circle),
                         ),
                         const SizedBox(width: 4),
-                        Text(isAr ? 'مباشر' : 'LIVE', style: const TextStyle(color: AppColors.success, fontSize: 10, fontWeight: FontWeight.bold)),
+                        Text("LIVE".tr(), style: const TextStyle(color: AppColors.success, fontSize: 10, fontWeight: FontWeight.bold)),
                       ],
                     ),
                   );
@@ -91,23 +91,23 @@ class _LiveRadarWidgetState extends State<LiveRadarWidget> with TickerProviderSt
             textBaseline: TextBaseline.alphabetic,
             children: [
               Text(
-                isAr ? 'السادات (تحرير)' : 'Sadat (Tahrir)',
+                "Sadat (Tahrir)".tr(),
                 style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
               ),
               const SizedBox(width: 8),
               Text(
-                isAr ? 'يبعد ٤٠٠ متر' : '400m away',
+                "400m away".tr(),
                 style: const TextStyle(color: Colors.white54, fontSize: 14),
               ),
             ],
           ),
           const SizedBox(height: 24),
           // Departures list
-          _buildDepartureRow(isAr ? 'الخط الأول' : 'Line 1', AppColors.line1, isAr ? 'اتجاه حلوان' : 'To Helwan', '2', isAr),
+          _buildDepartureRow("Line 1".tr(), AppColors.line1, "To Helwan".tr(), '2', isAr),
           const Divider(color: Colors.white12, height: 24),
-          _buildDepartureRow(isAr ? 'الخط الأول' : 'Line 1', AppColors.line1, isAr ? 'اتجاه المرج' : 'To El Marg', '4', isAr),
+          _buildDepartureRow("Line 1".tr(), AppColors.line1, "To El Marg".tr(), '4', isAr),
           const Divider(color: Colors.white12, height: 24),
-          _buildDepartureRow(isAr ? 'الخط الثاني' : 'Line 2', AppColors.line2, isAr ? 'اتجاه المنيب' : 'To Mounib', '1', isAr),
+          _buildDepartureRow("Line 2".tr(), AppColors.line2, "To Mounib".tr(), '1', isAr),
         ],
       ),
     );
@@ -141,7 +141,7 @@ class _LiveRadarWidgetState extends State<LiveRadarWidget> with TickerProviderSt
             text: TextSpan(
               children: [
                 TextSpan(text: mins, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                TextSpan(text: isAr ? ' د' : ' m', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                TextSpan(text: " m".tr(), style: const TextStyle(color: Colors.white70, fontSize: 12)),
               ],
             ),
           ),

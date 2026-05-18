@@ -47,7 +47,7 @@ class CommunityCubit extends Cubit<CommunityState> {
     );
   }
 
-  Future<void> addReport(String title, String description, String category) async {
+  Future<void> addReport(String title, String description, String category, {String? reporterName, String? imageUrl}) async {
     final report = Report(
       id: const Uuid().v4(),
       title: title,
@@ -55,6 +55,8 @@ class CommunityCubit extends Cubit<CommunityState> {
       location: 'Current Location',
       timestamp: DateTime.now(),
       category: category,
+      reporterName: reporterName,
+      imageUrl: imageUrl,
     );
 
     // Save offline

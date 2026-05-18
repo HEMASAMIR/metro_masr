@@ -116,7 +116,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
                 '💡 Tip: Monthly subscription saves you up to 40%!',
         actions: [
           _QuickAction(
-            label: isAr ? 'احسب تذكرتي' : 'Calculate Mine',
+            label: "Calculate Mine".tr(),
             onTap: (ctx) => Navigator.push(
               ctx,
               MaterialPageRoute(builder: (_) => const RoutePlannerPage()),
@@ -168,7 +168,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
 
     // ── Balance / wallet
     if (_contains(input, ['رصيد', 'كارت', 'balance', 'wallet', 'card', 'فلوس'])) {
-      final balance = OfflineStorage.getBalance();
+      final balance = AppStorage.getBalance();
       return _BotResponse(
         text: isAr
             ? '💳 رصيدك الحالي في محفظة رفيق:\n\n'
@@ -183,12 +183,10 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     // ── Nearest station
     if (_contains(input, ['أقرب', 'قريب', 'nearest', 'nearby', 'close', 'موقع', 'location'])) {
       return _BotResponse(
-        text: isAr
-            ? '📍 عشان أقدر أجيبلك أقرب محطة، محتاج إذن الموقع.\nروح على صفحة المحطات القريبة وهتلاقي كل التفاصيل!'
-            : '📍 To find the nearest station, I need location access.\nHead to the Nearby Stations page for full details!',
+        text: "📍 To find the nearest station, I need location access.\nHead to the Nearby Stations page for full details!".tr(),
         actions: [
           _QuickAction(
-            label: isAr ? 'المحطات القريبة' : 'Nearby Stations',
+            label: "Nearby Stations".tr(),
             onTap: (ctx) => Navigator.push(
               ctx,
               MaterialPageRoute(builder: (_) => const NearbyStationsPage()),
@@ -201,12 +199,10 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     // ── Route
     if (_contains(input, ['روح', 'أروح', 'طريق', 'مسار', 'route', 'go to', 'from', 'to', 'من', 'إلى', 'الى', 'plan'])) {
       return _BotResponse(
-        text: isAr
-            ? '🗺️ عاوز تخطط رحلتك؟\nاستخدم مخطط الرحلات وهيحسبلك:\n• أقصر مسار\n• عدد المحطات\n• سعر التذكرة\n• محطات التحويل'
-            : '🗺️ Want to plan your trip?\nUse the Route Planner and it will calculate:\n• Shortest route\n• Station count\n• Ticket price\n• Transfer stations',
+        text: "🗺️ Want to plan your trip?\nUse the Route Planner and it will calculate:\n• Shortest route\n• Station count\n• Ticket price\n• Transfer stations".tr(),
         actions: [
           _QuickAction(
-            label: isAr ? 'مخطط الرحلة' : 'Route Planner',
+            label: "Route Planner".tr(),
             onTap: (ctx) => Navigator.push(
               ctx,
               MaterialPageRoute(builder: (_) => const RoutePlannerPage()),
@@ -219,12 +215,10 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     // ── Map
     if (_contains(input, ['خريطة', 'map', 'خطوط', 'lines', 'شبكة', 'network'])) {
       return _BotResponse(
-        text: isAr
-            ? '🗺️ هنا خريطة المترو التفاعلية الكاملة!\nتقدر تشوف كل المحطات والخطوط.'
-            : '🗺️ Here\'s the full interactive metro map!\nYou can see all stations and lines.',
+        text: "🗺️ Here's the full interactive metro map!\nYou can see all stations and lines.".tr(),
         actions: [
           _QuickAction(
-            label: isAr ? 'افتح الخريطة' : 'Open Map',
+            label: "Open Map".tr(),
             onTap: (ctx) => Navigator.push(
               ctx,
               MaterialPageRoute(builder: (_) => const MapPage()),
@@ -240,14 +234,14 @@ class _AiAssistantPageState extends State<AiAssistantPage>
       final String level;
       final String advice;
       if ((hour >= 7 && hour <= 9) || (hour >= 15 && hour <= 18)) {
-        level = isAr ? 'عالي جداً ⚠️' : 'Very High ⚠️';
-        advice = isAr ? 'دلوقتي وقت الذروة! لو ممكن تأجل لبعد ساعة.' : 'It\'s peak hour! Try to wait an hour if possible.';
+        level = "Very High ⚠️".tr();
+        advice = "It's peak hour! Try to wait an hour if possible.".tr();
       } else if ((hour >= 10 && hour <= 14) || (hour >= 19 && hour <= 21)) {
-        level = isAr ? 'متوسط 😐' : 'Moderate 😐';
-        advice = isAr ? 'مقبول، مش وقت ذروة.' : 'Acceptable, not peak hour.';
+        level = "Moderate 😐".tr();
+        advice = "Acceptable, not peak hour.".tr();
       } else {
-        level = isAr ? 'منخفض ✅' : 'Low ✅';
-        advice = isAr ? 'ممتاز! الوقت دا المترو فيه راحة.' : 'Great! Metro is comfortable at this time.';
+        level = "Low ✅".tr();
+        advice = "Great! Metro is comfortable at this time.".tr();
       }
       return _BotResponse(
         text: isAr
@@ -258,8 +252,8 @@ class _AiAssistantPageState extends State<AiAssistantPage>
 
     // ── Points / gamification
     if (_contains(input, ['نقاط', 'points', 'رحلات', 'trips', 'مكافآت', 'rewards', 'achievements'])) {
-      final points = OfflineStorage.getPoints();
-      final trips = OfflineStorage.getTrips();
+      final trips = AppStorage.getTrips();
+      final points = trips * 5;
       return _BotResponse(
         text: isAr
             ? '🏆 إحصائياتك:\n\n'
@@ -277,9 +271,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
 
     // ── Default
     return _BotResponse(
-      text: isAr
-          ? 'مش فاهم سؤالك كويس 🤔\nجرب تسألني عن:\n• أسعار التذاكر\n• مواعيد المترو\n• رصيدك\n• أقرب محطة\n• الازدحام دلوقتي'
-          : 'I didn\'t understand your question 🤔\nTry asking me about:\n• Ticket prices\n• Metro schedules\n• Your balance\n• Nearest station\n• Current crowd levels',
+      text: "I didn't understand your question 🤔\nTry asking me about:\n• Ticket prices\n• Metro schedules\n• Your balance\n• Nearest station\n• Current crowd levels".tr(),
     );
   }
 
@@ -313,11 +305,11 @@ class _AiAssistantPageState extends State<AiAssistantPage>
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  isAr ? 'رفيق الذكي' : 'Rafiq AI',
+                  "Rafiq AI".tr(),
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 Text(
-                  isAr ? 'متصل دائماً' : 'Always online',
+                  "Always online".tr(),
                   style: const TextStyle(fontSize: 11, color: Colors.green),
                 ),
               ],
@@ -385,7 +377,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
                     child: TextField(
                       controller: _controller,
                       decoration: InputDecoration(
-                        hintText: isAr ? 'اسألني أي سؤال...' : 'Ask me anything...',
+                        hintText: "Ask me anything...".tr(),
                         border: InputBorder.none,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       ),

@@ -5,6 +5,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:rafiq_metrro/core/utils/location_utils.dart';
 import 'package:rafiq_metrro/core/utils/notification_service.dart';
 import 'package:rafiq_metrro/core/utils/voice_service.dart';
+import 'package:vibration/vibration.dart';
 
 import '../../../domain/entities/station.dart';
 
@@ -83,6 +84,18 @@ class ArrivalAlarmCubit extends Cubit<ArrivalAlarmState> {
     );
     // Voice prompt
     VoiceService.speak(body, 'ar'); // Fallback to ar, ideally we'd pass locale
+
+    // Extremely strong hardware vibration pattern to wake user up
+    Vibration.hasCustomVibrationsSupport().then((hasCustom) {
+      if (hasCustom == true) {
+        Vibration.vibrate(
+          pattern: [0, 1500, 500, 1500, 500, 1500, 500, 1500, 500, 2000],
+          intensities: [0, 255, 0, 255, 0, 255, 0, 255, 0, 255],
+        );
+      } else {
+        Vibration.vibrate(duration: 5000);
+      }
+    });
 
     emit(ArrivalAlarmTriggered(destination));
     stopAlarm();

@@ -7,6 +7,14 @@ import '../../../../core/utils/tourism_data.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'attraction_detail_page.dart';
 
+enum SortOption {
+  recommended,
+  priceLowToHigh,
+  priceHighToLow,
+  highestRated,
+  newest,
+}
+
 class TouristAttractionsPage extends StatefulWidget {
   /// If provided, pre-selects this station on open
   final String? preselectedStation;
@@ -26,6 +34,7 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
   List<TouristAttraction> _currentAttractions = [];
   StationAttractions? _currentStationData;
   bool _showAllMode = true; // true = show all top picks, false = station mode
+  SortOption _selectedSort = SortOption.recommended;
 
 
 
@@ -76,7 +85,36 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
     if (_selectedCategory != null) {
       list = list.where((a) => a.category == _selectedCategory).toList();
     }
-    return list;
+    
+    List<TouristAttraction> sorted = List.from(list);
+    switch (_selectedSort) {
+      case SortOption.recommended:
+        // No explicit sort, use default order
+        break;
+      case SortOption.priceLowToHigh:
+        sorted.sort((a, b) => _extractPrice(a.admissionEGP).compareTo(_extractPrice(b.admissionEGP)));
+        break;
+      case SortOption.priceHighToLow:
+        sorted.sort((a, b) => _extractPrice(b.admissionEGP).compareTo(_extractPrice(a.admissionEGP)));
+        break;
+      case SortOption.highestRated:
+        sorted.sort((a, b) => b.rating.compareTo(a.rating));
+        break;
+      case SortOption.newest:
+        // No date field, fallback to default order
+        break;
+    }
+    return sorted;
+  }
+
+  double _extractPrice(String priceStr) {
+    if (priceStr.toLowerCase().contains('free')) return 0.0;
+    if (priceStr.contains('مجانا')) return 0.0;
+    final match = RegExp(r'\d+').firstMatch(priceStr);
+    if (match != null) {
+      return double.parse(match.group(0)!);
+    }
+    return 0.0;
   }
 
   String _lang(BuildContext context) =>
@@ -107,7 +145,7 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
               background: _buildHeader(isAr),
             ),
             title: Text(
-              isAr ? '🗺️ الأماكن السياحية' : '🗺️ Tourist Attractions',
+              "🗺️ Tourist Attractions".tr(),
               style: TextStyle(
                 color: Theme.of(context).textTheme.titleLarge?.color, fontWeight: FontWeight.bold, fontSize: 18),
             ),
@@ -125,6 +163,10 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
             if (_currentStationData != null) _buildStationBanner(isAr),
             if (!_showAllMode && _currentStationData == null)
               _buildNoResultsBanner(isAr),
+              
+            // ── Sorting Row ───────────────────────────────────────────────────
+            _buildSortRow(isAr, lang, filtered.length, _currentAttractions.length),
+
             // ── Attractions list ──────────────────────────────────────────────
             Expanded(
               child: filtered.isEmpty
@@ -138,7 +180,7 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                             itemCount: filtered.length,
                             itemBuilder: (_, i) => _buildAttractionCard(
                               filtered[i], lang, isAr, i,
-                              stationName: _currentStationData?.stationName[isAr ? 'ar' : 'en'] ?? '',
+                              stationName: _currentStationData?.stationName["en".tr()] ?? '',
                             ),
                           );
                         } else {
@@ -154,7 +196,7 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                                   width: width,
                                   child: _buildAttractionCard(
                                     filtered[i], lang, isAr, i,
-                                    stationName: _currentStationData?.stationName[isAr ? 'ar' : 'en'] ?? '',
+                                    stationName: _currentStationData?.stationName["en".tr()] ?? '',
                                   ),
                                 );
                               }),
@@ -173,7 +215,7 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.train_rounded),
-        label: Text(isAr ? 'اختر محطة' : 'Pick Station'),
+        label: Text("Pick Station".tr()),
         onPressed: () => _showStationPicker(context, isAr),
       ),
     );
@@ -190,9 +232,7 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                isAr
-                  ? '🌍 اكتشف مصر من المترو'
-                  : '🌍 Discover Egypt by Metro',
+                "🌍 Discover Egypt by Metro".tr(),
                 style: TextStyle(
                   color: Theme.of(context).textTheme.titleLarge?.color,
                   fontSize: 22,
@@ -201,9 +241,7 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
               ),
               const SizedBox(height: 4),
               Text(
-                isAr
-                  ? 'مزارات في كل محطة • 4 لغات • دليل ذكي'
-                  : 'Landmarks at every station • 4 languages • Smart guide',
+                "Landmarks at every station • 4 languages • Smart guide".tr(),
                 style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 13),
               ),
             ],
@@ -221,7 +259,7 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
         controller: _searchCtrl,
         style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
         decoration: InputDecoration(
-          hintText: isAr ? 'ابحث عن محطة (مثال: الأوبرا)' : 'Search station (e.g. Opera)',
+          hintText: "Search station (e.g. Opera)".tr(),
           hintStyle: const TextStyle(color: Colors.grey),
           filled: true,
           fillColor: Theme.of(context).cardColor,
@@ -329,7 +367,7 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  st.stationName[isAr ? 'ar' : 'en'] ?? '',
+                  st.stationName["en".tr()] ?? '',
                   style: TextStyle(color: Theme.of(context).textTheme.titleSmall?.color, fontWeight: FontWeight.bold),
                 ),
                 Text(
@@ -343,7 +381,7 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
           ),
           TextButton.icon(
             icon: const Icon(Icons.clear, size: 14),
-            label: Text(isAr ? 'الكل' : 'All'),
+            label: Text("All".tr()),
             style: TextButton.styleFrom(
               foregroundColor: Colors.grey,
               textStyle: const TextStyle(fontSize: 11),
@@ -381,6 +419,68 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
     );
   }
 
+  // ── Sorting Row ────────────────────────────────────────────────────────────
+  Widget _buildSortRow(bool isAr, String lang, int visibleCount, int totalCount) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            isAr ? 'عرض $visibleCount من أصل $totalCount عرض' : 'Showing $visibleCount of $totalCount',
+            style: TextStyle(color: Colors.grey[600], fontSize: 13),
+          ),
+          Row(
+            children: [
+              OutlinedButton.icon(
+                onPressed: () {},
+                icon: const Icon(Icons.map_outlined, size: 16),
+                label: Text(isAr ? 'عرض خريطة' : 'Map'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  side: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                height: 36,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardColor,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<SortOption>(
+                    value: _selectedSort,
+                    icon: const Icon(Icons.keyboard_arrow_down, size: 16),
+                    style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 13),
+                    alignment: AlignmentDirectional.centerEnd,
+                    onChanged: (SortOption? newValue) {
+                      if (newValue != null) {
+                        setState(() {
+                          _selectedSort = newValue;
+                        });
+                      }
+                    },
+                    items: [
+                      DropdownMenuItem(value: SortOption.recommended, child: Text(isAr ? 'موصى به' : 'Recommended')),
+                      DropdownMenuItem(value: SortOption.priceLowToHigh, child: Text(isAr ? 'السعر: من الأقل للأعلى' : 'Price: Low to High')),
+                      DropdownMenuItem(value: SortOption.priceHighToLow, child: Text(isAr ? 'السعر: من الأعلى للأقل' : 'Price: High to Low')),
+                      DropdownMenuItem(value: SortOption.highestRated, child: Text(isAr ? 'الأعلى تقييماً' : 'Highest Rated')),
+                      DropdownMenuItem(value: SortOption.newest, child: Text(isAr ? 'الأحدث' : 'Newest')),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── Attraction card ────────────────────────────────────────────────────────
   Widget _buildAttractionCard(
     TouristAttraction attraction,
@@ -405,7 +505,7 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
               lang: lang,
               stationName: stationName.isNotEmpty
                   ? stationName
-                  : (_currentStationData?.stationName[isAr ? 'ar' : 'en'] ?? ''),
+                  : (_currentStationData?.stationName["en".tr()] ?? ''),
             ),
             transitionDuration: const Duration(milliseconds: 400),
             transitionsBuilder: (_, anim, __, child) => SlideTransition(
@@ -571,7 +671,7 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                         ),
                         icon: const Icon(Icons.language, size: 16),
                         label: Text(
-                          isAr ? 'عرض التفاصيل في الويب' : 'View in Web',
+                          "View in Web".tr(),
                           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                         ),
                         onPressed: () async {
@@ -616,7 +716,7 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
         const Text('🔍', style: TextStyle(fontSize: 60)),
         const SizedBox(height: 12),
         Text(
-          isAr ? 'لا توجد أماكن في هذه الفئة' : 'No places in this category',
+          "No places in this category".tr(),
           style: const TextStyle(color: Colors.grey, fontSize: 14),
         ),
       ],
@@ -655,14 +755,12 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                 ),
                 // Title
                 Text(
-                  isAr ? '🚇 اختر محطة' : '🚇 Select a Station',
+                  "🚇 Select a Station".tr(),
                   style: TextStyle(color: Theme.of(context).textTheme.titleLarge?.color, fontWeight: FontWeight.bold, fontSize: 18),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  isAr
-                    ? 'المحطات التالية بها بيانات سياحية'
-                    : 'Stations with tourism data',
+                  "Stations with tourism data".tr(),
                   style: const TextStyle(color: Colors.grey, fontSize: 12),
                 ),
                 const SizedBox(height: 12),
@@ -673,7 +771,7 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                     controller: searchCtrl,
                     style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
                     decoration: InputDecoration(
-                      hintText: isAr ? 'ابحث...' : 'Search...',
+                      hintText: "Search...".tr(),
                       hintStyle: const TextStyle(color: Colors.grey),
                       filled: true,
                       fillColor: Theme.of(context).scaffoldBackgroundColor,
@@ -704,7 +802,7 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                           child: const Icon(Icons.train_rounded, color: AppColors.primary, size: 20),
                         ),
                         title: Text(
-                          st.stationName[isAr ? 'ar' : 'en'] ?? '',
+                          st.stationName["en".tr()] ?? '',
                           style: TextStyle(color: Theme.of(context).textTheme.titleMedium?.color, fontWeight: FontWeight.w600),
                         ),
                         subtitle: Text(

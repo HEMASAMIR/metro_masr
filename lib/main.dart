@@ -10,15 +10,81 @@ import 'core/utils/voice_service.dart';
 import 'core/utils/offline_storage.dart';
 import 'features/metro/presentation/cubits/route_planner/route_planner_cubit.dart';
 import 'features/metro/presentation/cubits/arrival_alarm/arrival_alarm_cubit.dart';
-import 'features/splash/presentation/splash_screen.dart';
+import 'features/shell/presentation/main_nav_shell.dart';
+import 'core/utils/gamification_service.dart';
+import 'features/auth/data/auth_service.dart';
+import 'features/auth/cubit/auth_cubit.dart';
+import 'package:workmanager/workmanager.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+@pragma('vm:entry-point')
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    if (task == 'lineAlertsTask') {
+      await NotificationService.init();
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getStringList('line_alert_subscriptions') ?? [];
+      final alertDelays = prefs.getBool('alert_delays') ?? true;
+      
+      if (saved.isNotEmpty && alertDelays) {
+         // Simulate checking live API for delays in background
+         final now = DateTime.now();
+         if (now.minute % 10 == 0) { // arbitrary condition for background delay
+           final line = int.tryParse(saved.first) ?? 1;
+           await NotificationService.showLineDelayAlert(
+             lineNumber: line,
+             delayMinutes: 5 + (line * 2),
+             isArabic: true,
+           );
+         }
+      }
+      
+      // Daily Support Notification (+201055673184)
+      final now = DateTime.now();
+      final todayStr = '${now.year}-${now.month}-${now.day}';
+      final lastSupportStr = prefs.getString('last_support_date');
+      
+      // Send only once a day, and preferably during daytime (e.g. between 10 AM and 8 PM)
+      if (lastSupportStr != todayStr && now.hour >= 10 && now.hour <= 20) {
+        await NotificationService.showNotification(
+          id: 999,
+          title: 'دعم تطبيق المترو | Support the App 🚀',
+          body: 'لو عجبك التطبيق ادعمنا عشان نكمله بالعربي والإنجليزي! تواصل معنا على: +201055673184',
+        );
+        await prefs.setString('last_support_date', todayStr);
+      }
+    }
+    return Future.value(true);
+  });
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Supabase Initialization
+  await Supabase.initialize(
+    url: 'https://mrqkmuxfckffkkltpdri.supabase.co',
+    anonKey: 'sb_publishable_vybCTs7cuYw04y4bYztFaw_yTj8qbtG',
+  );
+
   await EasyLocalization.ensureInitialized();
   await NotificationService.init();
   await VoiceService.init();
-  await OfflineStorage.init();
+  await AppStorage.init();
+  await GamificationService.init();
   await di.init();
+  await AuthService.instance.init(); // restore Google session if any
+  
+  Workmanager().initialize(
+    callbackDispatcher,
+    isInDebugMode: false,
+  );
+  Workmanager().registerPeriodicTask(
+    "1",
+    "lineAlertsTask",
+    frequency: const Duration(minutes: 15),
+  );
   
   runApp(
     EasyLocalization(
@@ -45,6 +111,9 @@ class MetroApp extends StatelessWidget {
         BlocProvider(create: (context) => di.sl<ThemeCubit>()),
         BlocProvider(create: (context) => di.sl<RoutePlannerCubit>()),
         BlocProvider(create: (context) => di.sl<ArrivalAlarmCubit>()),
+        BlocProvider(
+          create: (_) => AuthCubit(AuthService.instance),
+        ),
       ],
       child: BlocBuilder<ThemeCubit, ThemeMode>(
         builder: (context, themeMode) {
@@ -148,7 +217,7 @@ class MetroApp extends StatelessWidget {
                 ),
               ),
             ),
-            home: const SplashScreen(),
+            home: const MainNavShell(),
           );
         },
       ),

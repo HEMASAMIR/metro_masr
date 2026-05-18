@@ -34,7 +34,7 @@ class LastMileTransitWidget extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            isAr ? 'عطلان بره المحطة؟ 🚕' : 'Stuck outside the station? 🚕',
+            "Stuck outside the station? 🚕".tr(),
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),

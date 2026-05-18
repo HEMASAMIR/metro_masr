@@ -44,7 +44,7 @@ class _TicketPriceViewState extends State<_TicketPriceView> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text(isAr ? 'سعر تذكرة المترو' : 'Ticket Price Calculator'),
+        title: Text("Ticket Price Calculator".tr()),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -69,7 +69,7 @@ class _TicketPriceViewState extends State<_TicketPriceView> {
                   const Icon(Icons.confirmation_number_outlined, color: Colors.white, size: 36),
                   const SizedBox(height: 8),
                   Text(
-                    isAr ? 'احسب سعر مشوارك' : 'Calculate Your Trip Cost',
+                    "Calculate Your Trip Cost".tr(),
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -78,9 +78,7 @@ class _TicketPriceViewState extends State<_TicketPriceView> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    isAr
-                        ? 'اختار محطة البداية والوصول وهنحسبلك السعر والوقت'
-                        : "Select start & end stations — we'll calculate price & time",
+                    "Select start & end stations — we'll calculate price & time".tr(),
                     style: const TextStyle(color: Colors.white70, fontSize: 13),
                     textAlign: TextAlign.center,
                   ),
@@ -107,7 +105,7 @@ class _TicketPriceViewState extends State<_TicketPriceView> {
                           _buildStationPicker(
                             context: context,
                             isAr: isAr,
-                            hint: isAr ? 'محطة البداية' : 'Start Station',
+                            hint: "Start Station".tr(),
                             icon: Icons.radio_button_checked,
                             iconColor: AppColors.success,
                             value: _fromId,
@@ -151,7 +149,7 @@ class _TicketPriceViewState extends State<_TicketPriceView> {
                           _buildStationPicker(
                             context: context,
                             isAr: isAr,
-                            hint: isAr ? 'محطة الوصول' : 'Destination Station',
+                            hint: "Destination Station".tr(),
                             icon: Icons.location_on_rounded,
                             iconColor: AppColors.error,
                             value: _toId,
@@ -178,13 +176,13 @@ class _TicketPriceViewState extends State<_TicketPriceView> {
                               ),
                               icon: const Icon(Icons.calculate_rounded, size: 22),
                               label: Text(
-                                isAr ? 'احسب' : 'Calculate',
+                                "Calculate".tr(),
                                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
                               ),
                               onPressed: () {
                                 if (_fromId == null || _toId == null) {
                                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                    content: Text(isAr ? 'اختار محطة البداية والوصول أولاً' : 'Please select both stations first'),
+                                    content: Text("Please select both stations first".tr()),
                                     backgroundColor: AppColors.error,
                                     behavior: SnackBarBehavior.floating,
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -193,7 +191,7 @@ class _TicketPriceViewState extends State<_TicketPriceView> {
                                 }
                                 if (_fromId == _toId) {
                                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                    content: Text(isAr ? '⚠️ اختار محطة وصول مختلفة!' : '⚠️ Choose a different destination!'),
+                                    content: Text("⚠️ Choose a different destination!".tr()),
                                     backgroundColor: AppColors.warning,
                                     behavior: SnackBarBehavior.floating,
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -275,7 +273,7 @@ class _TicketPriceViewState extends State<_TicketPriceView> {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              isAr ? 'عدد الأفراد' : 'Number of Passengers',
+              "Number of Passengers".tr(),
               style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
             ),
           ),
@@ -391,7 +389,7 @@ class _TicketPriceViewState extends State<_TicketPriceView> {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              isAr ? 'تبديل' : 'transfer',
+                              "transfer".tr(),
                               style: const TextStyle(fontSize: 9, color: AppColors.accent),
                             ),
                           ),
@@ -430,7 +428,7 @@ class _TicketPriceViewState extends State<_TicketPriceView> {
             // Price display
             if (showTotal) ...[
               Text(
-                isAr ? 'سعر الفرد الواحد' : 'Per Person',
+                "Per Person".tr(),
                 style: const TextStyle(color: Colors.white60, fontSize: 12),
               ),
               const SizedBox(height: 2),
@@ -455,7 +453,7 @@ class _TicketPriceViewState extends State<_TicketPriceView> {
               const SizedBox(height: 6),
             ] else ...[
               Text(
-                isAr ? 'المبلغ اللي هتدفعه' : 'Amount to Pay',
+                "Amount to Pay".tr(),
                 style: const TextStyle(color: Colors.white70, fontSize: 13),
               ),
               const SizedBox(height: 4),
@@ -494,26 +492,26 @@ class _TicketPriceViewState extends State<_TicketPriceView> {
                 _resultStat(
                   icon: Icons.stairs_outlined,
                   value: '${state.stationCount}',
-                  label: isAr ? 'محطات' : 'Stations',
+                  label: "Stations".tr(),
                 ),
                 Container(width: 1, height: 40, color: Colors.white30),
                 _resultStat(
                   icon: Icons.timer_outlined,
                   value: '$mins',
-                  label: isAr ? 'دقيقة' : 'Minutes',
+                  label: "Minutes".tr(),
                 ),
                 Container(width: 1, height: 40, color: Colors.white30),
                 _resultStat(
                   icon: Icons.people_alt_outlined,
                   value: '$_passengerCount',
-                  label: isAr ? 'فرد' : 'People',
+                  label: "People".tr(),
                 ),
                 if (state.transfers > 0) ...[
                   Container(width: 1, height: 40, color: Colors.white30),
                   _resultStat(
                     icon: Icons.swap_horiz_rounded,
                     value: '${state.transfers}',
-                    label: isAr ? 'تحويل' : 'Transfer',
+                    label: "Transfer".tr(),
                   ),
                 ],
               ],
@@ -538,10 +536,10 @@ class _TicketPriceViewState extends State<_TicketPriceView> {
   Widget _buildPriceGuide(BuildContext context, bool isAr) {
     // Official Cairo Metro ticket prices (as of 2024)
     final prices = [
-      (isAr ? '1 – 9 محطات' : '1–9 Stations', isAr ? '8 جنيه' : 'EGP 8'),
-      (isAr ? '10 – 16 محطة' : '10–16 Stations', isAr ? '10 جنيه' : 'EGP 10'),
-      (isAr ? '17 – 23 محطة' : '17–23 Stations', isAr ? '15 جنيه' : 'EGP 15'),
-      (isAr ? '24+ محطة' : '24+ Stations', isAr ? '20 جنيه' : 'EGP 20'),
+      ("1–9 Stations".tr(), "EGP 8".tr()),
+      ("10–16 Stations".tr(), "EGP 10".tr()),
+      ("17–23 Stations".tr(), "EGP 15".tr()),
+      ("24+ Stations".tr(), "EGP 20".tr()),
     ];
 
     return Container(
@@ -559,7 +557,7 @@ class _TicketPriceViewState extends State<_TicketPriceView> {
               const Icon(Icons.info_outline_rounded, color: AppColors.primary, size: 20),
               const SizedBox(width: 8),
               Text(
-                isAr ? 'جدول أسعار التذاكر' : 'Official Ticket Price Guide',
+                "Official Ticket Price Guide".tr(),
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
               ),
             ],
@@ -599,9 +597,7 @@ class _TicketPriceViewState extends State<_TicketPriceView> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    isAr
-                        ? 'الأسعار دي للتذكرة العادية. تذكرة الاشتراك الشهري بسعر مختلف.'
-                        : 'These are single-trip prices. Monthly subscription cards differ.',
+                    "These are single-trip prices. Monthly subscription cards differ.".tr(),
                     style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                   ),
                 ),

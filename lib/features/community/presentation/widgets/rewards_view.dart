@@ -60,7 +60,7 @@ class RewardsView extends StatelessWidget {
                         style: const TextStyle(fontSize: 56, fontWeight: FontWeight.bold, height: 1.1),
                       ),
                       Text(
-                        isAr ? 'نقطة متوفرة' : 'Available Points',
+                        "Available Points".tr(),
                         style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
                       ),
                     ],
@@ -86,14 +86,14 @@ class RewardsView extends StatelessWidget {
                   context.read<CommunityCubit>().collectTripPoints();
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(isAr ? '🎉 مبروك! كسبت نقاط رحلة جديدة!' : '🎉 Congrats! Earned new trip points!'),
+                      content: Text("🎉 Congrats! Earned new trip points!".tr()),
                       backgroundColor: AppColors.success,
                     ),
                   );
                 },
                 icon: const Icon(Icons.confirmation_number),
                 label: Text(
-                  isAr ? 'تسجيل رحلة واستلام نقاط' : 'Record Trip & Earn Points',
+                  "Record Trip & Earn Points".tr(),
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
@@ -105,7 +105,7 @@ class RewardsView extends StatelessWidget {
           FadeInUp(
             delay: const Duration(milliseconds: 100),
             child: Text(
-              isAr ? '🏆 تحديات اليوم' : '🏆 Daily Challenges',
+              "🏆 Daily Challenges".tr(),
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
           ),
@@ -139,11 +139,11 @@ class RewardsView extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              isAr ? 'كابتن المترو الأسبوعي' : 'Weekly Metro Captain',
+                              "Weekly Metro Captain".tr(),
                               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                             ),
                             Text(
-                              isAr ? 'اركب المترو 5 مرات هذا الأسبوع واكسب تذكرة مجانية!' : 'Ride 5 times this week to win a free ticket!',
+                              "Ride 5 times this week to win a free ticket!".tr(),
                               style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                             ),
                           ],
@@ -182,7 +182,7 @@ class RewardsView extends StatelessWidget {
           FadeInUp(
             delay: const Duration(milliseconds: 200),
             child: Text(
-              isAr ? '🎁 استبدال النقاط' : '🎁 Redeem Points',
+              "🎁 Redeem Points".tr(),
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
           ),
@@ -192,10 +192,10 @@ class RewardsView extends StatelessWidget {
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: [
-                _buildRedeemCard(context, isAr ? 'تذكرة 9 محطات' : '9 Stations Ticket', 500, AppColors.line1, isAr),
-                _buildRedeemCard(context, isAr ? 'تذكرة 16 محطة' : '16 Stations Ticket', 800, AppColors.line2, isAr),
-                _buildRedeemCard(context, isAr ? 'تذكرة 23 محطة' : '23 Stations Ticket', 1200, AppColors.line3, isAr),
-                _buildRedeemCard(context, isAr ? 'تذكرة اليوم الكامل' : 'Full Day Ticket', 2000, AppColors.accent, isAr),
+                _buildRedeemCard(context, "9 Stations Ticket".tr(), 500, AppColors.line1, isAr),
+                _buildRedeemCard(context, "16 Stations Ticket".tr(), 800, AppColors.line2, isAr),
+                _buildRedeemCard(context, "23 Stations Ticket".tr(), 1200, AppColors.line3, isAr),
+                _buildRedeemCard(context, "Full Day Ticket".tr(), 2000, AppColors.accent, isAr),
               ],
             ),
           ),
@@ -231,7 +231,7 @@ class RewardsView extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              '$cost ${isAr ? 'نقطة' : 'pts'}',
+              '$cost ${"pts".tr()}',
               style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const Spacer(),
@@ -256,13 +256,13 @@ class RewardsView extends StatelessWidget {
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(isAr ? 'نقاطك لا تكفي!' : 'Not enough points!'),
+                        content: Text("Not enough points!".tr()),
                         backgroundColor: AppColors.error,
                       ),
                     );
                   }
                 },
-                child: Text(isAr ? 'استبدال' : 'Redeem'),
+                child: Text("Redeem".tr()),
               ),
             ),
           ],

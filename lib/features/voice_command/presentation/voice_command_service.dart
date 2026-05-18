@@ -8,7 +8,6 @@ import '../../metro/presentation/pages/map_page.dart';
 import '../../metro/presentation/pages/subscription_optimizer_page.dart';
 import '../../community/presentation/pages/community_page.dart';
 import '../../news/presentation/pages/news_page.dart';
-import '../../metro/presentation/pages/nfc_wallet_page.dart';
 import '../../ai_assistant/presentation/pages/ai_assistant_page.dart';
 import '../../crowd_prediction/presentation/pages/crowd_prediction_page.dart';
 import '../../gamification/presentation/pages/achievements_page.dart';
@@ -120,14 +119,12 @@ class VoiceCommandServiceState extends State<VoiceCommandService>
               ),
               const SizedBox(height: 16),
               Text(
-                isAr ? 'قل أمرك...' : 'Say your command...',
+                "Say your command...".tr(),
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               Text(
-                isAr
-                    ? 'مثال: "افتح الخريطة" أو "روح للمجتمع"'
-                    : 'e.g: "Open map" or "Go to community"',
+                'e.g., "Open map" or "Go to community"'.tr(),
                 style: TextStyle(color: Colors.grey[600], fontSize: 13),
               ),
               const SizedBox(height: 16),
@@ -135,7 +132,7 @@ class VoiceCommandServiceState extends State<VoiceCommandService>
                 controller: controller,
                 autofocus: true,
                 decoration: InputDecoration(
-                  hintText: isAr ? 'اكتب الأمر هنا...' : 'Type command here...',
+                  hintText: "Type command here...".tr(),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   prefixIcon: const Icon(Icons.keyboard_voice),
                 ),
@@ -190,8 +187,6 @@ class VoiceCommandServiceState extends State<VoiceCommandService>
       destination = const CommunityPage();
     } else if (_has(cmd, ['أخبار', 'news'])) {
       destination = const NewsPage();
-    } else if (_has(cmd, ['nfc', 'محفظة', 'wallet', 'كارت'])) {
-      destination = const NfcWalletPage();
     } else if (_has(cmd, ['اشتراك', 'subscription', 'optimize'])) {
       destination = const SubscriptionOptimizerPage();
     } else if (_has(cmd, ['ذكاء', 'ai', 'مساعد', 'assistant', 'رفيق'])) {
@@ -220,7 +215,7 @@ class VoiceCommandServiceState extends State<VoiceCommandService>
       Navigator.push(context, MaterialPageRoute(builder: (_) => destination!));
     } else if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(isAr ? '🤔 لم أفهم الأمر، جرب مرة أخرى' : '🤔 Command not recognized, try again'),
+        content: Text("🤔 Command not recognized, try again".tr()),
         backgroundColor: Colors.orange,
       ));
     }

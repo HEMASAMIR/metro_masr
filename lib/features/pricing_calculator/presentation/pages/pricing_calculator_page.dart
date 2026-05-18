@@ -1,28 +1,41 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/di/injection_container.dart';
+import '../../../../core/utils/metro_data.dart';
+import '../../../../core/widgets/station_search_sheet.dart';
+import '../../../metro/domain/entities/station.dart';
+import '../../../metro/presentation/cubits/route_planner/route_planner_cubit.dart';
+import '../../../metro/presentation/cubits/route_planner/route_planner_state.dart';
 
-class PricingCalculatorPage extends StatefulWidget {
+class PricingCalculatorPage extends StatelessWidget {
   const PricingCalculatorPage({super.key});
 
   @override
-  State<PricingCalculatorPage> createState() => _PricingCalculatorPageState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => sl<RoutePlannerCubit>(),
+      child: const _PricingCalculatorView(),
+    );
+  }
 }
 
-class _PricingCalculatorPageState extends State<PricingCalculatorPage> {
-  // Inputs
-  double _tripsPerDay = 2;
-  double _stationsPerTrip = 10;
-  double _workingDays = 22; // per month
-  String _zone = 'zone2'; // zone1: <=9, zone2: 10-16, zone3: 17-23, zone4: >23
+class _PricingCalculatorView extends StatefulWidget {
+  const _PricingCalculatorView();
 
-  // Single trip fare by zones (EGP 2024)
-  static const Map<String, double> _zoneFares = {
-    'zone1': 8.0,
-    'zone2': 10.0,
-    'zone3': 15.0,
-    'zone4': 20.0,
-  };
+  @override
+  State<_PricingCalculatorView> createState() => _PricingCalculatorViewState();
+}
+
+class _PricingCalculatorViewState extends State<_PricingCalculatorView> {
+  // Inputs
+  String? _fromId;
+  String? _toId;
+  double _tripsPerDay = 2;
+  double _workingDays = 22; // per month
+
+  List<Station> get _allStations => MetroData.stations.values.toList();
 
   // Monthly subscription options
   static const Map<String, double> _subscriptions = {
@@ -31,84 +44,213 @@ class _PricingCalculatorPageState extends State<PricingCalculatorPage> {
     'zone1_3': 280.0,
   };
 
-  double get _singleFare => _zoneFares[_zone] ?? 10.0;
-  double get _monthlySpend => _singleFare * _tripsPerDay * _workingDays;
-  double get _bestSubscription {
-    final unlimited = _subscriptions['unlimited']!;
-    final savings = _monthlySpend - unlimited;
-    if (_monthlySpend >= unlimited) return unlimited;
-    return _monthlySpend; // No sub needed
-  }
-
-  String get _recommendation {
-    final isAr = context.locale.languageCode == 'ar';
-    if (_monthlySpend >= _subscriptions['unlimited']!) {
-      return isAr
-          ? 'الاشتراك الشهري غير المحدود (350 جنيه) يوفر عليك ${(_monthlySpend - 350).toStringAsFixed(0)} جنيه!'
-          : 'Unlimited monthly sub (350 EGP) saves you ${(_monthlySpend - 350).toStringAsFixed(0)} EGP!';
-    } else if (_monthlySpend >= _subscriptions['zone1_2']!) {
-      return isAr
-          ? 'باقة المنطقتين (200 جنيه) قد توفر عليك!'
-          : 'The Zone 1+2 package (200 EGP) may save you money!';
-    } else {
-      return isAr
-          ? 'التذاكر الفردية أوفر لاستخدامك الحالي — استمر!'
-          : 'Single tickets are cheaper for your usage — keep it up!';
-    }
-  }
-
-  Color get _recommendationColor {
-    if (_monthlySpend >= _subscriptions['unlimited']!) return Colors.green;
-    if (_monthlySpend >= _subscriptions['zone1_2']!) return Colors.orange;
-    return Colors.blue;
-  }
-
-  void _updateZone() {
-    final stations = _stationsPerTrip.round();
-    if (stations <= 9) {
-      _zone = 'zone1';
-    } else if (stations <= 16) {
-      _zone = 'zone2';
-    } else if (stations <= 23) {
-      _zone = 'zone3';
-    } else {
-      _zone = 'zone4';
-    }
-  }
+  double _getMonthlySpend(double singleFare) => singleFare * _tripsPerDay * _workingDays;
 
   @override
   Widget build(BuildContext context) {
     final isAr = context.locale.languageCode == 'ar';
-    final savings = (_monthlySpend - 350).clamp(0.0, double.infinity);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isAr ? 'حاسبة التكاليف الذكية' : 'Smart Pricing Calculator'),
+        title: Text("Smart Pricing Calculator".tr()),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Inputs card
+            // Commute Route Selector
+            _buildRouteSelector(isAr),
+            const SizedBox(height: 16),
+
+            // Commute Habits
             _buildInputsCard(isAr),
             const SizedBox(height: 16),
 
-            // Results card
-            _buildResultsCard(isAr, savings),
-            const SizedBox(height: 16),
+            // Dynamic Results
+            BlocBuilder<RoutePlannerCubit, RoutePlannerState>(
+              builder: (context, state) {
+                if (state is RoutePlannerLoading) {
+                  return const Center(child: Padding(
+                    padding: EdgeInsets.all(32),
+                    child: CircularProgressIndicator(),
+                  ));
+                }
+                if (state is RoutePlannerError) {
+                  return Container(
+                    padding: const EdgeInsets.all(16),
+                    color: Colors.red.withOpacity(0.1),
+                    child: Text(state.message, style: const TextStyle(color: Colors.red)),
+                  );
+                }
+                if (state is RoutePlannerLoaded) {
+                  final singleFare = state.ticketPrice.toDouble();
+                  final spend = _getMonthlySpend(singleFare);
+                  final savings = (spend - 350).clamp(0.0, double.infinity);
+                  
+                  // Zone logic
+                  String zone = 'zone4';
+                  if (state.stationCount <= 9) zone = 'zone1';
+                  else if (state.stationCount <= 16) zone = 'zone2';
+                  else if (state.stationCount <= 23) zone = 'zone3';
 
-            // Comparison table
-            _buildComparisonCard(isAr),
+                  return Column(
+                    children: [
+                      _buildResultsCard(isAr, singleFare, spend, savings, zone),
+                      const SizedBox(height: 16),
+                      _buildComparisonCard(isAr, spend),
+                      const SizedBox(height: 16),
+                      _buildRecommendationCard(isAr, spend),
+                    ],
+                  );
+                }
+                return Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.blue.withOpacity(0.2)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline, color: Colors.blue),
+                      const SizedBox(width: 12),
+                      Expanded(child: Text("Select your daily commute stations and tap Calculate to see your smart subscription savings!".tr())),
+                    ],
+                  ),
+                );
+              },
+            ),
             const SizedBox(height: 16),
-
-            // Recommendation card
-            _buildRecommendationCard(isAr),
-            const SizedBox(height: 16),
-
-            // Fare reference
             _buildFareTable(isAr),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRouteSelector(bool isAr) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.route, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Text("Your Daily Commute".tr(),
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildStationPicker(
+            isAr: isAr,
+            hint: "Start Station".tr(),
+            icon: Icons.radio_button_checked,
+            iconColor: AppColors.success,
+            value: _fromId,
+            onChanged: (v) => setState(() => _fromId = v),
+          ),
+          const SizedBox(height: 12),
+          _buildStationPicker(
+            isAr: isAr,
+            hint: "Destination Station".tr(),
+            icon: Icons.location_on_rounded,
+            iconColor: AppColors.error,
+            value: _toId,
+            onChanged: (v) => setState(() => _toId = v),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: const Icon(Icons.calculate, size: 20),
+              label: Text("Calculate Subscription Savings".tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
+              onPressed: () {
+                if (_fromId == null || _toId == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Please select stations".tr())));
+                  return;
+                }
+                if (_fromId == _toId) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Please select different stations".tr())));
+                  return;
+                }
+                context.read<RoutePlannerCubit>().findPath(_fromId!, _toId!);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStationPicker({
+    required bool isAr,
+    required String hint,
+    required IconData icon,
+    required Color iconColor,
+    required String? value,
+    required ValueChanged<String?> onChanged,
+  }) {
+    final selectedStation = _allStations.where((s) => s.id == value).firstOrNull;
+    final displayName = selectedStation != null ? (isAr ? selectedStation.nameAr : selectedStation.nameEn) : hint;
+
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.withOpacity(0.25)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: InkWell(
+        onTap: () async {
+          final result = await StationSearchSheet.show(context, _allStations);
+          if (result != null) {
+            onChanged(result);
+          }
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          child: Row(
+            children: [
+              Icon(icon, color: iconColor, size: 20),
+              const SizedBox(width: 8),
+              if (selectedStation != null) ...[
+                 Container(
+                   width: 10, height: 10,
+                   decoration: BoxDecoration(
+                     color: selectedStation.line == 1 ? AppColors.line1 : selectedStation.line == 2 ? AppColors.line2 : AppColors.line3,
+                     shape: BoxShape.circle,
+                   )
+                 ),
+                 const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: Text(
+                  displayName,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: selectedStation != null ? null : Colors.grey[600],
+                    fontWeight: selectedStation != null ? FontWeight.bold : FontWeight.normal,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const Icon(Icons.arrow_drop_down_rounded, color: Colors.grey),
+            ],
+          ),
         ),
       ),
     );
@@ -129,47 +271,42 @@ class _PricingCalculatorPageState extends State<PricingCalculatorPage> {
             children: [
               const Icon(Icons.tune, color: AppColors.primary),
               const SizedBox(width: 8),
-              Text(isAr ? 'ضبط العادات' : 'Adjust Your Habits',
+              Text("Commute Habits".tr(),
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             ],
           ),
           const SizedBox(height: 20),
 
           _sliderField(
-            label: isAr ? 'عدد الرحلات يومياً' : 'Trips per Day',
+            label: "Trips per Day".tr(),
             value: _tripsPerDay,
             min: 1,
             max: 8,
             divisions: 7,
             displayValue: '${_tripsPerDay.round()}',
-            onChanged: (v) => setState(() => _tripsPerDay = v),
+            onChanged: (v) {
+              setState(() => _tripsPerDay = v);
+              if (context.read<RoutePlannerCubit>().state is RoutePlannerLoaded) {
+                 context.read<RoutePlannerCubit>().findPath(_fromId!, _toId!);
+              }
+            },
             color: AppColors.primary,
           ),
           const SizedBox(height: 16),
 
           _sliderField(
-            label: isAr ? 'عدد المحطات في الرحلة' : 'Stations per Trip',
-            value: _stationsPerTrip,
-            min: 2,
-            max: 35,
-            divisions: 33,
-            displayValue: '${_stationsPerTrip.round()}',
-            onChanged: (v) => setState(() {
-              _stationsPerTrip = v;
-              _updateZone();
-            }),
-            color: AppColors.accent,
-          ),
-          const SizedBox(height: 16),
-
-          _sliderField(
-            label: isAr ? 'أيام العمل شهرياً' : 'Working Days / Month',
+            label: "Working Days / Month".tr(),
             value: _workingDays,
             min: 15,
             max: 30,
             divisions: 15,
             displayValue: '${_workingDays.round()}',
-            onChanged: (v) => setState(() => _workingDays = v),
+            onChanged: (v) {
+              setState(() => _workingDays = v);
+              if (context.read<RoutePlannerCubit>().state is RoutePlannerLoaded) {
+                 context.read<RoutePlannerCubit>().findPath(_fromId!, _toId!);
+              }
+            },
             color: AppColors.line3,
           ),
         ],
@@ -224,7 +361,7 @@ class _PricingCalculatorPageState extends State<PricingCalculatorPage> {
     );
   }
 
-  Widget _buildResultsCard(bool isAr, double savings) {
+  Widget _buildResultsCard(bool isAr, double singleFare, double spend, double savings, String zone) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -239,15 +376,15 @@ class _PricingCalculatorPageState extends State<PricingCalculatorPage> {
           Row(
             children: [
               _resultBubble(
-                isAr ? 'تذكرة واحدة' : 'Single Fare',
-                '${_singleFare.toStringAsFixed(0)} ${isAr ? 'ج' : 'EGP'}',
+                "Single Fare".tr(),
+                '${singleFare.toStringAsFixed(0)} ${"EGP".tr()}',
                 AppColors.primary,
                 Icons.confirmation_number_outlined,
               ),
               const SizedBox(width: 12),
               _resultBubble(
-                isAr ? 'مصروف شهري' : 'Monthly Spend',
-                '${_monthlySpend.toStringAsFixed(0)} ${isAr ? 'ج' : 'EGP'}',
+                "Monthly Spend".tr(),
+                '${spend.toStringAsFixed(0)} ${"EGP".tr()}',
                 Colors.orange,
                 Icons.calendar_month,
               ),
@@ -257,17 +394,17 @@ class _PricingCalculatorPageState extends State<PricingCalculatorPage> {
           Row(
             children: [
               _resultBubble(
-                isAr ? 'توفير محتمل' : 'Potential Savings',
-                savings > 0 ? '${savings.toStringAsFixed(0)} ${isAr ? 'ج' : 'EGP'}' : (isAr ? 'لا شيء' : 'None'),
+                "Potential Savings".tr(),
+                savings > 0 ? '${savings.toStringAsFixed(0)} ${"EGP".tr()}' : ("None".tr()),
                 Colors.green,
                 Icons.savings_outlined,
               ),
               const SizedBox(width: 12),
               _resultBubble(
-                isAr ? 'المنطقة السعرية' : 'Price Zone',
+                "Price Zone".tr(),
                 isAr
-                    ? (_zone == 'zone1' ? 'منطقة 1' : _zone == 'zone2' ? 'منطقة 2' : _zone == 'zone3' ? 'منطقة 3' : 'منطقة 4')
-                    : (_zone == 'zone1' ? 'Zone 1' : _zone == 'zone2' ? 'Zone 2' : _zone == 'zone3' ? 'Zone 3' : 'Zone 4'),
+                    ? (zone == 'zone1' ? 'منطقة 1' : zone == 'zone2' ? 'منطقة 2' : zone == 'zone3' ? 'منطقة 3' : 'منطقة 4')
+                    : (zone == 'zone1' ? 'Zone 1' : zone == 'zone2' ? 'Zone 2' : zone == 'zone3' ? 'Zone 3' : 'Zone 4'),
                 Colors.purple,
                 Icons.map_outlined,
               ),
@@ -301,12 +438,12 @@ class _PricingCalculatorPageState extends State<PricingCalculatorPage> {
     );
   }
 
-  Widget _buildComparisonCard(bool isAr) {
+  Widget _buildComparisonCard(bool isAr, double spend) {
     final options = [
-      (isAr ? 'تذاكر فردية' : 'Single Tickets', _monthlySpend, AppColors.primary),
-      (isAr ? 'باقة منطقتين' : 'Zone 1+2 Package', 200.0, AppColors.line2),
-      (isAr ? 'باقة 3 مناطق' : 'Zone 1+3 Package', 280.0, AppColors.line3),
-      (isAr ? 'غير محدود' : 'Unlimited', 350.0, Colors.purple),
+      ("Single Tickets".tr(), spend, AppColors.primary),
+      ("Zone 1+2 Package".tr(), 200.0, AppColors.line2),
+      ("Zone 1+3 Package".tr(), 280.0, AppColors.line3),
+      ("Unlimited".tr(), 350.0, Colors.purple),
     ];
     final minCost = options.map((o) => o.$2).reduce((a, b) => a < b ? a : b);
 
@@ -324,7 +461,7 @@ class _PricingCalculatorPageState extends State<PricingCalculatorPage> {
             children: [
               const Icon(Icons.compare_arrows, color: AppColors.primary),
               const SizedBox(width: 8),
-              Text(isAr ? 'مقارنة الخيارات' : 'Options Comparison',
+              Text("Options Comparison".tr(),
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             ],
           ),
@@ -351,14 +488,14 @@ class _PricingCalculatorPageState extends State<PricingCalculatorPage> {
                                 color: Colors.green,
                                 borderRadius: BorderRadius.circular(6),
                               ),
-                              child: Text(isAr ? 'الأوفر' : 'Best',
+                              child: Text("Best".tr(),
                                   style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
                             ),
                           ],
                         ],
                       ),
                       Text(
-                        '${opt.$2.toStringAsFixed(0)} ${isAr ? 'ج/شهر' : 'EGP/mo'}',
+                        '${opt.$2.toStringAsFixed(0)} ${"EGP/mo".tr()}',
                         style: TextStyle(
                           color: opt.$3,
                           fontWeight: FontWeight.bold,
@@ -388,33 +525,48 @@ class _PricingCalculatorPageState extends State<PricingCalculatorPage> {
     );
   }
 
-  Widget _buildRecommendationCard(bool isAr) {
+  Widget _buildRecommendationCard(bool isAr, double spend) {
+    Color color;
+    String text;
+    if (spend >= _subscriptions['unlimited']!) {
+      color = Colors.green;
+      text = isAr
+          ? 'الاشتراك الشهري غير المحدود (350 جنيه) يوفر عليك ${(spend - 350).toStringAsFixed(0)} جنيه!'
+          : 'Unlimited monthly sub (350 EGP) saves you ${(spend - 350).toStringAsFixed(0)} EGP!';
+    } else if (spend >= _subscriptions['zone1_2']!) {
+      color = Colors.orange;
+      text = "The Zone 1+2 package (200 EGP) may save you money!".tr();
+    } else {
+      color = Colors.blue;
+      text = "Single tickets are cheaper for your usage — keep it up!".tr();
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: _recommendationColor.withOpacity(0.08),
+        color: color.withOpacity(0.08),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _recommendationColor.withOpacity(0.3)),
+        border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.lightbulb, color: _recommendationColor, size: 24),
+          Icon(Icons.lightbulb, color: color, size: 24),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isAr ? 'توصية رفيق' : 'Rafiq Recommends',
+                  "Rafiq Recommends".tr(),
                   style: TextStyle(
-                    color: _recommendationColor,
+                    color: color,
                     fontWeight: FontWeight.bold,
                     fontSize: 15,
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(_recommendation, style: const TextStyle(fontSize: 13, height: 1.5)),
+                Text(text, style: const TextStyle(fontSize: 13, height: 1.5)),
               ],
             ),
           ),
@@ -434,7 +586,7 @@ class _PricingCalculatorPageState extends State<PricingCalculatorPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(isAr ? 'جدول الأسعار 2024' : 'Fare Schedule 2024',
+          Text("Fare Schedule 2024".tr(),
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
           const SizedBox(height: 12),
           Table(
@@ -444,15 +596,15 @@ class _PricingCalculatorPageState extends State<PricingCalculatorPage> {
               TableRow(
                 decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1)),
                 children: [
-                  _tableCell(isAr ? 'المحطات' : 'Stations', isHeader: true),
-                  _tableCell(isAr ? 'السعر' : 'Fare', isHeader: true),
-                  _tableCell(isAr ? 'المنطقة' : 'Zone', isHeader: true),
+                  _tableCell("Stations".tr(), isHeader: true),
+                  _tableCell("Fare".tr(), isHeader: true),
+                  _tableCell("Zone".tr(), isHeader: true),
                 ],
               ),
-              _tableRow('1 – 9', '8 ${isAr ? 'ج' : 'EGP'}', isAr ? 'منطقة 1' : 'Zone 1'),
-              _tableRow('10 – 16', '10 ${isAr ? 'ج' : 'EGP'}', isAr ? 'منطقة 2' : 'Zone 2'),
-              _tableRow('17 – 23', '15 ${isAr ? 'ج' : 'EGP'}', isAr ? 'منطقة 3' : 'Zone 3'),
-              _tableRow('24+', '20 ${isAr ? 'ج' : 'EGP'}', isAr ? 'منطقة 4' : 'Zone 4'),
+              _tableRow('1 – 9', '8 ${"EGP".tr()}', "Zone 1".tr()),
+              _tableRow('10 – 16', '10 ${"EGP".tr()}', "Zone 2".tr()),
+              _tableRow('17 – 23', '15 ${"EGP".tr()}', "Zone 3".tr()),
+              _tableRow('24+', '20 ${"EGP".tr()}', "Zone 4".tr()),
             ],
           ),
         ],

@@ -1,6 +1,5 @@
 import 'package:animate_do/animate_do.dart';
 import 'package:flutter/material.dart';
-import 'station_details_page.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/metro_data.dart';
@@ -13,11 +12,10 @@ import '../cubits/route_planner/route_planner_cubit.dart';
 import '../cubits/route_planner/route_planner_state.dart';
 import '../../../../core/utils/ai_prediction_service.dart';
 import '../../domain/entities/station.dart';
-
 import '../widgets/trip_rating_dialog.dart';
-import '../widgets/blind_assist_fab.dart';
-import '../widgets/last_mile_transit_widget.dart';
+
 import 'blind_journey_page.dart';
+import '../../../../core/widgets/station_search_sheet.dart';
 
 class RoutePlannerPage extends StatefulWidget {
   final String? initialFrom;
@@ -162,20 +160,12 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
       body: r.useSideBySideLayout
           ? _buildWideLayout(context, r, allStations)
           : _buildNarrowLayout(context, r, allStations),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          FloatingActionButton.extended(
-            heroTag: 'rateBtn',
-            backgroundColor: AppColors.primary,
-            onPressed: () => TripRatingDialog.show(context),
-            icon: const Icon(Icons.star, color: Colors.white),
-            label: Text(context.locale.languageCode == 'ar' ? 'تقييم القطار' : 'Rate Train', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          ),
-          const SizedBox(height: 16),
-          const BlindAssistFab(),
-        ],
+      floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'rateBtn',
+        backgroundColor: AppColors.primary,
+        onPressed: () => TripRatingDialog.show(context),
+        icon: const Icon(Icons.star, color: Colors.white),
+        label: Text(context.locale.languageCode == 'ar' ? 'تقييم القطار' : 'Rate Train', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
     );
   }
@@ -255,7 +245,7 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
                 final isAr = context.locale.languageCode == 'ar';
                 if (_startStationId == null || _endStationId == null) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text(isAr ? 'من فضلك اختار محطة البداية والنهاية' : 'Please select both stations'),
+                    content: Text("Please select both stations".tr()),
                     backgroundColor: AppColors.error,
                     behavior: SnackBarBehavior.floating,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -264,7 +254,7 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
                 }
                 if (_startStationId == _endStationId) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text(isAr ? '⚠️ اختار محطة وصول مختلفة عن محطة البداية!' : '⚠️ Choose a different destination station!'),
+                    content: Text("⚠️ Choose a different destination station!".tr()),
                     backgroundColor: AppColors.warning,
                     behavior: SnackBarBehavior.floating,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -330,35 +320,48 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
     final micSize = r != null ? r.iconSize(22.0) : 22.0;
     final btnSize = r != null ? (r.isTablet ? 56.0 : 48.0) : 48.0;
 
+    final selectedStation = stations.where((s) => s.id == value).firstOrNull;
+    final isAr = context.locale.languageCode == 'ar';
+    final displayName = selectedStation != null ? (isAr ? selectedStation.nameAr : selectedStation.nameEn) : label;
+
     return Row(
       children: [
         Expanded(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: value,
-                hint: Text(label),
-                isExpanded: true,
-                dropdownColor: Theme.of(context).cardColor,
-                items: stations.map((s) {
-                  final name = context.locale.languageCode == 'ar' ? s.nameAr : s.nameEn;
-                  return DropdownMenuItem<String>(
-                    value: s.id,
-                    child: Row(
-                      children: [
-                        _getLineIndicator(s.line),
-                        const SizedBox(width: 8),
-                        Text(name),
-                      ],
+          child: InkWell(
+            onTap: () async {
+              final result = await StationSearchSheet.show(context, stations);
+              if (result != null) {
+                onChanged(result);
+              }
+            },
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.withOpacity(0.2)),
+              ),
+              child: Row(
+                children: [
+                  if (selectedStation != null) ...[
+                    _getLineIndicator(selectedStation.line),
+                    const SizedBox(width: 12),
+                  ],
+                  Expanded(
+                    child: Text(
+                      displayName,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: selectedStation != null ? FontWeight.bold : FontWeight.normal,
+                        color: selectedStation != null ? null : Colors.grey[600],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  );
-                }).toList(),
-                onChanged: onChanged,
+                  ),
+                  const Icon(Icons.arrow_drop_down_rounded, color: Colors.grey),
+                ],
               ),
             ),
           ),
@@ -432,22 +435,102 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
                 _buildInfoTag(Icons.payments_outlined, 'ticket_price'.tr(args: [state.ticketPrice.toString()]), ''),
               ],
             ),
-            const SizedBox(height: 16),
-            if (state.aiPrediction != null) ...[
-              _buildModernAiPrediction(context, state.aiPrediction!),
-              const SizedBox(height: 16),
-            ],
-            _buildSmartAlarm(context, state.path),
-            const SizedBox(height: 16),
-
-            // ── Blind Assist Mode button ──────────────────────────────
-            _buildBlindAssistButton(context, state.path, state.ticketPrice),
-            const SizedBox(height: 16),
-
-            LastMileTransitWidget(destination: state.path.last),
+            const SizedBox(height: 24),
+            
+            // ── Journey Details (Moved to Top) ─────────────────────────
+            Text(
+              'journey_details'.tr(),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey.withOpacity(0.15)),
+              ),
+              child: ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: state.path.length,
+                itemBuilder: (context, index) {
+                  final station = state.path[index];
+                  final name = context.locale.languageCode == 'ar' ? station.nameAr : station.nameEn;
+                  bool isLast = index == state.path.length - 1;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                    child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Column(
+                            children: [
+                              Container(
+                                width: 20,
+                                height: 20,
+                                decoration: BoxDecoration(
+                                  color: _getStationColor(station.line),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 3),
+                                ),
+                              ),
+                              if (!isLast)
+                                Container(
+                                  width: 2,
+                                  height: 48,
+                                  color: Colors.grey[300],
+                                ),
+                            ],
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        name,
+                                        style: TextStyle(
+                                          fontWeight: (index == 0 || isLast)
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
+                                          fontSize: (index == 0 || isLast) ? 16 : 14,
+                                        ),
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.volume_up, size: 20),
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                      onPressed: () {
+                                        VoiceService.speak(name, context.locale.languageCode);
+                                      },
+                                    ),
+                                  ],
+                                ),
+                                if (station.isTransfer)
+                                   Text(
+                                     'transfer_station'.tr(),
+                                     style: const TextStyle(color: AppColors.accent, fontSize: 12, fontWeight: FontWeight.bold),
+                                   ),
+                                const SizedBox(height: 16),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                },
+              ),
+            ),
+            const SizedBox(height: 24),
+            
+            // ── Warnings & Hints ─────────────────────────────────────────
             if (state.transfers > 0)
                Padding(
-                 padding: const EdgeInsets.only(top: 8.0),
+                 padding: const EdgeInsets.only(bottom: 12.0),
                  child: Text(
                    '⚠️ This journey has ${state.transfers} transfer(s)',
                    style: const TextStyle(color: AppColors.warning, fontWeight: FontWeight.bold),
@@ -455,7 +538,7 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
                ),
             if (state.boardingHint != null)
                Padding(
-                 padding: const EdgeInsets.only(top: 12.0),
+                 padding: const EdgeInsets.only(bottom: 16.0),
                  child: Container(
                    padding: const EdgeInsets.all(12),
                    decoration: BoxDecoration(
@@ -472,94 +555,16 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
                    ),
                  ),
                ),
-            const SizedBox(height: 20),
-            Text(
-              'journey_details'.tr(),
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: state.path.length,
-              itemBuilder: (context, index) {
-                final station = state.path[index];
-                final name = context.locale.languageCode == 'ar' ? station.nameAr : station.nameEn;
-                bool isLast = index == state.path.length - 1;
-                return InkWell(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => StationDetailsPage(station: station),
-                      ),
-                    );
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Column(
-                          children: [
-                            Container(
-                              width: 20,
-                              height: 20,
-                              decoration: BoxDecoration(
-                                color: _getStationColor(station.line),
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 3),
-                              ),
-                            ),
-                            if (!isLast)
-                              Container(
-                                width: 2,
-                                height: 48,
-                                color: Colors.grey[300],
-                              ),
-                          ],
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      name,
-                                      style: TextStyle(
-                                        fontWeight: (index == 0 || isLast)
-                                            ? FontWeight.bold
-                                            : FontWeight.normal,
-                                        fontSize: (index == 0 || isLast) ? 16 : 14,
-                                      ),
-                                    ),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.volume_up, size: 20),
-                                    onPressed: () {
-                                      VoiceService.speak(name, context.locale.languageCode);
-                                    },
-                                  ),
-                                ],
-                              ),
-                              if (station.isTransfer)
-                                 Text(
-                                   'transfer_station'.tr(),
-                                   style: const TextStyle(color: AppColors.accent, fontSize: 12, fontWeight: FontWeight.bold),
-                                 ),
-                              const SizedBox(height: 16),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
+            
+            // ── Additional Services ──────────────────────────────────────
+            if (state.aiPrediction != null) ...[
+              _buildModernAiPrediction(context, state.aiPrediction!),
+              const SizedBox(height: 16),
+            ],
+            _buildSmartAlarm(context, state.path),
+            const SizedBox(height: 16),
+            _buildBlindAssistButton(context, state.path, state.ticketPrice),
+            const SizedBox(height: 80), // Padding for FAB
           ],
         ),
       ),
@@ -626,7 +631,7 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    isAr ? '♿ وضع المكفوفين' : '♿ Blind Assist Mode',
+                    "♿ Blind Assist Mode".tr(),
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -635,9 +640,7 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    isAr
-                        ? 'توجيه صوتي خطوة بخطوة مع اهتزاز'
-                        : 'Step-by-step voice guidance + haptics',
+                    "Step-by-step voice guidance + haptics".tr(),
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.65),
                       fontSize: 13,

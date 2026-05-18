@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../../../core/models/user_review.dart';
@@ -84,7 +85,7 @@ class _AttractionReviewsSectionState extends State<AttractionReviewsSection> {
           const Text('🎉', style: TextStyle(fontSize: 18)),
           const SizedBox(width: 10),
           Text(
-            widget.isAr ? 'شكراً! تقييمك اتضاف ✓' : 'Thanks! Review added ✓',
+            "Thanks! Review added ✓".tr(),
             style: const TextStyle(fontWeight: FontWeight.bold),
           ),
         ]),
@@ -130,7 +131,7 @@ class _AttractionReviewsSectionState extends State<AttractionReviewsSection> {
                       isAr ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                   children: [
                     Text(
-                      isAr ? 'آراء الزوار' : 'Visitor Reviews',
+                      "Visitor Reviews".tr(),
                       style: const TextStyle(
                           fontWeight: FontWeight.w900, fontSize: 18),
                     ),
@@ -168,7 +169,7 @@ class _AttractionReviewsSectionState extends State<AttractionReviewsSection> {
               ),
               icon: const Icon(Icons.rate_review_rounded, size: 20),
               label: Text(
-                isAr ? 'اكتب تقييمك' : 'Write a Review',
+                "Write a Review".tr(),
                 style: const TextStyle(
                     fontWeight: FontWeight.bold, fontSize: 15),
               ),
@@ -221,7 +222,7 @@ class _AttractionReviewsSectionState extends State<AttractionReviewsSection> {
                     const SizedBox(width: 6),
                     Text(
                       _showAll
-                          ? (isAr ? 'عرض أقل' : 'Show less')
+                          ? ("Show less".tr())
                           : (isAr
                               ? 'عرض كل التقييمات (${_reviews.length})'
                               : 'Show all reviews (${_reviews.length})'),
@@ -265,7 +266,7 @@ class _EmptyReviews extends StatelessWidget {
             Text('💬', style: const TextStyle(fontSize: 36)),
             const SizedBox(height: 10),
             Text(
-              isAr ? 'لا يوجد تقييمات بعد' : 'No reviews yet',
+              "No reviews yet".tr(),
               style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 15,
@@ -273,9 +274,7 @@ class _EmptyReviews extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              isAr
-                  ? 'كن أول من يشارك تجربته!'
-                  : 'Be the first to share your experience!',
+              "Be the first to share your experience!".tr(),
               style:
                   const TextStyle(color: Color(0xFF8899BB), fontSize: 12),
             ),
@@ -377,8 +376,8 @@ class _ReviewCardState extends State<_ReviewCard>
   String _formatDate(DateTime d) {
     final now = DateTime.now();
     final diff = now.difference(d);
-    if (diff.inDays == 0) return widget.isAr ? 'اليوم' : 'Today';
-    if (diff.inDays == 1) return widget.isAr ? 'أمس' : 'Yesterday';
+    if (diff.inDays == 0) return "Today".tr();
+    if (diff.inDays == 1) return "Yesterday".tr();
     if (diff.inDays < 7) {
       return widget.isAr ? 'منذ ${diff.inDays} أيام' : '${diff.inDays}d ago';
     }
@@ -522,7 +521,7 @@ class _ReviewCardState extends State<_ReviewCard>
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          isAr ? 'مفيد' : 'Helpful',
+                          "Helpful".tr(),
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
@@ -557,9 +556,9 @@ class _ReviewCardState extends State<_ReviewCard>
     final recommend = answers['recommend'] as String?;
     if (recommend != null) {
       final label = {
-        'yes': isAr ? '✅ ينصح به' : '✅ Recommends',
-        'maybe': isAr ? '🤔 ربما' : '🤔 Maybe',
-        'no': isAr ? '❌ لا ينصح به' : '❌ Not recommended',
+        'yes': "✅ Recommends".tr(),
+        'maybe': "🤔 Maybe".tr(),
+        'no': "❌ Not recommended".tr(),
       }[recommend];
       if (label != null) chips.add(_chip(label));
     }
@@ -574,8 +573,8 @@ class _ReviewCardState extends State<_ReviewCard>
     final easy = answers['easyToFind'] as bool?;
     if (easy != null) {
       chips.add(_chip(easy
-          ? (isAr ? '📍 سهل الوصول' : '📍 Easy to find')
-          : (isAr ? '📍 صعب الوصول' : '📍 Hard to find')));
+          ? ("📍 Easy to find".tr())
+          : ("📍 Hard to find".tr())));
     }
 
     return chips;
@@ -630,7 +629,7 @@ class _WriteReviewSheetState extends State<_WriteReviewSheet> {
   void _submit() {
     if (_rating == 0) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(widget.isAr ? 'اختار عدد النجوم' : 'Please select a rating'),
+        content: Text("Please select a rating".tr()),
         backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -639,7 +638,7 @@ class _WriteReviewSheetState extends State<_WriteReviewSheet> {
     }
     if (_nameCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(widget.isAr ? 'اكتب اسمك' : 'Please enter your name'),
+        content: Text("Please enter your name".tr()),
         backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -648,7 +647,7 @@ class _WriteReviewSheetState extends State<_WriteReviewSheet> {
     }
     if (_commentCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(widget.isAr ? 'اكتب تعليقك' : 'Please write a comment'),
+        content: Text("Please write a comment".tr()),
         backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -675,12 +674,12 @@ class _WriteReviewSheetState extends State<_WriteReviewSheet> {
 
   String get _ratingLabel {
     final isAr = widget.isAr;
-    if (_rating == 0) return isAr ? 'اضغط لاختيار تقييمك' : 'Tap to rate';
-    if (_rating <= 1) return isAr ? 'سيء جداً 😞' : 'Very bad 😞';
-    if (_rating <= 2) return isAr ? 'مش كويس 😐' : 'Not good 😐';
-    if (_rating <= 3) return isAr ? 'مقبول 🙂' : 'Okay 🙂';
-    if (_rating <= 4) return isAr ? 'كويس جداً 😊' : 'Very good 😊';
-    return isAr ? 'ممتاز! 🤩' : 'Excellent! 🤩';
+    if (_rating == 0) return "Tap to rate".tr();
+    if (_rating <= 1) return "Very bad 😞".tr();
+    if (_rating <= 2) return "Not good 😐".tr();
+    if (_rating <= 3) return "Okay 🙂".tr();
+    if (_rating <= 4) return "Very good 😊".tr();
+    return "Excellent! 🤩".tr();
   }
 
   @override
@@ -713,12 +712,12 @@ class _WriteReviewSheetState extends State<_WriteReviewSheet> {
 
             // Title
             Text(
-              isAr ? '✍️ اكتب تقييمك' : '✍️ Write Your Review',
+              "✍️ Write Your Review".tr(),
               style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20),
             ),
             const SizedBox(height: 4),
             Text(
-              isAr ? 'شاركنا تجربتك مع هذا المكان' : 'Share your experience with this place',
+              "Share your experience with this place".tr(),
               style: const TextStyle(color: Color(0xFF8899BB), fontSize: 13),
             ),
 
@@ -769,7 +768,7 @@ class _WriteReviewSheetState extends State<_WriteReviewSheet> {
               controller: _nameCtrl,
               textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
               decoration: InputDecoration(
-                hintText: isAr ? 'اسمك' : 'Your Name',
+                hintText: "Your Name".tr(),
                 prefixIcon: const Icon(Icons.person_outline_rounded),
                 filled: true,
                 fillColor: color.withOpacity(0.04),
@@ -796,9 +795,7 @@ class _WriteReviewSheetState extends State<_WriteReviewSheet> {
               maxLines: 4,
               textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
               decoration: InputDecoration(
-                hintText: isAr
-                    ? 'اكتب تجربتك هنا... (أكتر حاجة عجبتك، اللي مش كويس، نصيحتك)'
-                    : 'Write your experience... (highlights, tips, what to improve)',
+                hintText: "Write your experience... (highlights, tips, what to improve)".tr(),
                 filled: true,
                 fillColor: color.withOpacity(0.04),
                 border: OutlineInputBorder(
@@ -859,7 +856,7 @@ class _WriteReviewSheetState extends State<_WriteReviewSheet> {
                         ),
                         onPressed: _submit,
                         child: Text(
-                          isAr ? 'إرسال التقييم ✓' : 'Submit Review ✓',
+                          "Submit Review ✓".tr(),
                           style: const TextStyle(
                               fontWeight: FontWeight.bold, fontSize: 16),
                         ),
@@ -983,7 +980,7 @@ class _PostReviewSheetState extends State<_PostReviewSheet> {
               TextButton(
                 onPressed: _skip,
                 child: Text(
-                  isAr ? 'تخطي' : 'Skip',
+                  "Skip".tr(),
                   style: const TextStyle(color: Color(0xFF8899BB)),
                 ),
               ),
@@ -1000,8 +997,8 @@ class _PostReviewSheetState extends State<_PostReviewSheet> {
                 onPressed: _nextOrFinish,
                 child: Text(
                   _step < 2
-                      ? (isAr ? 'التالي ←' : 'Next →')
-                      : (isAr ? 'إنهاء ✓' : 'Finish ✓'),
+                      ? ("Next →".tr())
+                      : ("Finish ✓".tr()),
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
@@ -1026,15 +1023,15 @@ class _PostReviewSheetState extends State<_PostReviewSheet> {
   // Q1: Recommend?
   Widget _buildQ1(bool isAr, Color color) {
     final opts = [
-      ('yes', isAr ? '✅ أيوه، بنصح بيه' : '✅ Yes, recommend'),
-      ('maybe', isAr ? '🤔 ممكن' : '🤔 Maybe'),
-      ('no', isAr ? '❌ لأ' : '❌ No'),
+      ('yes', "✅ Yes, recommend".tr()),
+      ('maybe', "🤔 Maybe".tr()),
+      ('no', "❌ No".tr()),
     ];
     return Column(
       key: const ValueKey('q1'),
       children: [
         Text(
-          isAr ? 'هل تنصح بزيارة هذا المكان؟' : 'Would you recommend visiting this place?',
+          "Would you recommend visiting this place?".tr(),
           textAlign: TextAlign.center,
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
         ),
@@ -1083,13 +1080,13 @@ class _PostReviewSheetState extends State<_PostReviewSheet> {
       key: const ValueKey('q2'),
       children: [
         Text(
-          isAr ? 'أكتر حاجة عجبتك؟' : 'What did you like most?',
+          "What did you like most?".tr(),
           textAlign: TextAlign.center,
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
         ),
         const SizedBox(height: 4),
         Text(
-          isAr ? '(ممكن تختار أكتر من إجابة)' : '(Multiple choices allowed)',
+          "(Multiple choices allowed)".tr(),
           style: const TextStyle(color: Color(0xFF8899BB), fontSize: 12),
         ),
         const SizedBox(height: 16),
@@ -1137,7 +1134,7 @@ class _PostReviewSheetState extends State<_PostReviewSheet> {
       key: const ValueKey('q3'),
       children: [
         Text(
-          isAr ? 'هل الموقع واضح وسهل الوصول؟' : 'Was it easy to find / get to?',
+          "Was it easy to find / get to?".tr(),
           textAlign: TextAlign.center,
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
         ),
@@ -1146,13 +1143,13 @@ class _PostReviewSheetState extends State<_PostReviewSheet> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             _yesNoBtn(
-              label: isAr ? '✅ أيوه، سهل' : '✅ Yes, easy',
+              label: "✅ Yes, easy".tr(),
               value: true,
               color: color,
             ),
             const SizedBox(width: 12),
             _yesNoBtn(
-              label: isAr ? '😕 لأ، صعب شوية' : '😕 No, a bit hard',
+              label: "😕 No, a bit hard".tr(),
               value: false,
               color: color,
             ),

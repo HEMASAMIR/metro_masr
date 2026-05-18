@@ -3,7 +3,10 @@ import 'package:camera/camera.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'dart:math' as math;
+import 'package:geolocator/geolocator.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/metro_data.dart';
+import '../../domain/entities/station.dart';
 
 class ARNavigationPage extends StatefulWidget {
   const ARNavigationPage({super.key});
@@ -16,15 +19,59 @@ class _ARNavigationPageState extends State<ARNavigationPage> {
   CameraController? _controller;
   double _heading = 0.0;
   bool _isLocating = true;
+  Station? _nearestStation;
+  double _distanceToStation = 0;
 
   @override
   void initState() {
     super.initState();
     _initCamera();
     _initSensors();
-    Future.delayed(const Duration(seconds: 2), () {
+    _findNearestStation();
+  }
+
+  Future<void> _findNearestStation() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (mounted) setState(() => _isLocating = false);
+        return;
+      }
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          if (mounted) setState(() => _isLocating = false);
+          return;
+        }
+      }
+      
+      Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      
+      Station? nearest;
+      double minDist = double.infinity;
+      
+      for (var s in MetroData.stations.values) {
+        double dist = Geolocator.distanceBetween(
+          position.latitude, position.longitude,
+          s.latitude, s.longitude,
+        );
+        if (dist < minDist) {
+          minDist = dist;
+          nearest = s;
+        }
+      }
+      
+      if (mounted) {
+        setState(() {
+          _nearestStation = nearest;
+          _distanceToStation = minDist;
+          _isLocating = false;
+        });
+      }
+    } catch (e) {
       if (mounted) setState(() => _isLocating = false);
-    });
+    }
   }
 
   Future<void> _initCamera() async {
@@ -111,7 +158,9 @@ class _ARNavigationPageState extends State<ARNavigationPage> {
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(
-            'station_found'.tr(),
+            _nearestStation != null 
+                ? (context.locale.languageCode == 'ar' ? 'أنت متجه نحو ${_nearestStation!.nameAr}' : 'Heading to ${_nearestStation!.nameEn}')
+                : 'station_found'.tr(),
             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
         ),
@@ -139,11 +188,15 @@ class _ARNavigationPageState extends State<ARNavigationPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  _isLocating ? 'finding_station'.tr() : 'Al-Shohadaa Station',
+                  _isLocating 
+                     ? 'finding_station'.tr() 
+                     : (_nearestStation != null 
+                         ? (context.locale.languageCode == 'ar' ? _nearestStation!.nameAr : _nearestStation!.nameEn) 
+                         : 'No station found'),
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
-                if (!_isLocating)
-                  const Text('350m • Line 1, 2', style: TextStyle(color: AppColors.textSecondary)),
+                if (!_isLocating && _nearestStation != null)
+                  Text('${_distanceToStation.round()}m • Line ${_nearestStation!.line}', style: const TextStyle(color: AppColors.textSecondary)),
               ],
             ),
           ),

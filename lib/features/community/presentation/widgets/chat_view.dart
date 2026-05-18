@@ -63,12 +63,12 @@ class ChatView extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      isAr ? 'جروب رفيق عالتليجرام 🚀' : 'Rafiq Telegram Group 🚀',
+                      "Rafiq Telegram Group 🚀".tr(),
                       style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      isAr ? 'انضم لأكثر من 50,000 راكب لمتابعة حركة المترو والزحمة لحظة بلحظة!' : 'Join 50k+ riders for live crowd & delay updates!',
+                      "Join 50k+ riders for live crowd & delay updates!".tr(),
                       style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 12),
                     ),
                   ],
@@ -83,10 +83,10 @@ class ChatView extends StatelessWidget {
                 ),
                 onPressed: () {
                    ScaffoldMessenger.of(context).showSnackBar(
-                     SnackBar(content: Text(isAr ? 'جاري تحويلك لجروب التليجرام الرسمي...' : 'Redirecting to Official Telegram...'))
+                     SnackBar(content: Text("Redirecting to Official Telegram...".tr()))
                    );
                 },
-                child: Text(isAr ? 'انضم' : 'Join', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                child: Text("Join".tr(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
               ),
             ],
           ),

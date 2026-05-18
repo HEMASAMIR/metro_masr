@@ -8,7 +8,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_cubit.dart';
 import '../../../../core/utils/gamification_service.dart';
 import '../../../../core/utils/metro_data.dart';
-import '../../../../core/utils/crowd_prediction_service.dart';
+
 import '../../../../core/utils/notification_service.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../../core/utils/voice_service.dart';
@@ -21,19 +21,18 @@ import 'nearby_stations_page.dart';
 import 'subscription_optimizer_page.dart';
 import 'ar_navigation_page.dart';
 import '../../../community/presentation/pages/community_page.dart';
-import 'nfc_wallet_page.dart';
+
 import '../widgets/tourist_translator_modal.dart';
 
 import '../../../community/presentation/pages/lost_and_found_page.dart';
 import '../../../news/presentation/pages/news_page.dart';
 import '../../../ai_assistant/presentation/pages/ai_assistant_page.dart';
-import '../../../crowd_prediction/presentation/pages/crowd_prediction_page.dart';
-import '../../../gamification/presentation/pages/achievements_page.dart';
+
+
 import '../../../trip_scheduler/presentation/pages/trip_scheduler_page.dart';
 import '../../../pricing_calculator/presentation/pages/pricing_calculator_page.dart';
 
 import '../../../voice_command/presentation/voice_command_service.dart';
-import '../../../impact/presentation/pages/impact_dashboard_page.dart';
 import '../../../tourism/presentation/pages/tourist_attractions_page.dart';
 import 'line_alerts_page.dart';
 
@@ -135,7 +134,7 @@ class _HomePageState extends State<_HomePageView> {
                   // ── Greeting ──────────────────────────────────────────────
                   FadeInDown(
                     child: Text(
-                      isAr ? 'رايح فين النهاردة؟ 🚇' : 'Where to today? 🚇',
+                      "Where to today? 🚇".tr(),
                       style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                         fontSize: r.fontSize(26),
@@ -146,7 +145,7 @@ class _HomePageState extends State<_HomePageView> {
                   FadeInDown(
                     delay: const Duration(milliseconds: 40),
                     child: Text(
-                      isAr ? 'اكتب محطة البداية والنهاية وهنوريلك الطريق' : "Enter your start & destination – we'll find the way",
+                      "Enter your start & destination – we'll find the way".tr(),
                       style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
                     ),
                   ),
@@ -180,10 +179,10 @@ class _HomePageState extends State<_HomePageView> {
                   ),
                   SizedBox(height: r.sectionSpacing),
 
-                  // ── Live Crowd + Map shortcut ──────────────────────────────
+                  // ── Map shortcut ────────────────────────────────────────
                   FadeInUp(
                     delay: const Duration(milliseconds: 180),
-                    child: _buildLiveCrowdAndMapRow(context, isAr),
+                    child: _buildMapShortcut(context, isAr),
                   ),
                   SizedBox(height: r.sectionSpacing * 1.5),
 
@@ -191,35 +190,6 @@ class _HomePageState extends State<_HomePageView> {
                   r.featureGridColumns == 1
                       ? _buildFeatureList(context, r)
                       : _buildFeatureGrid(context, r),
-
-                  SizedBox(height: r.sectionSpacing * 2),
-
-                  Text(
-                    'line_status'.tr(),
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      fontSize: r.fontSize(20),
-                    ),
-                  ),
-                  SizedBox(height: r.sectionSpacing * 0.75),
-
-                  r.useSideBySideLayout
-                      ? Row(
-                          children: [
-                            Expanded(child: _buildStatusCard('Line 1', _getRealisticLineStatus(1), AppColors.line1, context, r)),
-                            SizedBox(width: r.sectionSpacing * 0.75),
-                            Expanded(child: _buildStatusCard('Line 2', _getRealisticLineStatus(2), AppColors.line2, context, r)),
-                            SizedBox(width: r.sectionSpacing * 0.75),
-                            Expanded(child: _buildStatusCard('Line 3', _getRealisticLineStatus(3), AppColors.line3, context, r)),
-                          ],
-                        )
-                      : Column(
-                          children: [
-                            _buildStatusCard('Line 1', _getRealisticLineStatus(1), AppColors.line1, context, r),
-                            _buildStatusCard('Line 2', _getRealisticLineStatus(2), AppColors.line2, context, r),
-                            _buildStatusCard('Line 3', _getRealisticLineStatus(3), AppColors.line3, context, r),
-                          ],
-                        ),
                 ],
               ),
             ),
@@ -245,7 +215,7 @@ class _HomePageState extends State<_HomePageView> {
               children: [
                 const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5)),
                 const SizedBox(width: 12),
-                Text(isAr ? 'جاري تحديد موقعك...' : 'Locating you...', style: const TextStyle(color: AppColors.textSecondary)),
+                Text("Locating you...".tr(), style: const TextStyle(color: AppColors.textSecondary)),
               ],
             ),
           );
@@ -268,8 +238,8 @@ class _HomePageState extends State<_HomePageView> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(isAr ? 'تعذّر تحديد موقعك' : 'Location unavailable', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.error)),
-                        Text(isAr ? 'اضغط هنا لتفعيل الموقع' : 'Tap to enable location', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                        Text("Location unavailable".tr(), style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.error)),
+                        Text("Tap to enable location".tr(), style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                       ],
                     ),
                   ),
@@ -285,8 +255,8 @@ class _HomePageState extends State<_HomePageView> {
           final name = isAr ? s.nameAr : s.nameEn;
           final distM = nearest.distanceMetres;
           final distLabel = distM < 1000
-              ? '${distM.round()} ${isAr ? 'م' : 'm'}'
-              : '${(distM / 1000).toStringAsFixed(1)} ${isAr ? 'كم' : 'km'}';
+              ? '${distM.round()} ${"m".tr()}'
+              : '${(distM / 1000).toStringAsFixed(1)} ${"km".tr()}';
           final walkMins = (distM / 83).ceil();
           final lineColor = s.line == 1 ? AppColors.line1 : s.line == 2 ? AppColors.line2 : AppColors.line3;
 
@@ -312,7 +282,7 @@ class _HomePageState extends State<_HomePageView> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(isAr ? '📍 أقرب محطة مترو' : '📍 Nearest Metro Station', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                        Text("📍 Nearest Metro Station".tr(), style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
                         const SizedBox(height: 2),
                         Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
                         const SizedBox(height: 4),
@@ -324,7 +294,7 @@ class _HomePageState extends State<_HomePageView> {
                             const SizedBox(width: 10),
                             const Icon(Icons.directions_walk_rounded, size: 12, color: AppColors.textSecondary),
                             const SizedBox(width: 2),
-                            Text('$distLabel · ~$walkMins ${isAr ? 'د مشياً' : 'min walk'}', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                            Text('$distLabel · ~$walkMins ${"min walk".tr()}', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
                           ],
                         ),
                       ],
@@ -361,7 +331,7 @@ class _HomePageState extends State<_HomePageView> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              isAr ? '🗺️ خطط رحلتك' : '🗺️ Plan Your Trip',
+              "🗺️ Plan Your Trip".tr(),
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
@@ -374,7 +344,7 @@ class _HomePageState extends State<_HomePageView> {
             _buildSearchableStationDropdown(
               context: context,
               isAr: isAr,
-              label: isAr ? '📍 من (محطة البداية)' : '📍 From (Start Station)',
+              label: "📍 From (Start Station)".tr(),
               value: _fromStation,
               onChanged: (v) => setState(() => _fromStation = v),
             ),
@@ -406,7 +376,7 @@ class _HomePageState extends State<_HomePageView> {
             _buildSearchableStationDropdown(
               context: context,
               isAr: isAr,
-              label: isAr ? '🏁 إلى (محطة الوصول)' : '🏁 To (Destination)',
+              label: "🏁 To (Destination)".tr(),
               value: _toStation,
               onChanged: (v) => setState(() => _toStation = v),
             ),
@@ -424,13 +394,13 @@ class _HomePageState extends State<_HomePageView> {
                 ),
                 icon: const Icon(Icons.directions_subway_rounded, size: 22),
                 label: Text(
-                  isAr ? 'ابحث عن رحلتي' : 'Find My Route',
+                  "Find My Route".tr(),
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
                 onPressed: () {
                   if (_fromStation == null || _toStation == null) {
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(isAr ? 'اختار محطة البداية والوصول الأول' : 'Please select both stations first'),
+                      content: Text("Please select both stations first".tr()),
                       backgroundColor: AppColors.error,
                       behavior: SnackBarBehavior.floating,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -439,7 +409,7 @@ class _HomePageState extends State<_HomePageView> {
                   }
                   if (_fromStation == _toStation) {
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(isAr ? '⚠️ اختار محطة وصول مختلفة!' : '⚠️ Choose a different destination!'),
+                      content: Text("⚠️ Choose a different destination!".tr()),
                       backgroundColor: AppColors.warning,
                       behavior: SnackBarBehavior.floating,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -503,7 +473,7 @@ class _HomePageState extends State<_HomePageView> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                       decoration: BoxDecoration(color: AppColors.warning.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(4)),
-                      child: Text(isAr ? 'تحويل' : 'transfer', style: const TextStyle(fontSize: 9, color: AppColors.warning)),
+                      child: Text("transfer".tr(), style: const TextStyle(fontSize: 9, color: AppColors.warning)),
                     ),
                 ],
               ),
@@ -521,16 +491,16 @@ class _HomePageState extends State<_HomePageView> {
   Widget _buildMetroTypeToggle(BuildContext context, bool isAr) {
     final types = [
       {
-        'label': isAr ? 'مترو القاهرة' : 'Cairo Metro',
+        'label': "Cairo Metro".tr(),
         'icon': Icons.directions_subway_rounded,
         'color': AppColors.primary,
-        'sub': isAr ? '3 خطوط • 85 محطة' : '3 Lines • 85 Stations',
+        'sub': "3 Lines • 85 Stations".tr(),
       },
       {
-        'label': isAr ? 'قطر العاصمة' : 'Capital Metro',
+        'label': "Capital Metro".tr(),
         'icon': Icons.train_rounded,
         'color': const Color(0xFF9C27B0),
-        'sub': isAr ? 'خط المونوريل الجديد' : 'New Monorail Line',
+        'sub': "New Monorail Line".tr(),
       },
     ];
 
@@ -625,19 +595,19 @@ class _HomePageState extends State<_HomePageView> {
                   const Icon(Icons.train_rounded, color: Colors.white, size: 28),
                   const SizedBox(width: 10),
                   Text(
-                    isAr ? 'قطر العاصمة الإدارية' : 'Administrative Capital Metro',
+                    "Administrative Capital Metro".tr(),
                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 17),
                   ),
                 ],
               ),
               const SizedBox(height: 14),
-              _capitalInfoRow(Icons.route_outlined, isAr ? 'خط المونوريل: عدلي منصور ↔ العاصمة الإدارية' : 'Monorail: Adly Mansour ↔ Admin. Capital', isAr),
+              _capitalInfoRow(Icons.route_outlined, "Monorail: Adly Mansour ↔ Admin. Capital".tr(), isAr),
               const SizedBox(height: 8),
-              _capitalInfoRow(Icons.access_time_rounded, isAr ? 'مدة الرحلة: ~60 دقيقة' : 'Journey time: ~60 minutes', isAr),
+              _capitalInfoRow(Icons.access_time_rounded, "Journey time: ~60 minutes".tr(), isAr),
               const SizedBox(height: 8),
-              _capitalInfoRow(Icons.payments_outlined, isAr ? 'سعر التذكرة: 20-40 جنيه' : 'Ticket price: 20-40 EGP', isAr),
+              _capitalInfoRow(Icons.payments_outlined, "Ticket price: 20-40 EGP".tr(), isAr),
               const SizedBox(height: 8),
-              _capitalInfoRow(Icons.swap_horiz_rounded, isAr ? 'التحويل: من محطة عدلي منصور (خط 3)' : 'Transfer: from Adly Mansour Station (Line 3)', isAr),
+              _capitalInfoRow(Icons.swap_horiz_rounded, "Transfer: from Adly Mansour Station (Line 3)".tr(), isAr),
             ],
           ),
         ),
@@ -655,9 +625,7 @@ class _HomePageState extends State<_HomePageView> {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  isAr
-                      ? 'للسفر لمترو القاهرة (خطوط 1 و2 و3) اختار "مترو القاهرة" من فوق'
-                      : 'To use Cairo Metro (Lines 1, 2 & 3) switch to "Cairo Metro" above',
+                  "To use Cairo Metro (Lines 1, 2 & 3) switch to \"Cairo Metro\" above".tr(),
                   style: const TextStyle(fontSize: 13, height: 1.5),
                 ),
               ),
@@ -678,129 +646,56 @@ class _HomePageState extends State<_HomePageView> {
     );
   }
 
-  // ── Live Crowd mini-bar + Map shortcut ───────────────────────────────────
-  Widget _buildLiveCrowdAndMapRow(BuildContext context, bool isAr) {
-    final now = DateTime.now();
-    final lineColors = [AppColors.line1, AppColors.line2, AppColors.line3];
-    final lineNames = isAr
-        ? ['خط 1', 'خط 2', 'خط 3']
-        : ['Line 1', 'Line 2', 'Line 3'];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Header row
-        Row(
-          children: [
-            Text(
-              isAr ? '📊 ازدحام الخطوط الآن' : '📊 Live Crowd Status',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            const Spacer(),
-            GestureDetector(
-              onTap: () => Navigator.push(
-                context, MaterialPageRoute(builder: (_) => const MapPage())),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.primary.withOpacity(0.3)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.map_rounded, size: 14, color: AppColors.primary),
-                    const SizedBox(width: 4),
-                    Text(
-                      isAr ? 'الخريطة' : 'Map',
-                      style: const TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+  // ── Map shortcut ─────────────────────────────────────────────────────────
+  Widget _buildMapShortcut(BuildContext context, bool isAr) {
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context, MaterialPageRoute(builder: (_) => const MapPage())),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.20)),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: 0.07),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
-        const SizedBox(height: 12),
-
-        // 3 line crowd bars
-        Row(
-          children: List.generate(3, (i) {
-            final lineNum = i + 1;
-            final color = lineColors[i];
-            final level = CrowdPredictionService.getCrowdLevel(
-              hour: now.hour, weekday: now.weekday, lineNumber: lineNum);
-            final cat = CrowdPredictionService.getCrowdCategory(level);
-            final barColor = cat == CrowdLevel.high
-                ? Colors.red
-                : cat == CrowdLevel.moderate ? Colors.orange : Colors.green;
-            final emoji = CrowdPredictionService.getCrowdEmoji(cat);
-
-            return Expanded(
-              child: Container(
-                margin: EdgeInsets.only(right: i < 2 ? 10 : 0),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: color.withOpacity(0.2)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: color.withOpacity(0.08),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 8, height: 8,
-                          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                        ),
-                        const SizedBox(width: 5),
-                        Text(lineNames[i],
-                          style: TextStyle(
-                            color: color, fontSize: 11, fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(emoji, style: const TextStyle(fontSize: 22)),
-                    const SizedBox(height: 6),
-                    // Progress bar
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: level,
-                        minHeight: 6,
-                        backgroundColor: barColor.withOpacity(0.15),
-                        valueColor: AlwaysStoppedAnimation<Color>(barColor),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${(level * 100).toInt()}%',
-                      style: TextStyle(
-                        color: barColor,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.10),
+                shape: BoxShape.circle,
               ),
-            );
-          }),
+              child: const Icon(Icons.map_rounded, color: AppColors.primary, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isAr ? '🗺️ خريطة خطوط المترو' : '🗺️ Metro Lines Map',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                  Text(
+                    isAr ? 'شوف كل الخطوط والمحطات' : 'View all lines & stations',
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary, size: 22),
+          ],
         ),
-      ],
+      ),
     );
   }
 
@@ -868,11 +763,11 @@ class _HomePageState extends State<_HomePageView> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        isAr ? 'مترو مصر' : 'Cairo Metro',
+                        "Cairo Metro".tr(),
                         style: const TextStyle(color: Colors.white70, fontSize: 13),
                       ),
                       Text(
-                        isAr ? '٣ خطوط • ٨٥ محطة' : '3 Lines • 85 Stations',
+                        "3 Lines • 85 Stations".tr(),
                         style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                     ],
@@ -892,7 +787,7 @@ class _HomePageState extends State<_HomePageView> {
                       ),
                       const SizedBox(width: 5),
                       Text(
-                        isAr ? 'يعمل' : 'Active',
+                        "Active".tr(),
                         style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
                       ),
                     ],
@@ -902,12 +797,12 @@ class _HomePageState extends State<_HomePageView> {
             ),
             const SizedBox(height: 20),
             Text(
-              isAr ? 'اخطط رحلتك الآن' : 'Plan Your Trip Now',
+              "Plan Your Trip Now".tr(),
               style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold, height: 1.2),
             ),
             const SizedBox(height: 6),
             Text(
-              isAr ? 'اكتشف أسرع طريق بين أي محطتين في مصر' : 'Find the fastest route between any stations in Egypt',
+              "Find the fastest route between any stations in Egypt".tr(),
               style: const TextStyle(color: Colors.white70, fontSize: 13),
             ),
             const SizedBox(height: 20),
@@ -923,7 +818,7 @@ class _HomePageState extends State<_HomePageView> {
                   const Icon(Icons.route_outlined, color: Color(0xFF1565C0), size: 20),
                   const SizedBox(width: 8),
                   Text(
-                    isAr ? 'ابدأ التخطيط ←' : 'Start Planning →',
+                    "Start Planning →".tr(),
                     style: const TextStyle(color: Color(0xFF1565C0), fontWeight: FontWeight.bold, fontSize: 15),
                   ),
                 ],
@@ -1029,8 +924,8 @@ class _HomePageState extends State<_HomePageView> {
       ),
       // ── NEW FEATURE 1: AI Trip Assistant ──────────────────────────────────
       FeatureCard(
-        title: isAr ? 'رفيق الذكي 🤖' : 'AI Assistant 🤖',
-        subtitle: isAr ? 'اسألني أي سؤال عن المترو' : 'Ask me anything about metro',
+        title: "AI Assistant 🤖".tr(),
+        subtitle: "Ask me anything about metro".tr(),
         icon: Icons.smart_toy_outlined,
         color: const Color(0xFF7C3AED),
         onTap: () {
@@ -1039,32 +934,10 @@ class _HomePageState extends State<_HomePageView> {
           Navigator.push(context, MaterialPageRoute(builder: (_) => const AiAssistantPage()));
         },
       ),
-      // ── NEW FEATURE 2: Crowd Prediction ──────────────────────────────────
+      // ── Feature 3: Trip Scheduler ──────────────────────────────────────────
       FeatureCard(
-        title: isAr ? 'توقع الازدحام 📊' : 'Crowd Forecast 📊',
-        subtitle: isAr ? 'اعرف الزحمة قبل ما تمشي' : 'Know the crowd before you go',
-        icon: Icons.people_outline,
-        color: Colors.teal,
-        onTap: () {
-          GamificationService.recordCrowdCheck();
-          GamificationService.unlockBadge(BadgeType.crowdChecker);
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const CrowdPredictionPage()));
-        },
-      ),
-      // ── NEW FEATURE 3: Gamification ───────────────────────────────────────
-      FeatureCard(
-        title: isAr ? 'إنجازاتي 🏆' : 'My Achievements 🏆',
-        subtitle: isAr ? 'نقاطك وشاراتك ومستواك' : 'Your points, badges & level',
-        icon: Icons.emoji_events_outlined,
-        color: const Color(0xFFD97706),
-        onTap: () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const AchievementsPage()));
-        },
-      ),
-      // ── NEW FEATURE 4: Trip Scheduler ─────────────────────────────────────
-      FeatureCard(
-        title: isAr ? 'جداول الرحلات 📅' : 'Trip Scheduler 📅',
-        subtitle: isAr ? 'رحلاتك المتكررة بإشعارات' : 'Recurring trips with reminders',
+        title: "Trip Scheduler 📅".tr(),
+        subtitle: "Recurring trips with reminders".tr(),
         icon: Icons.calendar_month_outlined,
         color: Colors.indigo,
         onTap: () {
@@ -1073,8 +946,8 @@ class _HomePageState extends State<_HomePageView> {
       ),
       // ── NEW FEATURE 5: Pricing Calculator ─────────────────────────────────
       FeatureCard(
-        title: isAr ? 'حاسبة التكلفة 💳' : 'Cost Calculator 💳',
-        subtitle: isAr ? 'احسب وقارن وفر فلوسك' : 'Calculate, compare & save',
+        title: "Cost Calculator 💳".tr(),
+        subtitle: "Calculate, compare & save".tr(),
         icon: Icons.calculate_outlined,
         color: Colors.green[700]!,
         onTap: () {
@@ -1084,8 +957,8 @@ class _HomePageState extends State<_HomePageView> {
 
       // Tourist Attractions
       FeatureCard(
-        title: isAr ? 'الأماكن السياحية 🗺️' : 'Tourist Attractions 🗺️',
-        subtitle: isAr ? 'اكتشف مزارات مصر من أي محطة • 4 لغات' : 'Discover Egypt landmarks from any station • 4 languages',
+        title: "Tourist Attractions 🗺️".tr(),
+        subtitle: "Discover Egypt landmarks from any station • 4 languages".tr(),
         icon: Icons.attractions_outlined,
         color: const Color(0xFFFFB800),
         onTap: () {
@@ -1095,56 +968,15 @@ class _HomePageState extends State<_HomePageView> {
 
       // Line Alerts
       FeatureCard(
-        title: isAr ? 'تنبيهات الخطوط 🔔' : 'Line Alerts 🔔',
-        subtitle: isAr ? 'نوتيفيكيشن فوري لأي تأخير أو ازدحام' : 'Instant alerts for delays & crowd',
+        title: "Line Alerts 🔔".tr(),
+        subtitle: "Instant alerts for delays & crowd".tr(),
         icon: Icons.notifications_active_outlined,
         color: Colors.red[700]!,
         onTap: () {
           Navigator.push(context, MaterialPageRoute(builder: (_) => const LineAlertsPage()));
         },
       ),
-      Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(16),
-            onTap: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const ImpactDashboardPage()));
-            },
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Row(
-                children: [
-                  const Text('🇪🇬', style: TextStyle(fontSize: 36)),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          isAr ? 'رفيق خدم مصر كلها' : 'Rafiq Served All of Egypt',
-                          style: TextStyle(color: Theme.of(context).textTheme.titleLarge?.color, fontWeight: FontWeight.bold, fontSize: 16),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          isAr ? '85 محطة • 3 خطوط • 3.5M راكب يومياً' : '85 stations • 3 lines • 3.5M riders',
-                          style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 13),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(Icons.chevron_right, color: Colors.grey),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
+
       FeatureCard(
         title: 'subscription_optimizer'.tr(),
         subtitle: '',
@@ -1173,28 +1005,18 @@ class _HomePageState extends State<_HomePageView> {
         },
       ),
       FeatureCard(
-        title: isAr ? 'أخبار حصرية' : 'Latest News',
-        subtitle: isAr ? 'مصر والعالم لحظة بلحظة' : 'Live updates',
+        title: "Latest News".tr(),
+        subtitle: "Live updates".tr(),
         icon: Icons.newspaper_outlined,
         color: AppColors.primary,
         onTap: () {
           Navigator.push(context, MaterialPageRoute(builder: (_) => const NewsPage()));
         },
       ),
+
       FeatureCard(
-        title: 'nfc_wallet'.tr(),
-        subtitle: isAr ? 'شحن ومتابعة رصيد الكارت' : 'Manage your metro card',
-        icon: Icons.contactless_outlined,
-        color: AppColors.line3,
-        onTap: () {
-          GamificationService.recordNfcUse();
-          GamificationService.unlockBadge(BadgeType.nfcPro);
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const NfcWalletPage()));
-        },
-      ),
-      FeatureCard(
-        title: isAr ? 'المترجم السياحي' : 'Tourist Assist',
-        subtitle: isAr ? 'ترجمة فورية بالصوت' : 'Instant Voice Translation',
+        title: "Tourist Assist".tr(),
+        subtitle: "Instant Voice Translation".tr(),
         icon: Icons.g_translate,
         color: AppColors.primary,
         onTap: () {
@@ -1202,8 +1024,8 @@ class _HomePageState extends State<_HomePageView> {
         },
       ),
       FeatureCard(
-        title: isAr ? 'شبكة المفقودات' : 'Lost & Found',
-        subtitle: isAr ? 'أبلغ عن المفقودات والمعثورات' : 'Report & Find lost items',
+        title: "Lost & Found".tr(),
+        subtitle: "Report & Find lost items".tr(),
         icon: Icons.travel_explore,
         color: AppColors.line2,
         onTap: () {
@@ -1247,7 +1069,7 @@ class _HomePageState extends State<_HomePageView> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(isAr ? 'الخط $lineNum' : 'Line $lineNum', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                      Text(isAr ? 'حالة التشغيل الحالية' : 'Current Operations Status', style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                      Text("Current Operations Status".tr(), style: const TextStyle(color: Colors.grey, fontSize: 13)),
                     ],
                   ),
                 ),
@@ -1258,7 +1080,7 @@ class _HomePageState extends State<_HomePageView> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    isOnTime ? (isAr ? 'مستقر' : 'Stable') : (isAr ? 'يوجد تأخير' : 'Delayed'),
+                    isOnTime ? ("Stable".tr()) : ("Delayed".tr()),
                     style: TextStyle(color: isOnTime ? AppColors.success : AppColors.warning, fontWeight: FontWeight.bold, fontSize: 14),
                   ),
                 ),
@@ -1279,8 +1101,8 @@ class _HomePageState extends State<_HomePageView> {
                   Expanded(
                     child: Text(
                       isOnTime 
-                        ? (isAr ? 'تعمل حركة القطارات بصورة طبيعية ومنتظمة في كلا الاتجاهين.' : 'Trains are operating normally in both directions.')
-                        : (isAr ? 'يوجد عطل فني بسيط وجاري العمل على حله، يرجى توقع تأخيرات طفيفة.' : 'Minor technical issue, expect slight delays.'),
+                        ? ("Trains are operating normally in both directions.".tr())
+                        : ("Minor technical issue, expect slight delays.".tr()),
                       style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color),
                     ),
                   ),
@@ -1298,7 +1120,7 @@ class _HomePageState extends State<_HomePageView> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
                 icon: const Icon(Icons.notifications_active_outlined),
-                label: Text(isAr ? 'تفعيل إشعارات هذا الخط' : 'Enable notifications for this line', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                label: Text("Enable notifications for this line".tr(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 onPressed: () {
                   HapticFeedback.lightImpact();
                   Navigator.pop(ctx);
@@ -1427,10 +1249,7 @@ class _VoiceCommandSheet extends StatelessWidget {
       dest = const CommunityPage();
     } else if (lower.contains('أخبار') || lower.contains('news')) {
       dest = const NewsPage();
-    } else if (lower.contains('ازدحام') || lower.contains('crowd')) {
-      dest = const CrowdPredictionPage();
-    } else if (lower.contains('إنجاز') || lower.contains('achievement') || lower.contains('نقاط') || lower.contains('points')) {
-      dest = const AchievementsPage();
+
     } else if (lower.contains('جدول') || lower.contains('schedule')) {
       dest = const TripSchedulerPage();
     } else if (lower.contains('تكلفة') || lower.contains('price') || lower.contains('حاسبة') || lower.contains('calculator')) {
@@ -1446,8 +1265,8 @@ class _VoiceCommandSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final quickCmds = isAr
-        ? ['الخريطة', 'مخطط الرحلة', 'الازدحام', 'الطوارئ', 'إنجازاتي', 'الذكاء الاصطناعي']
-        : ['Map', 'Route Planner', 'Crowd', 'Emergency', 'Achievements', 'AI Assistant'];
+        ? ['الخريطة', 'مخطط الرحلة', 'الطوارئ', 'الذكاء الاصطناعي']
+        : ['Map', 'Route Planner', 'Emergency', 'AI Assistant'];
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: Container(
@@ -1473,14 +1292,14 @@ class _VoiceCommandSheet extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              isAr ? 'اكتب أمرك...' : 'Type your command...',
+              "Type your command...".tr(),
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             TextField(
               autofocus: true,
               decoration: InputDecoration(
-                hintText: isAr ? 'مثلاً: افتح الخريطة' : 'e.g: Open map',
+                hintText: "e.g: Open map".tr(),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 prefixIcon: const Icon(Icons.keyboard_voice),
               ),

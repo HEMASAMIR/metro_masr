@@ -45,7 +45,7 @@ class _AchievementsPageState extends State<AchievementsPage>
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isAr ? 'إنجازاتي' : 'My Achievements'),
+        title: Text("My Achievements".tr()),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -62,7 +62,7 @@ class _AchievementsPageState extends State<AchievementsPage>
 
             // Badges section
             Text(
-              isAr ? 'الشارات والجوائز' : 'Badges & Awards',
+              "Badges & Awards".tr(),
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
@@ -134,7 +134,7 @@ class _AchievementsPageState extends State<AchievementsPage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      isAr ? 'مستواك' : 'Your Level',
+                      "Your Level".tr(),
                       style: TextStyle(color: Colors.grey[600], fontSize: 12),
                     ),
                     Text(
@@ -185,13 +185,13 @@ class _AchievementsPageState extends State<AchievementsPage>
   Widget _buildStatsRow(bool isAr, int points, int trips, int streak, int badges, int total) {
     return Row(
       children: [
-        _statCard(isAr ? 'نقاط' : 'Points', '$points', '⭐', AppColors.primary),
+        _statCard("Points".tr(), '$points', '⭐', AppColors.primary),
         const SizedBox(width: 8),
-        _statCard(isAr ? 'رحلات' : 'Trips', '$trips', '🚇', AppColors.line2),
+        _statCard("Trips".tr(), '$trips', '🚇', AppColors.line2),
         const SizedBox(width: 8),
-        _statCard(isAr ? 'يوم متتالي' : 'Day Streak', '$streak', '🔥', Colors.orange),
+        _statCard("Day Streak".tr(), '$streak', '🔥', Colors.orange),
         const SizedBox(width: 8),
-        _statCard(isAr ? 'شارات' : 'Badges', '$badges/$total', '🏅', Colors.purple),
+        _statCard("Badges".tr(), '$badges/$total', '🏅', Colors.purple),
       ],
     );
   }
@@ -322,8 +322,8 @@ class _AchievementsPageState extends State<AchievementsPage>
               ),
               child: Text(
                 badge.isUnlocked
-                    ? (isAr ? '✅ مفتوحة!' : '✅ Unlocked!')
-                    : (isAr ? '🔒 لم تُفتح بعد' : '🔒 Not yet unlocked'),
+                    ? ("✅ Unlocked!".tr())
+                    : ("🔒 Not yet unlocked".tr()),
                 style: TextStyle(
                   color: badge.isUnlocked ? Colors.green : Colors.grey,
                   fontWeight: FontWeight.bold,
@@ -335,7 +335,7 @@ class _AchievementsPageState extends State<AchievementsPage>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text(isAr ? 'إغلاق' : 'Close'),
+            child: Text("Close".tr()),
           ),
         ],
       ),
@@ -380,7 +380,7 @@ class _AchievementsPageState extends State<AchievementsPage>
               const Icon(Icons.stars, color: Colors.amber, size: 20),
               const SizedBox(width: 8),
               Text(
-                isAr ? 'كيف تكسب نقاطاً' : 'How to Earn Points',
+                "How to Earn Points".tr(),
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
               ),
             ],

@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:animate_do/animate_do.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -136,7 +137,7 @@ class _NewsTabViewState extends State<_NewsTabView> with TickerProviderStateMixi
             flexibleSpace: FlexibleSpaceBar(
               titlePadding: const EdgeInsets.only(left: 16, bottom: 56),
               title: Text(
-                isAr ? '📰 أخبار المترو' : '📰 Metro News',
+                "📰 Metro News".tr(),
                 style: const TextStyle(
                   color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18),
               ),
@@ -165,10 +166,10 @@ class _NewsTabViewState extends State<_NewsTabView> with TickerProviderStateMixi
               unselectedLabelColor: Colors.white60,
               labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
               tabs: [
-                Tab(icon: const Icon(Icons.newspaper_rounded, size: 18), text: isAr ? 'الأخبار' : 'News'),
-                Tab(icon: const Icon(Icons.lock_rounded, size: 18), text: isAr ? 'إغلاق محطات' : 'Closures'),
-                Tab(icon: const Icon(Icons.build_rounded, size: 18), text: isAr ? 'صيانة' : 'Maintenance'),
-                Tab(icon: const Icon(Icons.public_rounded, size: 18), text: isAr ? 'العالم' : 'World'),
+                Tab(icon: const Icon(Icons.newspaper_rounded, size: 18), text: "News".tr()),
+                Tab(icon: const Icon(Icons.lock_rounded, size: 18), text: "Closures".tr()),
+                Tab(icon: const Icon(Icons.build_rounded, size: 18), text: "Maintenance".tr()),
+                Tab(icon: const Icon(Icons.public_rounded, size: 18), text: "World".tr()),
               ],
             ),
           ),
@@ -210,7 +211,7 @@ class _EgNewsTab extends StatelessWidget {
         }
         if (state is NewsLoaded) {
           if (state.articles.isEmpty) {
-            return Center(child: Text(isAr ? 'لا توجد أخبار متاحة' : 'No news available',
+            return Center(child: Text("No news available".tr(),
                 style: const TextStyle(fontWeight: FontWeight.bold)));
           }
           return ListView.builder(
@@ -263,7 +264,7 @@ class _ErrorView extends StatelessWidget {
             children: [
               const Icon(Icons.wifi_off_rounded, size: 72, color: Colors.grey),
               const SizedBox(height: 16),
-              Text(isAr ? 'تعذّر تحميل الأخبار' : 'Could not load news',
+              Text("Could not load news".tr(),
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
               const SizedBox(height: 8),
               Text(message, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
@@ -272,7 +273,7 @@ class _ErrorView extends StatelessWidget {
               ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
                 icon: const Icon(Icons.refresh_rounded),
-                label: Text(isAr ? 'إعادة المحاولة' : 'Retry'),
+                label: Text("Retry".tr()),
                 onPressed: () => context.read<NewsBloc>().add(FetchNews(countryCode: countryCode)),
               ),
             ],
@@ -313,10 +314,10 @@ class _MetroAlertsTabState extends State<_MetroAlertsTab> {
 
   String _typeLabel(_AlertType t, bool isAr) =>
       t == _AlertType.closure
-          ? (isAr ? 'إغلاق' : 'Closure')
+          ? ("Closure".tr())
           : t == _AlertType.maintenance
-              ? (isAr ? 'صيانة' : 'Maintenance')
-              : (isAr ? 'تأخير' : 'Delay');
+              ? ("Maintenance".tr())
+              : ("Delay".tr());
 
   @override
   Widget build(BuildContext context) {
@@ -330,13 +331,13 @@ class _MetroAlertsTabState extends State<_MetroAlertsTab> {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                _chip('all', isAr ? 'الكل' : 'All', AppColors.primary),
+                _chip('all', "All".tr(), AppColors.primary),
                 const SizedBox(width: 8),
-                _chip('line1', isAr ? 'خط 1' : 'Line 1', AppColors.line1),
+                _chip('line1', "Line 1".tr(), AppColors.line1),
                 const SizedBox(width: 8),
-                _chip('line2', isAr ? 'خط 2' : 'Line 2', AppColors.line2),
+                _chip('line2', "Line 2".tr(), AppColors.line2),
                 const SizedBox(width: 8),
-                _chip('line3', isAr ? 'خط 3' : 'Line 3', AppColors.line3),
+                _chip('line3', "Line 3".tr(), AppColors.line3),
               ],
             ),
           ),
@@ -350,7 +351,7 @@ class _MetroAlertsTabState extends State<_MetroAlertsTab> {
                 children: [
                   const Icon(Icons.check_circle_outline_rounded, size: 64, color: Colors.green),
                   const SizedBox(height: 12),
-                  Text(isAr ? 'لا توجد تنبيهات حالياً 🎉' : 'No alerts right now 🎉',
+                  Text("No alerts right now 🎉".tr(),
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 ],
               ),
@@ -429,9 +430,9 @@ class _MetroAlertsTabState extends State<_MetroAlertsTab> {
                                           decoration: BoxDecoration(color: lineCol, shape: BoxShape.circle)),
                                         const SizedBox(width: 4),
                                         Text(
-                                          alert.line == 'line1' ? (isAr ? 'خط 1' : 'L1')
-                                              : alert.line == 'line2' ? (isAr ? 'خط 2' : 'L2')
-                                              : (isAr ? 'خط 3' : 'L3'),
+                                          alert.line == 'line1' ? ("L1".tr())
+                                              : alert.line == 'line2' ? ("L2".tr())
+                                              : ("L3".tr()),
                                           style: TextStyle(color: lineCol, fontSize: 12, fontWeight: FontWeight.bold),
                                         ),
                                       ]),

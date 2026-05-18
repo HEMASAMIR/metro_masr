@@ -5,11 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/metro_schedule_service.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../../core/utils/voice_service.dart';
 import '../cubits/nearby_stations_cubit.dart';
-import 'station_details_page.dart';
-
 class NearbyStationsPage extends StatelessWidget {
   const NearbyStationsPage({super.key});
 
@@ -152,94 +151,127 @@ class _NearbyStationsView extends StatelessWidget {
     final s = swd.station;
     final name = lang == 'ar' ? s.nameAr : s.nameEn;
     final color = _lineColor(s.line);
-    final distKm = (swd.distanceMetres / 1000).toStringAsFixed(2);
-    final walkMins = (swd.distanceMetres / 80).ceil(); // ~80m/min walking
+    final distLabel = swd.distanceLabel;
+    final walkMins = swd.walkingMinutes;
+    final walkDisplay = walkMins <= 30
+        ? '~$walkMins ${lang == 'ar' ? 'د' : 'min'}'
+        : (lang == 'ar' ? 'استخدم مواصلة' : 'Take transit');
 
-    // Next train simulated
-    final now = DateTime.now();
-    final nextMin = 5 - (now.minute % 5);
+    // ── Real train schedule (based on published Cairo Metro headways) ────────────
+    final schedule = MetroSchedule.getNextTrain(lineNumber: s.line);
 
-    // Crowd
-    final hour = now.hour;
-    final isRush = (hour >= 7 && hour <= 9) || (hour >= 14 && hour <= 17);
-    final isMed = (hour >= 10 && hour <= 13) || (hour >= 18 && hour <= 21);
-    final crowdColor = isRush ? AppColors.error : isMed ? AppColors.warning : AppColors.success;
-    final crowdLabel = isRush
-        ? (lang == 'ar' ? 'ازدحام شديد' : 'Very Crowded')
-        : isMed
-            ? (lang == 'ar' ? 'متوسط' : 'Moderate')
-            : (lang == 'ar' ? 'هادئ' : 'Quiet');
 
     return FadeInDown(
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [color, color.withValues(alpha: 0.75)],
+          gradient: const LinearGradient(
+            colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 6))],
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: color.withValues(alpha: 0.3), width: 1.5),
+          boxShadow: [
+            BoxShadow(color: color.withValues(alpha: 0.2), blurRadius: 24, offset: const Offset(0, 10)),
+            const BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4)),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
-                  child: const Icon(Icons.location_on, color: Colors.white, size: 24),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: color.withValues(alpha: 0.4), width: 1),
+                  ),
+                  child: Icon(Icons.my_location_rounded, color: color, size: 24),
                 ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(lang == 'ar' ? '📍 أقرب محطة' : '📍 Nearest Station',
-                        style: const TextStyle(color: Colors.white70, fontSize: 12)),
-                    Text(name,
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20)),
-                    Text(lang == 'ar' ? 'الخط ${s.line}' : 'Line ${s.line}',
-                        style: const TextStyle(color: Colors.white70, fontSize: 13)),
-                  ],
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(lang == 'ar' ? 'أقرب محطة ليك' : 'Nearest Station',
+                          style: const TextStyle(color: Colors.white54, fontSize: 13, fontWeight: FontWeight.w500)),
+                      const SizedBox(height: 2),
+                      Text(name,
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 22, letterSpacing: 0.5)),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Container(
+                            width: 8, height: 8,
+                            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(lang == 'ar' ? 'الخط ${s.line}' : 'Line ${s.line}',
+                              style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-                const Spacer(),
                 IconButton(
-                  icon: const Icon(Icons.volume_up, color: Colors.white),
+                  icon: const Icon(Icons.volume_up_rounded, color: Colors.white70),
                   onPressed: () => VoiceService.speak(name, lang),
                   tooltip: lang == 'ar' ? 'استمع' : 'Listen',
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.white.withValues(alpha: 0.05),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            // Stats row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _heroStat(Icons.directions_walk, '$distKm كم', lang == 'ar' ? 'المسافة' : 'Distance'),
-                _heroStat(Icons.timer_outlined, '~$walkMins ${lang == 'ar' ? 'د' : 'min'}', lang == 'ar' ? 'مشياً' : 'Walking'),
-                _heroStat(Icons.train, '${nextMin == 0 ? 1 : nextMin} ${lang == 'ar' ? 'د' : 'min'}', lang == 'ar' ? 'القطار القادم' : 'Next Train'),
-                _heroStat(Icons.people, crowdLabel, lang == 'ar' ? 'الزحمة' : 'Crowd', color: crowdColor),
-              ],
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.03),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _heroStat(Icons.directions_walk_rounded, distLabel, lang == 'ar' ? 'المسافة' : 'Distance'),
+                  Container(width: 1, height: 40, color: Colors.white12),
+                  _heroStat(Icons.timer_outlined, walkDisplay, lang == 'ar' ? 'مشياً' : 'Walking'),
+                  Container(width: 1, height: 40, color: Colors.white12),
+                  _heroStat(
+                    Icons.train_rounded,
+                    schedule.waitLabel(lang),
+                    lang == 'ar' ? 'القطار القادم' : 'Next Train',
+                    color: _waitColor(schedule.waitLevel),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                icon: const Icon(Icons.info_outline, size: 18),
-                label: Text(lang == 'ar' ? 'تفاصيل المحطة' : 'Station Details'),
+                icon: Icon(Icons.info_outline_rounded, size: 20, color: color),
+                label: Text(
+                  lang == 'ar' ? 'عرض تفاصيل المحطة' : 'View Station Details',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: color),
+                ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: color,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  backgroundColor: color.withValues(alpha: 0.15),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(color: color.withValues(alpha: 0.3)),
+                  ),
+                  elevation: 0,
                 ),
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => StationDetailsPage(station: s)),
-                ),
+                onPressed: () {},
               ),
             ),
           ],
@@ -251,10 +283,11 @@ class _NearbyStationsView extends StatelessWidget {
   Widget _heroStat(IconData icon, String value, String label, {Color? color}) {
     return Column(
       children: [
-        Icon(icon, color: color ?? Colors.white70, size: 20),
-        const SizedBox(height: 4),
-        Text(value, style: TextStyle(color: color ?? Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
-        Text(label, style: const TextStyle(color: Colors.white60, fontSize: 10)),
+        Icon(icon, color: color ?? Colors.white70, size: 22),
+        const SizedBox(height: 8),
+        Text(value, style: TextStyle(color: color ?? Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+        const SizedBox(height: 2),
+        Text(label, style: const TextStyle(color: Colors.white54, fontSize: 11)),
       ],
     );
   }
@@ -263,23 +296,12 @@ class _NearbyStationsView extends StatelessWidget {
     final s = swd.station;
     final name = lang == 'ar' ? s.nameAr : s.nameEn;
     final color = _lineColor(s.line);
-    final distM = swd.distanceMetres;
-    final distLabel = distM < 1000
-        ? '${distM.round()} ${lang == 'ar' ? 'م' : 'm'}'
-        : '${(distM / 1000).toStringAsFixed(1)} ${lang == 'ar' ? 'كم' : 'km'}';
+    final distLabel = swd.distanceLabel;
 
-    // simulated next train
-    final now = DateTime.now();
-    // randomize per station id hash so each shows different time
-    final offset = (s.id.hashCode.abs() % 5) + 1;
-    final nextMin = ((5 - (now.minute % 5)) + offset) % 6 + 1;
+    // Real schedule for this line
+    final schedule = MetroSchedule.getNextTrain(lineNumber: s.line);
 
-    return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => StationDetailsPage(station: s)),
-      ),
-      child: Container(
+    return Container(
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
@@ -334,7 +356,7 @@ class _NearbyStationsView extends StatelessWidget {
                 ],
               ),
             ),
-            // Distance + train time
+            // Distance + real next train badge
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -349,17 +371,21 @@ class _NearbyStationsView extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.08),
+                    color: _waitColor(schedule.waitLevel).withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.train, size: 11, color: AppColors.primary),
+                      Icon(Icons.train, size: 11, color: _waitColor(schedule.waitLevel)),
                       const SizedBox(width: 3),
                       Text(
-                        '$nextMin د',
-                        style: const TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.bold),
+                        schedule.waitLabel(lang),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: _waitColor(schedule.waitLevel),
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
@@ -370,13 +396,23 @@ class _NearbyStationsView extends StatelessWidget {
             const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 18),
           ],
         ),
-      ),
-    );
+      );
   }
 
   Color _lineColor(int line) {
     if (line == 1) return AppColors.line1;
     if (line == 2) return AppColors.line2;
     return AppColors.line3;
+  }
+
+  /// Maps wait level to a traffic-light color for the badge
+  Color _waitColor(TrainWaitLevel level) {
+    switch (level) {
+      case TrainWaitLevel.now:    return const Color(0xFF00C853); // green
+      case TrainWaitLevel.soon:   return const Color(0xFF69F0AE); // light green
+      case TrainWaitLevel.coming: return const Color(0xFFFFAB00); // amber
+      case TrainWaitLevel.later:  return const Color(0xFF78909C); // grey-blue
+      case TrainWaitLevel.closed: return const Color(0xFFEF5350); // red
+    }
   }
 }

@@ -9,6 +9,8 @@ class Report extends Equatable {
   final DateTime timestamp;
   final bool isSynced;
   final String category; // 'issue', 'overcrowd', 'harassment', 'other'
+  final String? reporterName;
+  final String? imageUrl;
 
   const Report({
     required this.id,
@@ -18,6 +20,8 @@ class Report extends Equatable {
     required this.timestamp,
     this.isSynced = false,
     this.category = 'issue',
+    this.reporterName,
+    this.imageUrl,
   });
 
   Report copyWith({
@@ -28,6 +32,8 @@ class Report extends Equatable {
     DateTime? timestamp,
     bool? isSynced,
     String? category,
+    String? reporterName,
+    String? imageUrl,
   }) {
     return Report(
       id: id ?? this.id,
@@ -37,6 +43,8 @@ class Report extends Equatable {
       timestamp: timestamp ?? this.timestamp,
       isSynced: isSynced ?? this.isSynced,
       category: category ?? this.category,
+      reporterName: reporterName ?? this.reporterName,
+      imageUrl: imageUrl ?? this.imageUrl,
     );
   }
 
@@ -49,6 +57,8 @@ class Report extends Equatable {
       'timestamp': timestamp.toIso8601String(),
       'isSynced': isSynced,
       'category': category,
+      'reporterName': reporterName,
+      'imageUrl': imageUrl,
     };
   }
 
@@ -61,6 +71,8 @@ class Report extends Equatable {
       timestamp: DateTime.parse(map['timestamp']),
       isSynced: map['isSynced'] ?? false,
       category: map['category'] ?? 'other',
+      reporterName: map['reporterName'],
+      imageUrl: map['imageUrl'],
     );
   }
 
@@ -68,5 +80,5 @@ class Report extends Equatable {
   factory Report.fromJson(String source) => Report.fromMap(json.decode(source));
 
   @override
-  List<Object?> get props => [id, title, description, location, timestamp, isSynced, category];
+  List<Object?> get props => [id, title, description, location, timestamp, isSynced, category, reporterName, imageUrl];
 }

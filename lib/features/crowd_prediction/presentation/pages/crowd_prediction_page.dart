@@ -75,16 +75,16 @@ class _CrowdPredictionPageState extends State<CrowdPredictionPage>
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isAr ? 'توقع الازدحام' : 'Crowd Prediction'),
+        title: Text("Crowd Prediction".tr()),
         bottom: TabBar(
           controller: _tabController,
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white60,
           indicatorColor: Colors.white,
           tabs: [
-            Tab(text: isAr ? 'الخط الأول' : 'Line 1'),
-            Tab(text: isAr ? 'الخط الثاني' : 'Line 2'),
-            Tab(text: isAr ? 'الخط الثالث' : 'Line 3'),
+            Tab(text: "Line 1".tr()),
+            Tab(text: "Line 2".tr()),
+            Tab(text: "Line 3".tr()),
           ],
         ),
       ),
@@ -99,7 +99,7 @@ class _CrowdPredictionPageState extends State<CrowdPredictionPage>
 
             // Hourly timeline
             Text(
-              isAr ? 'توقع الازدحام خلال اليوم' : "Today's Crowd Forecast",
+              "Today's Crowd Forecast".tr(),
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
@@ -167,7 +167,7 @@ class _CrowdPredictionPageState extends State<CrowdPredictionPage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      isAr ? 'الحالة الآن' : 'Current Status',
+                      "Current Status".tr(),
                       style: TextStyle(
                         color: Colors.grey[600],
                         fontSize: 13,
@@ -316,7 +316,7 @@ class _CrowdPredictionPageState extends State<CrowdPredictionPage>
               const Icon(Icons.access_time, color: Colors.green, size: 20),
               const SizedBox(width: 8),
               Text(
-                isAr ? 'أفضل أوقات السفر اليوم' : 'Best Travel Times Today',
+                "Best Travel Times Today".tr(),
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
               ),
             ],
@@ -358,9 +358,9 @@ class _CrowdPredictionPageState extends State<CrowdPredictionPage>
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        _legendItem(Colors.green, isAr ? 'هادي' : 'Low', isAr ? '< 45%' : '< 45%'),
-        _legendItem(Colors.orange, isAr ? 'متوسط' : 'Moderate', '45–75%'),
-        _legendItem(Colors.red, isAr ? 'مزدحم' : 'High', '> 75%'),
+        _legendItem(Colors.green, "Low".tr(), "< 45%".tr()),
+        _legendItem(Colors.orange, "Moderate".tr(), '45–75%'),
+        _legendItem(Colors.red, "High".tr(), '> 75%'),
       ],
     );
   }
@@ -412,7 +412,7 @@ class _CrowdPredictionPageState extends State<CrowdPredictionPage>
               const Icon(Icons.lightbulb_outline, color: Colors.amber, size: 20),
               const SizedBox(width: 8),
               Text(
-                isAr ? 'نصائح الآن' : 'Current Tips',
+                "Current Tips".tr(),
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
               ),
             ],

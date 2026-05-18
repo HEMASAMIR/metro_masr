@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Rafiq Metrro</string>
+	<string>رفيق مترو</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -66,5 +66,9 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>نحتاج الكاميرا لتصوير المفقودات وحالة الزحام في المترو.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>نحتاج للوصول للصور لاختيار صور المفقودات.</string>
 </dict>
 </plist>

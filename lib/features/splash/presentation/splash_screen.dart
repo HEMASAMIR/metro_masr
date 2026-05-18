@@ -2,7 +2,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/offline_storage.dart';
-import 'onboarding_screen.dart';
 import '../../metro/presentation/pages/home_page.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -114,12 +113,10 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _navigate() async {
-    final seenOnboarding = AppStorage.hasSeenOnboarding();
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) =>
-            seenOnboarding ? const HomePage() : const OnboardingScreen(),
+        pageBuilder: (_, __, ___) => const HomePage(),
         transitionDuration: const Duration(milliseconds: 600),
         transitionsBuilder: (_, anim, __, child) => FadeTransition(
           opacity: anim,

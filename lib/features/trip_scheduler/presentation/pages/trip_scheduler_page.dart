@@ -108,14 +108,14 @@ class _TripSchedulerPageState extends State<TripSchedulerPage> {
                   ),
                 ),
                 Text(
-                  isAr ? 'جدولة رحلة جديدة' : 'Schedule New Trip',
+                  "Schedule New Trip".tr(),
                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 20),
 
                 // From Station
                 _dropdownField(
-                  isAr ? 'من محطة' : 'From Station',
+                  "From Station".tr(),
                   Icons.circle,
                   Colors.green,
                   stationNames,
@@ -126,7 +126,7 @@ class _TripSchedulerPageState extends State<TripSchedulerPage> {
 
                 // To Station
                 _dropdownField(
-                  isAr ? 'إلى محطة' : 'To Station',
+                  "To Station".tr(),
                   Icons.location_on,
                   Colors.red,
                   stationNames,
@@ -145,7 +145,7 @@ class _TripSchedulerPageState extends State<TripSchedulerPage> {
                     ),
                     child: const Icon(Icons.access_time, color: AppColors.primary),
                   ),
-                  title: Text(isAr ? 'وقت الإشعار' : 'Reminder Time'),
+                  title: Text("Reminder Time".tr()),
                   subtitle: Text('${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}'),
                   onTap: () async {
                     final t = await showTimePicker(context: ctx, initialTime: selectedTime);
@@ -159,7 +159,7 @@ class _TripSchedulerPageState extends State<TripSchedulerPage> {
                 const SizedBox(height: 20),
 
                 // Days selection
-                Text(isAr ? 'أيام التكرار' : 'Repeat Days',
+                Text("Repeat Days".tr(),
                     style: const TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 _buildDaySelector(days, isAr, setModalState),
@@ -190,12 +190,12 @@ class _TripSchedulerPageState extends State<TripSchedulerPage> {
                       if (ctx.mounted) Navigator.pop(ctx);
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text(isAr ? '✅ تمت الجدولة بنجاح!' : '✅ Trip scheduled!'),
+                          content: Text("✅ Trip scheduled!".tr()),
                           backgroundColor: Colors.green,
                         ));
                       }
                     },
-                    child: Text(isAr ? 'حفظ الجدول' : 'Save Schedule',
+                    child: Text("Save Schedule".tr(),
                         style: const TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ),
@@ -278,12 +278,12 @@ class _TripSchedulerPageState extends State<TripSchedulerPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isAr ? 'جداول الرحلات' : 'Trip Scheduler'),
+        title: Text("Trip Scheduler".tr()),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _addTrip,
         icon: const Icon(Icons.add),
-        label: Text(isAr ? 'جدولة رحلة' : 'Schedule Trip'),
+        label: Text("Schedule Trip".tr()),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
       ),
@@ -308,14 +308,12 @@ class _TripSchedulerPageState extends State<TripSchedulerPage> {
           const Text('📅', style: TextStyle(fontSize: 64)),
           const SizedBox(height: 16),
           Text(
-            isAr ? 'لا توجد رحلات مجدولة' : 'No scheduled trips yet',
+            "No scheduled trips yet".tr(),
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
-            isAr
-                ? 'اضغط على "جدولة رحلة" لإضافة رحلتك اليومية وهتاخد إشعار قبلها!'
-                : 'Tap "Schedule Trip" to add your daily commute and get reminders!',
+            'Tap "Schedule Trip" to add your daily commute and get reminders!'.tr(),
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.grey[600]),
           ),

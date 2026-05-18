@@ -430,7 +430,7 @@ class _AttractionDetailPageState extends State<AttractionDetailPage>
                                     ),
                                     if (_reviewCount > 0)
                                       Text(
-                                        '$_reviewCount ${isAr ? 'تقييم' : 'reviews'}',
+                                        '$_reviewCount ${"reviews".tr()}',
                                         style: const TextStyle(
                                             color: Colors.amber,
                                             fontSize: 9),
@@ -452,7 +452,7 @@ class _AttractionDetailPageState extends State<AttractionDetailPage>
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                '${widget.stationName} • ${a.walkingMinutes} ${isAr ? 'دقيقة مشياً' : 'min walk'}',
+                                '${widget.stationName} • ${a.walkingMinutes} ${"min walk".tr()}',
                                 style: const TextStyle(
                                   color: Color(0xFF8899CC),
                                   fontSize: 12,
@@ -507,7 +507,7 @@ class _AttractionDetailPageState extends State<AttractionDetailPage>
                   // ── AI Chat ─────────────────────────────────────────────
                   _buildSection(
                     icon: '🤖',
-                    title: isAr ? 'اسأل رفيق الذكي' : 'Ask Rafiq AI',
+                    title: "Ask Rafiq AI".tr(),
                     child: _buildAiChat(isAr, color),
                   ),
 
@@ -537,9 +537,7 @@ class _AttractionDetailPageState extends State<AttractionDetailPage>
                         ),
                         icon: const Icon(Icons.language, color: Colors.white),
                         label: Text(
-                          isAr
-                              ? 'تصفح الصور والمعلومات الحية (Web)'
-                              : 'Browse Live Gallery (Web)',
+                          "Browse Live Gallery (Web)".tr(),
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 16,
@@ -559,9 +557,7 @@ class _AttractionDetailPageState extends State<AttractionDetailPage>
                                   title: name,
                                   description: desc,
                                   url: url,
-                                  sourceName: isAr
-                                      ? 'ويكيبيديا / بحث تفاعلي'
-                                      : 'Wikipedia / Live Search',
+                                  sourceName: "Wikipedia / Live Search".tr(),
                                   imageUrl: a.imageUrl,
                                 ),
                               ),
@@ -617,6 +613,24 @@ class _AttractionDetailPageState extends State<AttractionDetailPage>
                     fit: BoxFit.cover,
                     colorBlendMode: BlendMode.darken,
                     color: Colors.black.withOpacity(0.5),
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        color: Colors.grey[800],
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.broken_image_rounded, size: 40, color: Colors.grey[500]),
+                              const SizedBox(height: 8),
+                              Text(
+                                "Image not available",
+                                style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                              )
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                   );
                 },
               ),
@@ -712,21 +726,21 @@ class _AttractionDetailPageState extends State<AttractionDetailPage>
                 ? '${a.openHours.substring(0, 15)}…'
                 : a.openHours,
             Colors.purple,
-            isAr ? 'ساعات' : 'Hours',
+            "Hours".tr(),
           ),
           _divider(),
           _quickInfoItem(
             a.isFree ? Icons.check_circle_rounded : Icons.paid_rounded,
-            a.isFree ? (isAr ? 'مجاني' : 'Free') : a.admissionEGP,
+            a.isFree ? ("Free".tr()) : a.admissionEGP,
             a.isFree ? Colors.green : Colors.orange,
-            isAr ? 'التذكرة' : 'Ticket',
+            "Ticket".tr(),
           ),
           _divider(),
           _quickInfoItem(
             Icons.directions_walk_rounded,
             '${a.walkingMinutes} min',
             Colors.blue,
-            isAr ? 'مشياً' : 'Walk',
+            "Walk".tr(),
           ),
         ],
       ),
@@ -863,7 +877,7 @@ class _AttractionDetailPageState extends State<AttractionDetailPage>
             ),
             const SizedBox(width: 12),
             Text(
-              isAr ? 'عن المكان' : 'About',
+              "About".tr(),
               style: const TextStyle(
                 fontWeight: FontWeight.w900,
                 fontSize: 18,
@@ -919,7 +933,7 @@ class _AttractionDetailPageState extends State<AttractionDetailPage>
                   : CrossAxisAlignment.start,
               children: [
                 Text(
-                  isAr ? 'هل تعلم؟' : 'Did you know?',
+                  "Did you know?".tr(),
                   style: TextStyle(
                     color: color,
                     fontWeight: FontWeight.w800,
@@ -960,26 +974,26 @@ class _AttractionDetailPageState extends State<AttractionDetailPage>
       stats.add(_HighlightStat(
         icon: '🏛️',
         value: yr,
-        label: isAr ? 'تأسس' : 'Founded',
+        label: "Founded".tr(),
       ));
     }
     // Rating
     stats.add(_HighlightStat(
       icon: '⭐',
       value: '${a.rating}',
-      label: isAr ? 'تقييم' : 'Rating',
+      label: "Rating".tr(),
     ));
     // Walking distance
     stats.add(_HighlightStat(
       icon: '🚶',
       value: '${a.walkingMinutes}m',
-      label: isAr ? 'مشياً' : 'Walk',
+      label: "Walk".tr(),
     ));
     // Admission
     stats.add(_HighlightStat(
       icon: a.isFree ? '🆓' : '🎟️',
-      value: a.isFree ? (isAr ? 'مجاني' : 'Free') : a.admissionEGP,
-      label: isAr ? 'الدخول' : 'Entry',
+      value: a.isFree ? ("Free".tr()) : a.admissionEGP,
+      label: "Entry".tr(),
     ));
     return stats;
   }
@@ -1077,9 +1091,7 @@ class _AttractionDetailPageState extends State<AttractionDetailPage>
                         ? ui.TextDirection.rtl
                         : ui.TextDirection.ltr,
                     decoration: InputDecoration(
-                      hintText: isAr
-                          ? 'اسأل عن المكان...'
-                          : 'Ask about this place...',
+                      hintText: "Ask about this place...".tr(),
                       hintStyle: const TextStyle(
                         color: Colors.grey,
                         fontSize: 12,
@@ -1537,8 +1549,8 @@ class _AboutExpandableState extends State<_AboutExpandable>
                 const SizedBox(width: 6),
                 Text(
                   _expanded
-                      ? (widget.isAr ? 'عرض أقل' : 'Show less')
-                      : (widget.isAr ? 'اقرأ المزيد' : 'Read more'),
+                      ? ("Show less".tr())
+                      : ("Read more".tr()),
                   style: TextStyle(
                     color: widget.color,
                     fontSize: 12,

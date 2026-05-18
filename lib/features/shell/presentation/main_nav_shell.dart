@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../../core/theme/app_colors.dart';
@@ -15,11 +16,8 @@ class MainNavShell extends StatefulWidget {
   State<MainNavShell> createState() => _MainNavShellState();
 }
 
-class _MainNavShellState extends State<MainNavShell>
-    with TickerProviderStateMixin {
+class _MainNavShellState extends State<MainNavShell> {
   int _currentIndex = 0;
-  late List<AnimationController> _iconControllers;
-  late List<Animation<double>> _iconAnimations;
 
   final _pages = const [
     HomePage(),
@@ -33,150 +31,213 @@ class _MainNavShellState extends State<MainNavShell>
   void initState() {
     super.initState();
     GamificationService.init();
-    _iconControllers = List.generate(
-      5,
-      (_) => AnimationController(vsync: this, duration: const Duration(milliseconds: 300)),
-    );
-    _iconAnimations = _iconControllers
-        .map((c) => Tween<double>(begin: 1.0, end: 1.25).animate(
-              CurvedAnimation(parent: c, curve: Curves.elasticOut),
-            ))
-        .toList();
-    _iconControllers[0].forward();
-  }
-
-  @override
-  void dispose() {
-    for (final c in _iconControllers) {
-      c.dispose();
-    }
-    super.dispose();
   }
 
   void _onTap(int index) {
     if (index == _currentIndex) return;
-    _iconControllers[_currentIndex].reverse();
     setState(() => _currentIndex = index);
-    _iconControllers[index].forward();
   }
 
   @override
   Widget build(BuildContext context) {
-    final isAr = context.locale.languageCode == 'ar';
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final navItems = [
       _NavItem(
-        icon: Icons.home_rounded,
+        icon: Icons.home_outlined,
         activeIcon: Icons.home_rounded,
-        label: isAr ? 'الرئيسية' : 'Home',
+        label: "Home".tr(),
         color: AppColors.primary,
       ),
       _NavItem(
         icon: Icons.confirmation_number_outlined,
         activeIcon: Icons.confirmation_number_rounded,
-        label: isAr ? 'سعر التذكرة' : 'Ticket Price',
+        label: "Ticket Price".tr(),
         color: const Color(0xFF1565C0),
       ),
       _NavItem(
         icon: Icons.map_outlined,
         activeIcon: Icons.map_rounded,
-        label: isAr ? 'خطوط المترو' : 'Metro Lines',
+        label: "Metro Lines".tr(),
         color: AppColors.line3,
       ),
       _NavItem(
         icon: Icons.people_outline_rounded,
         activeIcon: Icons.people_rounded,
-        label: isAr ? 'المجتمع' : 'Community',
+        label: "Community".tr(),
         color: AppColors.line2,
       ),
       _NavItem(
         icon: Icons.settings_outlined,
         activeIcon: Icons.settings_rounded,
-        label: isAr ? 'الإعدادات' : 'Settings',
+        label: "Settings".tr(),
         color: Colors.grey,
       ),
     ];
 
     return Scaffold(
+      extendBody: true,
       body: IndexedStack(
         index: _currentIndex,
         children: _pages,
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.surfaceDark : Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.10),
-              blurRadius: 24,
-              offset: const Offset(0, -6),
-            ),
-          ],
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: List.generate(navItems.length, (i) {
-                final item = navItems[i];
-                final isSelected = i == _currentIndex;
-                return GestureDetector(
-                  onTap: () => _onTap(i),
-                  behavior: HitTestBehavior.opaque,
-                  child: AnimatedBuilder(
-                    animation: _iconAnimations[i],
-                    builder: (_, child) => Transform.scale(
-                      scale: isSelected ? _iconAnimations[i].value : 1.0,
-                      child: child,
-                    ),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 280),
-                      curve: Curves.easeInOut,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: isSelected ? 16 : 10,
-                        vertical: 8,
+      bottomNavigationBar: SafeArea(
+        child: Container(
+          height: 100, // accommodate the margin and the rising icon
+          padding: const EdgeInsets.only(bottom: 16, left: 20, right: 20),
+          child: Stack(
+            alignment: Alignment.bottomCenter,
+            clipBehavior: Clip.none,
+            children: [
+              // Glassmorphic background
+              ClipRRect(
+                borderRadius: BorderRadius.circular(30),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                  child: Container(
+                    height: 75,
+                    decoration: BoxDecoration(
+                      color: (isDark ? AppColors.surfaceDark : Colors.white).withValues(alpha: 0.8),
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(
+                        color: (isDark ? Colors.white : AppColors.primary).withValues(alpha: 0.1),
+                        width: 1.5,
                       ),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? item.color.withValues(alpha: 0.12)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            isSelected ? item.activeIcon : item.icon,
-                            color: isSelected ? item.color : Colors.grey,
-                            size: 24,
-                          ),
-                          AnimatedSize(
-                            duration: const Duration(milliseconds: 280),
-                            curve: Curves.easeInOut,
-                            child: isSelected
-                                ? Padding(
-                                    padding: const EdgeInsets.only(right: 6, left: 6),
-                                    child: Text(
-                                      item.label,
-                                      style: TextStyle(
-                                        color: item.color,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  )
-                                : const SizedBox.shrink(),
-                          ),
-                        ],
-                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 30,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
                     ),
                   ),
-                );
-              }),
-            ),
+                ),
+              ),
+              
+              // Layout constraints to handle the sliding blob and icons properly
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: 75,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final itemWidth = constraints.maxWidth / navItems.length;
+                    return Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        // Sliding Background Blob
+                        AnimatedPositioned(
+                          duration: const Duration(milliseconds: 400),
+                          curve: Curves.elasticOut,
+                          left: _currentIndex * itemWidth + (itemWidth - 55) / 2,
+                          top: 10,
+                          child: Container(
+                            width: 55,
+                            height: 55,
+                            decoration: BoxDecoration(
+                              color: navItems[_currentIndex].color.withValues(alpha: 0.15),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                        
+                        // Icons and Labels
+                        SizedBox(
+                          height: 75,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: List.generate(navItems.length, (i) {
+                              final item = navItems[i];
+                              final isSelected = i == _currentIndex;
+
+                              return GestureDetector(
+                                onTap: () => _onTap(i),
+                                behavior: HitTestBehavior.opaque,
+                                child: SizedBox(
+                                  width: itemWidth,
+                                  height: 75,
+                                  child: Stack(
+                                    alignment: Alignment.center,
+                                    clipBehavior: Clip.none,
+                                    children: [
+                                      // The label fades in and slides up
+                                      Positioned(
+                                        bottom: 12,
+                                        left: 0,
+                                        right: 0,
+                                        child: Center(
+                                          child: AnimatedOpacity(
+                                            duration: const Duration(milliseconds: 300),
+                                            opacity: isSelected ? 1.0 : 0.0,
+                                            child: AnimatedContainer(
+                                              duration: const Duration(milliseconds: 400),
+                                              curve: Curves.easeOutQuart,
+                                              transform: Matrix4.translationValues(
+                                                  0, isSelected ? 0 : 10, 0),
+                                              child: Text(
+                                                item.label,
+                                                style: TextStyle(
+                                                  color: item.color,
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w800,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      
+                                      // The icon pops up out of the bar
+                                      AnimatedPositioned(
+                                        duration: const Duration(milliseconds: 450),
+                                        curve: Curves.elasticOut,
+                                        top: isSelected ? -24 : 24,
+                                        left: 0,
+                                        right: 0,
+                                        child: Center(
+                                          child: AnimatedContainer(
+                                            duration: const Duration(milliseconds: 300),
+                                            padding: EdgeInsets.all(isSelected ? 14 : 0),
+                                            decoration: BoxDecoration(
+                                              color: isSelected ? item.color : Colors.transparent,
+                                              shape: BoxShape.circle,
+                                              boxShadow: isSelected
+                                                  ? [
+                                                      BoxShadow(
+                                                        color: item.color.withValues(alpha: 0.4),
+                                                        blurRadius: 15,
+                                                        offset: const Offset(0, 8),
+                                                      )
+                                                    ]
+                                                  : [],
+                                            ),
+                                            child: Icon(
+                                              isSelected ? item.activeIcon : item.icon,
+                                              color: isSelected 
+                                                  ? Colors.white 
+                                                  : (isDark ? Colors.white54 : Colors.black54),
+                                              size: isSelected ? 28 : 26,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
         ),
       ),
