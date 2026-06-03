@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../../core/utils/responsive.dart';
 
 class FeatureCard extends StatelessWidget {
@@ -22,7 +23,10 @@ class FeatureCard extends StatelessWidget {
     final r = context.responsive;
 
     return GestureDetector(
-      onTap: onTap,
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
       child: Container(
         width: double.infinity,
         padding: EdgeInsets.all(r.isTablet ? 20 : r.isLandscape ? 16 : 24),

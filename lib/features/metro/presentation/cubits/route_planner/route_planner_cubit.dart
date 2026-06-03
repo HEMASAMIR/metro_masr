@@ -30,10 +30,10 @@ class RoutePlannerCubit extends Cubit<RoutePlannerState> {
           final transferStations = List<Station>.from(path).where((s) => s.isTransfer).toList();
           if (transferStations.isNotEmpty) {
             String ts = transferStations.first.id;
-            if (ts.contains('sadat')) boardingHint = 'اركب أول القطار للتبديل السريع في محطة السادات.';
-            else if (ts.contains('shohadaa')) boardingHint = 'اركب آخر القطار لتبديل أسرع في محطة الشهداء.';
-            else if (ts.contains('attaba') || ts.contains('nasser')) boardingHint = 'اركيب في منتصف القطار للنزول بسهولة في العتبة/ناصر.';
-            else boardingHint = 'تمركز في منتصف القطار للتبديل بشكل أسهل.';
+            if (ts.contains('sadat')) boardingHint = 'hint_sadat';
+            else if (ts.contains('shohadaa')) boardingHint = 'hint_shohadaa';
+            else if (ts.contains('attaba') || ts.contains('nasser')) boardingHint = 'hint_attaba_nasser';
+            else boardingHint = 'hint_general_transfer';
           }
         }
 

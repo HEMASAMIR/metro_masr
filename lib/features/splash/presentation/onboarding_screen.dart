@@ -27,19 +27,17 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           'خطط رحلاتك باستخدام خوارزمية أقصر مسار، وتابع حالة الخطوط لحظة بلحظة عبر مترو القاهرة بالكامل.',
       subtitleEn:
           'Plan trips with shortest-path routing and track line status in real time across all Cairo Metro lines.',
-      gradient: [Color(0xFF1A56DB), Color(0xFF0A0E27)],
-      accentColor: Color(0xFF4F8AFF),
+      accentColor: AppColors.primary,
     ),
     _OnboardingData(
       illustration: _CommunityIllustration(),
       titleAr: 'مجتمع متصل',
       titleEn: 'Connected Community',
       subtitleAr:
-          'أبلغ عن أحداث المحطات، شارك في الدردشة الحية، تتبع الزحمة، واكسب نقاطاً على كل مشاركة.',
+          'أبلغ عن أحداث المحطات، وتتبع الزحمة لحظة بلحظة مع باقي الركاب.',
       subtitleEn:
-          'Report station incidents, join live chat, track crowd levels, and earn points for every contribution.',
-      gradient: [Color(0xFF0F5132), Color(0xFF0A0E27)],
-      accentColor: Color(0xFF20C997),
+          'Report station incidents and track crowd levels in real-time with other riders.',
+      accentColor: Color(0xFF059669),
     ),
     _OnboardingData(
       illustration: _AIIllustration(),
@@ -49,8 +47,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           'اسأل رفيق الذكي عن الأسعار والمواعيد، وتحقق من توقعات الازدحام، وجدول رحلاتك بذكاء.',
       subtitleEn:
           'Ask Rafiq AI about fares and schedules, check crowd forecasts, and schedule your commute smartly.',
-      gradient: [Color(0xFF5A189A), Color(0xFF0A0E27)],
-      accentColor: Color(0xFFBF5AF2),
+      accentColor: Color(0xFF7C3AED),
     ),
   ];
 
@@ -62,9 +59,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       duration: const Duration(milliseconds: 500),
     );
     _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
-    _slideAnim = Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero).animate(
-      CurvedAnimation(parent: _animController, curve: Curves.easeOut),
-    );
+    _slideAnim = Tween<Offset>(
+      begin: const Offset(0, 0.15),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _animController, curve: Curves.easeOut));
     _animController.forward();
   }
 
@@ -87,9 +85,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => const HomePage(),
+        pageBuilder: (_, _, _) => const HomePage(),
         transitionDuration: const Duration(milliseconds: 500),
-        transitionsBuilder: (_, anim, __, child) =>
+        transitionsBuilder: (_, anim, _, child) =>
             FadeTransition(opacity: anim, child: child),
       ),
     );
@@ -103,14 +101,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
     return Scaffold(
       body: AnimatedContainer(
-        duration: const Duration(milliseconds: 600),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: page.gradient,
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
+        duration: const Duration(milliseconds: 400),
+        color: Colors.white,
         child: SafeArea(
           child: Column(
             children: [
@@ -122,8 +114,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   child: Text(
                     'تخطي',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.6),
+                      color: Colors.grey[600],
                       fontSize: 14,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
@@ -159,14 +152,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 27,
-                                  fontWeight: FontWeight.w900,
-                                  color: Colors.white,
-                                  shadows: [
-                                    Shadow(
-                                      color: p.accentColor.withOpacity(0.6),
-                                      blurRadius: 20,
-                                    ),
-                                  ],
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF1E293B),
                                 ),
                               ),
                               const SizedBox(height: 6),
@@ -175,8 +162,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 14,
-                                  fontWeight: FontWeight.w300,
-                                  color: Colors.white.withOpacity(0.45),
+                                  fontWeight: FontWeight.w400,
+                                  color: Colors.grey[500],
                                   letterSpacing: 1.5,
                                 ),
                               ),
@@ -187,8 +174,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                 p.subtitleAr,
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  fontSize: 15,
-                                  color: Colors.white.withOpacity(0.75),
+                                  fontSize: 16,
+                                  color: const Color(0xFF64748B),
                                   height: 1.7,
                                 ),
                               ),
@@ -219,7 +206,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                           decoration: BoxDecoration(
                             color: i == _currentPage
                                 ? page.accentColor
-                                : Colors.white24,
+                                : Colors.grey[300],
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),
@@ -247,7 +234,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                           borderRadius: BorderRadius.circular(28),
                           boxShadow: [
                             BoxShadow(
-                              color: page.accentColor.withOpacity(0.5),
+                              color: page.accentColor.withValues(alpha: 0.5),
                               blurRadius: 20,
                               spreadRadius: 2,
                             ),
@@ -263,8 +250,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                     fontSize: 15,
                                   ),
                                 )
-                              : const Icon(Icons.arrow_forward_rounded,
-                                  color: Colors.white, size: 24),
+                              : const Icon(
+                                  Icons.arrow_forward_rounded,
+                                  color: Colors.white,
+                                  size: 24,
+                                ),
                         ),
                       ),
                     ),
@@ -286,7 +276,6 @@ class _OnboardingData {
   final String titleEn;
   final String subtitleAr;
   final String subtitleEn;
-  final List<Color> gradient;
   final Color accentColor;
 
   const _OnboardingData({
@@ -295,7 +284,6 @@ class _OnboardingData {
     required this.titleEn,
     required this.subtitleAr,
     required this.subtitleEn,
-    required this.gradient,
     required this.accentColor,
   });
 }
@@ -317,14 +305,18 @@ class _TrainIllustrationState extends State<_TrainIllustration>
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(seconds: 3))
-      ..repeat(reverse: true);
-    _trainX = Tween<double>(begin: -20, end: 20).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
-    );
-    _bounce = Tween<double>(begin: 0, end: -4).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
-    );
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    )..repeat(reverse: true);
+    _trainX = Tween<double>(
+      begin: -20,
+      end: 20,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+    _bounce = Tween<double>(
+      begin: 0,
+      end: -4,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
 
   @override
@@ -337,7 +329,7 @@ class _TrainIllustrationState extends State<_TrainIllustration>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _ctrl,
-      builder: (_, __) => CustomPaint(
+      builder: (_, _) => CustomPaint(
         painter: _OnboardingTrainPainter(
           trainX: _trainX.value,
           bounceY: _bounce.value,
@@ -360,7 +352,7 @@ class _OnboardingTrainPainter extends CustomPainter {
 
     // Glow
     final glowPaint = Paint()
-      ..color = const Color(0xFF4F8AFF).withOpacity(0.3)
+      ..color = const Color(0xFF1A56DB).withValues(alpha: 0.1)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 24);
     canvas.drawOval(
       Rect.fromCenter(center: Offset(cx, cy + 30), width: 260, height: 40),
@@ -368,26 +360,34 @@ class _OnboardingTrainPainter extends CustomPainter {
     );
 
     // Track
-    _drawTrack(canvas, size, cx, cy);
+    _drawTrack(canvas, cx, cy);
     // Train body
     _drawTrain(canvas, cx, cy);
     // Speed lines
     _drawSpeedLines(canvas, cx, cy);
   }
 
-  void _drawTrack(Canvas canvas, Size size, double cx, double cy) {
+  void _drawTrack(Canvas canvas, double cx, double cy) {
     final railPaint = Paint()
-      ..color = const Color(0xFF4F8AFF).withOpacity(0.5)
-      ..strokeWidth = 2;
+      ..color = Colors.grey[300]!
+      ..strokeWidth = 1.5;
     final trackY = cy + 36.0;
-    canvas.drawLine(Offset(cx - 140, trackY), Offset(cx + 140, trackY), railPaint);
-    canvas.drawLine(Offset(cx - 140, trackY + 10), Offset(cx + 140, trackY + 10), railPaint);
+    canvas.drawLine(
+      Offset(cx - 140, trackY),
+      Offset(cx + 140, trackY),
+      railPaint,
+    );
+    canvas.drawLine(
+      Offset(cx - 140, trackY + 10),
+      Offset(cx + 140, trackY + 10),
+      railPaint,
+    );
     for (int i = -7; i <= 7; i++) {
       canvas.drawLine(
         Offset(cx + i * 18.0, trackY - 2),
         Offset(cx + i * 18.0, trackY + 12),
         Paint()
-          ..color = const Color(0xFF334066)
+          ..color = Colors.grey[200]!
           ..strokeWidth = 5
           ..strokeCap = StrokeCap.round,
       );
@@ -396,9 +396,12 @@ class _OnboardingTrainPainter extends CustomPainter {
 
   void _drawTrain(Canvas canvas, double cx, double cy) {
     final bodyPaint = Paint()
-      ..shader = const LinearGradient(
-        colors: [Color(0xFF1A56DB), Color(0xFF4F8AFF)],
-      ).createShader(Rect.fromCenter(center: Offset(cx, cy), width: 240, height: 60));
+      ..shader =
+          const LinearGradient(
+            colors: [Color(0xFF1A56DB), Color(0xFF4F8AFF)],
+          ).createShader(
+            Rect.fromCenter(center: Offset(cx, cy), width: 240, height: 60),
+          );
 
     // Body
     canvas.drawRRect(
@@ -423,7 +426,11 @@ class _OnboardingTrainPainter extends CustomPainter {
     for (int i = -2; i <= 2; i++) {
       canvas.drawRRect(
         RRect.fromRectAndRadius(
-          Rect.fromCenter(center: Offset(cx + i * 38.0, cy + 2), width: 28, height: 18),
+          Rect.fromCenter(
+            center: Offset(cx + i * 38.0, cy + 2),
+            width: 28,
+            height: 18,
+          ),
           const Radius.circular(4),
         ),
         wPaint,
@@ -447,7 +454,7 @@ class _OnboardingTrainPainter extends CustomPainter {
 
   void _drawSpeedLines(Canvas canvas, double cx, double cy) {
     final linePaint = Paint()
-      ..color = const Color(0xFF4F8AFF).withOpacity(0.3)
+      ..color = Colors.grey[200]!
       ..strokeWidth = 2
       ..strokeCap = StrokeCap.round;
     for (final dy in [-12.0, 0.0, 12.0]) {
@@ -479,8 +486,10 @@ class _CommunityIllustrationState extends State<_CommunityIllustration>
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(seconds: 2))
-      ..repeat(reverse: true);
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
   }
 
   @override
@@ -493,7 +502,7 @@ class _CommunityIllustrationState extends State<_CommunityIllustration>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _ctrl,
-      builder: (_, __) {
+      builder: (_, _) {
         return Center(
           child: Stack(
             alignment: Alignment.center,
@@ -505,7 +514,7 @@ class _CommunityIllustrationState extends State<_CommunityIllustration>
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: const Color(0xFF20C997).withOpacity(0.2 - _ctrl.value * 0.15),
+                    color: const Color(0xFF059669).withValues(alpha: 0.1),
                     width: 2,
                   ),
                 ),
@@ -515,10 +524,10 @@ class _CommunityIllustrationState extends State<_CommunityIllustration>
                 height: 130,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: const Color(0xFF20C997).withOpacity(0.12),
+                  color: const Color(0xFF059669).withValues(alpha: 0.05),
                   border: Border.all(
-                    color: const Color(0xFF20C997).withOpacity(0.4),
-                    width: 1.5,
+                    color: const Color(0xFF059669).withValues(alpha: 0.1),
+                    width: 1,
                   ),
                 ),
               ),
@@ -529,17 +538,21 @@ class _CommunityIllustrationState extends State<_CommunityIllustration>
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: const LinearGradient(
-                    colors: [Color(0xFF0F5132), Color(0xFF20C997)],
+                    colors: [Color(0xFF059669), Color(0xFF10B981)],
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF20C997).withOpacity(0.5),
+                      color: const Color(0xFF059669).withValues(alpha: 0.3),
                       blurRadius: 20,
                       spreadRadius: 4,
                     ),
                   ],
                 ),
-                child: const Icon(Icons.people_outline_rounded, color: Colors.white, size: 38),
+                child: const Icon(
+                  Icons.people_outline_rounded,
+                  color: Colors.white,
+                  size: 38,
+                ),
               ),
               // Orbit icons
               ..._buildOrbitIcons(),
@@ -567,8 +580,10 @@ class _CommunityIllustrationState extends State<_CommunityIllustration>
           height: 40,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: item.$2.withOpacity(0.15),
-            border: Border.all(color: item.$2.withOpacity(0.5)),
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(color: item.$2.withValues(alpha: 0.2), blurRadius: 10),
+            ],
           ),
           child: Icon(item.$1, color: item.$2, size: 18),
         ),
@@ -576,7 +591,11 @@ class _CommunityIllustrationState extends State<_CommunityIllustration>
     }).toList();
   }
 
-  double _cosApprox(double a) => a == -1.5708 ? 0 : a < 1 ? 0.87 : -0.87;
+  double _cosApprox(double a) => a == -1.5708
+      ? 0
+      : a < 1
+      ? 0.87
+      : -0.87;
   double _sinApprox(double a) => a == -1.5708 ? -1 : 0.5;
 }
 
@@ -595,8 +614,10 @@ class _AIIllustrationState extends State<_AIIllustration>
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(seconds: 2))
-      ..repeat(reverse: true);
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
   }
 
   @override
@@ -609,7 +630,7 @@ class _AIIllustrationState extends State<_AIIllustration>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _ctrl,
-      builder: (_, __) {
+      builder: (_, _) {
         return Center(
           child: Stack(
             alignment: Alignment.center,
@@ -622,8 +643,8 @@ class _AIIllustrationState extends State<_AIIllustration>
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: const Color(0xFFBF5AF2).withOpacity(0.1 * (4 - i) * (1 - _ctrl.value * 0.3)),
-                      width: 1.5,
+                      color: const Color(0xFF7C3AED).withValues(alpha: 0.05),
+                      width: 1,
                     ),
                   ),
                 ),
@@ -634,19 +655,23 @@ class _AIIllustrationState extends State<_AIIllustration>
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: const LinearGradient(
-                    colors: [Color(0xFF5A189A), Color(0xFFBF5AF2)],
+                    colors: [Color(0xFF7C3AED), Color(0xFFA855F7)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFBF5AF2).withOpacity(0.5 + _ctrl.value * 0.2),
+                      color: const Color(0xFF7C3AED).withValues(alpha: 0.3),
                       blurRadius: 30,
                       spreadRadius: 5,
                     ),
                   ],
                 ),
-                child: const Icon(Icons.smart_toy_outlined, color: Colors.white, size: 50),
+                child: const Icon(
+                  Icons.smart_toy_outlined,
+                  color: Colors.white,
+                  size: 50,
+                ),
               ),
               // Floating feature pills
               ..._buildPills(),
@@ -659,24 +684,34 @@ class _AIIllustrationState extends State<_AIIllustration>
 
   List<Widget> _buildPills() {
     final pills = [
-      ('AI Chat', const Color(0xFFBF5AF2), const Offset(0, -110)),
+      ('AI Chat', const Color(0xFF7C3AED), const Offset(0, -110)),
       ('📊 توقع', const Color(0xFF4F8AFF), const Offset(105, 30)),
-      ('🏆 نقاط', const Color(0xFFFFD700), const Offset(-105, 30)),
     ];
-    return pills.map((p) => Transform.translate(
-      offset: Offset(
-        p.$3.dx,
-        p.$3.dy + (p.$3.dy < 0 ? -_ctrl.value * 5 : _ctrl.value * 5),
-      ),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: p.$2.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: p.$2.withOpacity(0.5)),
-        ),
-        child: Text(p.$1, style: TextStyle(color: p.$2, fontSize: 12, fontWeight: FontWeight.bold)),
-      ),
-    )).toList();
+    return pills
+        .map(
+          (p) => Transform.translate(
+            offset: Offset(
+              p.$3.dx,
+              p.$3.dy + (p.$3.dy < 0 ? -_ctrl.value * 8 : _ctrl.value * 8),
+            ),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: p.$2.withValues(alpha: 0.5)),
+              ),
+              child: Text(
+                p.$1,
+                style: TextStyle(
+                  color: p.$2,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        )
+        .toList();
   }
 }

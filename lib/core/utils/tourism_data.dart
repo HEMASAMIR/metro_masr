@@ -173,24 +173,7 @@ class TourismDatabase {
           walkingMinutes: '3',
           tags: ['Historic Church', 'Coptic', '7th Century'],
         ),
-        TouristAttraction(
-          id: 'ben_ezra_synagogue',
-          name: {'ar': 'كنيس بن عزرا', 'en': 'Ben Ezra Synagogue', 'fr': 'Synagogue Ben Ezra', 'de': 'Ben-Esra-Synagoge'},
-          description: {
-            'ar': 'أقدم كنيس يهودي في أفريقيا، بُني عام 882 ميلادي. يُقال إنه المكان الذي وجدت فيه جدة موسى سلة الطفل. يمثل التعايش الحضاري في مصر عبر العصور.',
-            'en': 'The oldest Jewish synagogue in Africa, built in 882 AD. Believed to be the site where Moses was found in a basket. Represents Egypt\'s rich history of coexistence.',
-            'fr': 'La plus ancienne synagogue juive d\'Afrique, construite en 882 ap. J.-C. Lieu supposé de la découverte de Moïse dans un panier. Symbole de la coexistence en Égypte.',
-            'de': 'Die älteste jüdische Synagoge Afrikas, erbaut 882 n. Chr. Soll der Ort sein, wo Moses gefunden wurde. Steht für Ägyptens reiche Geschichte des Zusammenlebens.',
-          },
-          category: AttractionCategory.monument,
-          emoji: '✡️',
-          rating: 4.5,
-          openHours: '9:00 AM – 5:00 PM',
-          isFree: false,
-          admissionEGP: '100 EGP',
-          walkingMinutes: '5',
-          tags: ['Jewish Heritage', '9th Century', 'Religious'],
-        ),
+
         TouristAttraction(
           id: 'amr_mosque',
           name: {'ar': 'مسجد عمرو بن العاص', 'en': 'Amr Ibn Al-As Mosque', 'fr': 'Mosquée de Amr Ibn Al-As', 'de': 'Amr-ibn-al-As-Moschee'},

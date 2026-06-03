@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:speech_to_text/speech_to_text.dart' as stt;
-import 'package:flutter_tts/flutter_tts.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../../../core/utils/crowd_prediction_service.dart';
+import '../../../../core/utils/tourism_data.dart';
 import '../../../../core/theme/app_colors.dart';
 
 class ChatMessage {
@@ -29,28 +28,15 @@ class _AiChatPageState extends State<AiChatPage>
     with SingleTickerProviderStateMixin {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final stt.SpeechToText _speechToText = stt.SpeechToText();
-  final FlutterTts _flutterTts = FlutterTts();
 
   late final GenerativeModel _model;
   late final ChatSession _chatSession;
   final List<ChatMessage> _messages = [];
-  bool _speechEnabled = false;
-  bool _isListening = false;
   bool _isTyping = false;
-
-  late AnimationController _micPulseController;
 
   @override
   void initState() {
     super.initState();
-    _micPulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1000),
-    )..repeat(reverse: true);
-
-    _initSpeech();
-    _initTts();
     _initGemini();
 
     // رسالة ترحيبية أولية
@@ -65,18 +51,9 @@ class _AiChatPageState extends State<AiChatPage>
 
   @override
   void dispose() {
-    _flutterTts.stop();
     _textController.dispose();
     _scrollController.dispose();
-    _micPulseController.dispose();
     super.dispose();
-  }
-
-  void _initTts() async {
-    await _flutterTts.setLanguage("ar-EG");
-    await _flutterTts.setSpeechRate(0.5); // سرعة النطق
-    await _flutterTts.setVolume(1.0);
-    await _flutterTts.setPitch(1.0);
   }
 
   void _initGemini() {
@@ -93,18 +70,6 @@ class _AiChatPageState extends State<AiChatPage>
     _chatSession = _model.startChat(); // حفظ سياق الشات
   }
 
-  void _initSpeech() async {
-    _speechEnabled = await _speechToText.initialize(
-      onStatus: (status) {
-        if (status == 'notListening' || status == 'done') {
-          if (mounted) setState(() => _isListening = false);
-        }
-      },
-      onError: (error) => print('Speech error: $error'),
-    );
-    setState(() {});
-  }
-
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
       _scrollController.animateTo(
@@ -113,14 +78,6 @@ class _AiChatPageState extends State<AiChatPage>
         curve: Curves.easeOutCubic,
       );
     }
-  }
-
-  void _speak(String text) async {
-    final isAr = context.locale.languageCode == 'ar';
-    await _flutterTts.setLanguage(isAr ? "ar-EG" : "en-US");
-    // إزالة الإيموجي والرموز عشان الصوت يطلع طبيعي
-    final cleanText = text.replaceAll(RegExp(r'[^\w\s\u0600-\u06FF.,!?]'), '');
-    await _flutterTts.speak(cleanText);
   }
 
   // دالة لفحص البيانات المحلية قبل سؤال الذكاء الاصطناعي
@@ -132,7 +89,7 @@ class _AiChatPageState extends State<AiChatPage>
         q.contains('بكام') ||
         q.contains('أسعار') ||
         q.contains('تذاكر')) {
-      return 'أسعار تذاكر المترو الحالية كالتالي:\n• منطقة واحدة (1-9 محطات): 8 جنيه\n• منطقتين (10-16 محطة): 10 جنيه\n• 3 مناطق (17-23 محطة): 15 جنيه\n• 4 مناطق (أكثر من 23 محطة): 20 جنيه.';
+      return 'أسعار تذاكر المترو الجديدة 2026 كالتالي:\n• منطقة واحدة (1-9 محطات): 10 جنيه\n• منطقتين (10-16 محطة): 13 جنيه\n• 3 مناطق (17-23 محطة): 17 جنيه\n• 4 مناطق (أكثر من 23 محطة): 20 جنيه.';
     } else if (q.contains('مواعيد') ||
         q.contains('بيفتح') ||
         q.contains('بيقفل') ||
@@ -141,7 +98,18 @@ class _AiChatPageState extends State<AiChatPage>
     } else if (q.contains('اشتراك') ||
         q.contains('اشتراكات') ||
         q.contains('باقات')) {
-      return 'الاشتراكات الشهرية بتوفرلك أكتر من 40% من فلوسك! 💳 تقدر تستخدم "حاسبة التكلفة" في التطبيق عشان تحسب أوفر باقة ليك.';
+      return 'الاشتراكات الشهرية الجديدة (60 رحلة) بتوفرلك كتير:\n'
+          '• منطقة واحدة (9 محطات): 230 جنيه\n'
+          '• منطقتين (16 محطة): 290 جنيه\n'
+          '• 3-4 مناطق: 340 جنيه\n'
+          '• شامل كل المحطات: 450 جنيه\n'
+          '💡 الاشتراك بيوفرلك أكتر من 40% مقارنة بالتذاكر العادية!';
+    } else if (q.contains('توفير') || q.contains('أوفر') || q.contains('حسبة')) {
+      return 'بص يا سيدي، لو بتركب المترو كل يوم (يعني حوالي 44 رحلة في الشهر):\n'
+          '• الـ 9 محطات: تذاكر (440ج) vs اشتراك (230ج) ⮕ هتوفر 210ج ✅\n'
+          '• الـ 16 محطة: تذاكر (572ج) vs اشتراك (290ج) ⮕ هتوفر 282ج ✅\n'
+          '• الـ 23 محطة: تذاكر (748ج) vs اشتراك (340ج) ⮕ هتوفر 408ج ✅\n\n'
+          '⚠️ تنبيه مهم: استهلاكك الشهري حالياً "يتخطى" سعر الاشتراك بكتير! الأفضل تطلع كارت اشتراك شهري وتوفر فلوسك.';
     }
 
     // استدعاء مستوى الازدحام اللحظي
@@ -174,14 +142,99 @@ class _AiChatPageState extends State<AiChatPage>
       return 'حالياً الخط $line $categoryAr وتقريباً نسبة الإشغال ${(level * 100).toInt()}% $emoji.';
     }
 
+    // أماكن الترفيه والفسح بناءً على المحطة (كلام بلدي)
+    if (q.contains('ترفيه') ||
+        q.contains('فسحة') ||
+        q.contains('خروجة') ||
+        q.contains('أماكن') ||
+        q.contains('خروجه') ||
+        q.contains('places') ||
+        q.contains('entertainment')) {
+      StationAttractions? targetStation;
+      for (var station in TourismDatabase.data) {
+        final nameAr = station.stationName['ar']!
+            .replaceAll('محطة ', '')
+            .trim();
+        final nameEn = station.stationName['en']!.toLowerCase().trim();
+        if (q.contains(nameAr) || q.contains(nameEn)) {
+          targetStation = station;
+          break;
+        }
+      }
+
+      if (targetStation != null) {
+        final entertainment = targetStation.attractions
+            .where(
+              (a) =>
+                  a.category == AttractionCategory.entertainment ||
+                  a.category == AttractionCategory.park ||
+                  a.category == AttractionCategory.market ||
+                  a.category == AttractionCategory.museum,
+            )
+            .toList();
+
+        if (entertainment.isNotEmpty) {
+          String response =
+              'بص يا سيدي، قريب من محطة ${targetStation.stationName['ar']} فيه أماكن خروجات تجنن:\n';
+          for (var item in entertainment) {
+            response +=
+                '• ${item.name['ar']} ${item.emoji} (${item.walkingMinutes} دقايق مشي) - ${item.description['ar']?.split('.')[0]}.\n';
+          }
+          return response;
+        }
+      }
+      return 'لو قولتلي إنت في محطة إيه، هقولك أحلى أماكن الترفيه والفسح اللي قريبة منك! 🎡🌳';
+    }
+
+    // البحث عن المطاعم والكافيهات (كلام بلدي)
+    if (q.contains('مطعم') ||
+        q.contains('أكل') ||
+        q.contains('اكل') ||
+        q.contains('كافيه') ||
+        q.contains('قهوة') ||
+        q.contains('جوعان') ||
+        q.contains('food') ||
+        q.contains('restaurant') ||
+        q.contains('cafe')) {
+      StationAttractions? targetStation;
+      for (var station in TourismDatabase.data) {
+        final nameAr = station.stationName['ar']!
+            .replaceAll('محطة ', '')
+            .trim();
+        final nameEn = station.stationName['en']!.toLowerCase().trim();
+        if (q.contains(nameAr) || q.contains(nameEn)) {
+          targetStation = station;
+          break;
+        }
+      }
+
+      if (targetStation != null) {
+        final foodPlaces = targetStation.attractions
+            .where(
+              (a) =>
+                  a.category.toString().contains('restaurant') ||
+                  a.category.toString().contains('cafe'),
+            )
+            .toList();
+
+        if (foodPlaces.isNotEmpty) {
+          String response =
+              'لو بتدور على أكلة حلوة أو قعدة قهوة قريبة من محطة ${targetStation.stationName['ar']}، أرشحلك دول:\n';
+          for (var item in foodPlaces) {
+            response +=
+                '• ${item.name['ar']} ${item.emoji} (${item.walkingMinutes} دقايق مشي) - ${item.description['ar']?.split('.')[0]}.\n';
+          }
+          return response;
+        }
+      }
+      return 'قولي إنت في محطة إيه وهقولك أحلى المطاعم والكافيهات اللي حواليك! 🍔☕';
+    }
+
     return null; // نرجع null عشان نخلي Gemini يرد لو السؤال بره البيانات دي
   }
 
   void _sendMessage(String text) async {
     if (text.trim().isEmpty) return;
-
-    await _flutterTts
-        .stop(); // لو اليوزر بعت رسالة جديدة أو اتكلم، وقف النطق الحالي
 
     setState(() {
       _messages.insert(0, ChatMessage(text: text, isUser: true));
@@ -208,7 +261,6 @@ class _AiChatPageState extends State<AiChatPage>
           });
           _scrollToBottom();
           HapticFeedback.mediumImpact();
-          _speak(localResponse);
         }
         return; // بنوقف هنا ومش بنسأل Gemini خالص
       }
@@ -224,7 +276,6 @@ class _AiChatPageState extends State<AiChatPage>
         });
         _scrollToBottom();
         HapticFeedback.mediumImpact();
-        _speak(responseText); // نطق الرد
       }
     } catch (e) {
       if (mounted) {
@@ -239,36 +290,6 @@ class _AiChatPageState extends State<AiChatPage>
           );
         });
         _scrollToBottom();
-      }
-    }
-  }
-
-  void _toggleVoiceListening() async {
-    HapticFeedback.mediumImpact();
-
-    if (_speechToText.isListening) {
-      await _speechToText.stop();
-      setState(() => _isListening = false);
-    } else {
-      if (_speechEnabled) {
-        setState(() => _isListening = true);
-        await _speechToText.listen(
-          onResult: (result) {
-            setState(() {
-              _textController.text = result.recognizedWords;
-            });
-            // الإرسال التلقائي لما يخلص كلام
-            if (result.finalResult && result.recognizedWords.isNotEmpty) {
-              setState(() => _isListening = false);
-              _sendMessage(result.recognizedWords);
-            }
-          },
-          localeId: context.locale.languageCode == 'ar' ? 'ar_EG' : 'en_US',
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('يرجى إعطاء صلاحية المايكروفون أولاً'.tr())),
-        );
       }
     }
   }
@@ -378,7 +399,7 @@ class _AiChatPageState extends State<AiChatPage>
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 5,
             offset: const Offset(0, 2),
           ),
@@ -414,17 +435,6 @@ class _AiChatPageState extends State<AiChatPage>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                IconButton(
-                  icon: const Icon(
-                    Icons.volume_up_rounded,
-                    size: 20,
-                    color: Colors.grey,
-                  ),
-                  onPressed: () => _speak(message.text), // إعادة تشغيل النطق
-                  tooltip: 'إعادة النطق'.tr(),
-                  constraints: const BoxConstraints(),
-                  padding: const EdgeInsets.all(4),
-                ),
                 IconButton(
                   icon: const Icon(
                     Icons.copy_rounded,
@@ -477,7 +487,7 @@ class _AiChatPageState extends State<AiChatPage>
         color: Theme.of(context).cardColor,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, -5),
           ),
@@ -486,59 +496,15 @@ class _AiChatPageState extends State<AiChatPage>
       child: SafeArea(
         child: Row(
           children: [
-            // زر المايكروفون (الاستماع)
-            AnimatedBuilder(
-              animation: _micPulseController,
-              builder: (context, child) {
-                return Container(
-                  decoration: _isListening
-                      ? BoxDecoration(
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.redAccent.withOpacity(
-                                _micPulseController.value * 0.5,
-                              ),
-                              blurRadius: 20,
-                              spreadRadius: 5,
-                            ),
-                          ],
-                        )
-                      : null,
-                  child: FloatingActionButton(
-                    elevation: _isListening ? 8 : 0,
-                    mini: true,
-                    backgroundColor: _isListening
-                        ? Colors.redAccent
-                        : AppColors.primary.withOpacity(0.1),
-                    foregroundColor: _isListening
-                        ? Colors.white
-                        : AppColors.primary,
-                    onPressed: _toggleVoiceListening,
-                    child: Icon(
-                      _isListening ? Icons.mic : Icons.mic_none_rounded,
-                    ),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(width: 8),
-
             // حقل إدخال النص
             Expanded(
               child: TextField(
                 controller: _textController,
-                enabled: !_isListening,
                 style: TextStyle(
                   color: Theme.of(context).textTheme.bodyLarge?.color,
                 ),
                 decoration: InputDecoration(
-                  hintText: _isListening
-                      ? "جاري الاستماع..."
-                      : "Ask me anything...".tr(),
-                  hintStyle: TextStyle(
-                    color: _isListening ? Colors.redAccent : Colors.grey,
-                  ),
+                  hintText: "Ask me anything...".tr(),
                   filled: true,
                   fillColor: Theme.of(context).scaffoldBackgroundColor,
                   border: OutlineInputBorder(

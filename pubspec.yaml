@@ -74,9 +74,11 @@ dependencies:
   google_generative_ai: ^0.4.6
   flutter_map: ^8.3.0
   latlong2: ^0.9.1
-  workmanager: ^0.9.0+3
+  audioplayers: ^6.7.0
   vibration: ^3.1.8
+  workmanager: ^0.5.2
   image_picker: ^1.2.2
+  torch_light: ^1.0.1
   google_sign_in: ^6.2.1
   shimmer: ^3.0.0
   supabase_flutter: ^2.12.4
@@ -111,6 +113,7 @@ flutter:
   assets:
     - assets/images/
     - assets/translations/
+    - assets/audio/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

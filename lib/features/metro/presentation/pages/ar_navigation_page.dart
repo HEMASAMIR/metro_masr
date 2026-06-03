@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:camera/camera.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -75,11 +76,28 @@ class _ARNavigationPageState extends State<ARNavigationPage> {
   }
 
   Future<void> _initCamera() async {
-    final cameras = await availableCameras();
-    if (cameras.isEmpty) return;
-    _controller = CameraController(cameras[0], ResolutionPreset.medium);
-    await _controller!.initialize();
-    if (mounted) setState(() {});
+    try {
+      final status = await Permission.camera.request();
+      if (status.isDenied || status.isPermanentlyDenied) {
+        if (mounted) {
+           ScaffoldMessenger.of(context).showSnackBar(
+             SnackBar(content: Text('Camera access is required for AR Navigation.'.tr())),
+           );
+        } 
+        return;
+      }
+      final cameras = await availableCameras(); 
+      if (cameras.isEmpty) return;
+      _controller = CameraController(cameras[0], ResolutionPreset.medium);
+      await _controller!.initialize();
+      if (mounted) setState(() {});
+    } catch (e) {
+      if (mounted) {
+         ScaffoldMessenger.of(context).showSnackBar(
+           SnackBar(content: Text('Failed to initialize camera: $e'.tr())),
+         );
+      }
+    }
   }
 
   void _initSensors() {

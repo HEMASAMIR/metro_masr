@@ -10,7 +10,8 @@ class MetroRepositoryImpl implements MetroRepository {
   Future<Either<Failure, Map<String, dynamic>>> getShortestPath(
       String startId, String endId) async {
     try {
-      final result = Dijkstra.findShortestPath(MetroData.stations, startId, endId);
+      final allNetwork = {...MetroData.stations, ...MetroData.capitalStations};
+      final result = Dijkstra.findShortestPath(allNetwork, startId, endId);
       if (result['path'].isEmpty) {
         return const Left(ServerFailure('No path found between these stations'));
       }
@@ -23,7 +24,8 @@ class MetroRepositoryImpl implements MetroRepository {
   @override
   Future<Either<Failure, List<Station>>> getAllStations() async {
     try {
-      return Right(MetroData.stations.values.toList());
+      final allNetwork = {...MetroData.stations, ...MetroData.capitalStations};
+      return Right(allNetwork.values.toList());
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }

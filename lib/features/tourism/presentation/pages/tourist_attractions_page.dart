@@ -6,6 +6,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/tourism_data.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'attraction_detail_page.dart';
+import 'tourism_map_page.dart';
 
 enum SortOption {
   recommended,
@@ -145,7 +146,7 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
               background: _buildHeader(isAr),
             ),
             title: Text(
-              "🗺️ Tourist Attractions".tr(),
+              isAr ? '🗺️ المعالم السياحية' : "🗺️ Tourist Attractions",
               style: TextStyle(
                 color: Theme.of(context).textTheme.titleLarge?.color, fontWeight: FontWeight.bold, fontSize: 18),
             ),
@@ -211,11 +212,12 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
       ),
 
       // ── FAB: Browse all stations ──────────────────────────────────────────
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.train_rounded),
-        label: Text("Pick Station".tr()),
+        label: Text(isAr ? 'اختر محطة' : "Pick Station"),
         onPressed: () => _showStationPicker(context, isAr),
       ),
     );
@@ -232,7 +234,7 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                "🌍 Discover Egypt by Metro".tr(),
+                isAr ? '🌍 اكتشف مصر بالمترو' : "🌍 Discover Egypt by Metro",
                 style: TextStyle(
                   color: Theme.of(context).textTheme.titleLarge?.color,
                   fontSize: 22,
@@ -241,7 +243,7 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
               ),
               const SizedBox(height: 4),
               Text(
-                "Landmarks at every station • 4 languages • Smart guide".tr(),
+                isAr ? 'معالم عند كل محطة • ٤ لغات • مرشد ذكي' : "Landmarks at every station • 4 languages • Smart guide",
                 style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 13),
               ),
             ],
@@ -259,7 +261,7 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
         controller: _searchCtrl,
         style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
         decoration: InputDecoration(
-          hintText: "Search station (e.g. Opera)".tr(),
+          hintText: isAr ? 'ابحث عن محطة (مثل الأوبرا)' : "Search station (e.g. Opera)",
           hintStyle: const TextStyle(color: Colors.grey),
           filled: true,
           fillColor: Theme.of(context).cardColor,
@@ -381,7 +383,7 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
           ),
           TextButton.icon(
             icon: const Icon(Icons.clear, size: 14),
-            label: Text("All".tr()),
+            label: Text(isAr ? 'الكل' : "All"),
             style: TextButton.styleFrom(
               foregroundColor: Colors.grey,
               textStyle: const TextStyle(fontSize: 11),
@@ -426,26 +428,41 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            isAr ? 'عرض $visibleCount من أصل $totalCount عرض' : 'Showing $visibleCount of $totalCount',
-            style: TextStyle(color: Colors.grey[600], fontSize: 13),
+          Expanded(
+            child: Text(
+              isAr ? 'عرض $visibleCount من $totalCount' : 'Showing $visibleCount of $totalCount',
+              style: TextStyle(color: Colors.grey[600], fontSize: 12),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
+          const SizedBox(width: 4),
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               OutlinedButton.icon(
-                onPressed: () {},
-                icon: const Icon(Icons.map_outlined, size: 16),
-                label: Text(isAr ? 'عرض خريطة' : 'Map'),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => TourismMapPage(
+                        attractions: _filteredAttractions,
+                        initialStationId: _currentStationData?.stationId,
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.map_outlined, size: 14),
+                label: Text(isAr ? 'خريطة' : 'Map', style: const TextStyle(fontSize: 12)),
                 style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                   side: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               Container(
-                height: 36,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                height: 32,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
                 decoration: BoxDecoration(
                   color: Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(20),
@@ -454,22 +471,18 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<SortOption>(
                     value: _selectedSort,
-                    icon: const Icon(Icons.keyboard_arrow_down, size: 16),
-                    style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 13),
+                    icon: const Icon(Icons.keyboard_arrow_down, size: 14),
+                    style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 11),
                     alignment: AlignmentDirectional.centerEnd,
                     onChanged: (SortOption? newValue) {
-                      if (newValue != null) {
-                        setState(() {
-                          _selectedSort = newValue;
-                        });
-                      }
+                      if (newValue != null) setState(() => _selectedSort = newValue);
                     },
                     items: [
-                      DropdownMenuItem(value: SortOption.recommended, child: Text(isAr ? 'موصى به' : 'Recommended')),
-                      DropdownMenuItem(value: SortOption.priceLowToHigh, child: Text(isAr ? 'السعر: من الأقل للأعلى' : 'Price: Low to High')),
-                      DropdownMenuItem(value: SortOption.priceHighToLow, child: Text(isAr ? 'السعر: من الأعلى للأقل' : 'Price: High to Low')),
-                      DropdownMenuItem(value: SortOption.highestRated, child: Text(isAr ? 'الأعلى تقييماً' : 'Highest Rated')),
-                      DropdownMenuItem(value: SortOption.newest, child: Text(isAr ? 'الأحدث' : 'Newest')),
+                      DropdownMenuItem(value: SortOption.recommended, child: Text(isAr ? 'موصى به' : 'Rec')),
+                      DropdownMenuItem(value: SortOption.priceLowToHigh, child: Text(isAr ? 'السعر (أقل)' : 'Low Price')),
+                      DropdownMenuItem(value: SortOption.priceHighToLow, child: Text(isAr ? 'السعر (أعلى)' : 'High Price')),
+                      DropdownMenuItem(value: SortOption.highestRated, child: Text(isAr ? 'تقييم' : 'Rated')),
+                      DropdownMenuItem(value: SortOption.newest, child: Text(isAr ? 'الأحدث' : 'New')),
                     ],
                   ),
                 ),
@@ -507,98 +520,107 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                   ? stationName
                   : (_currentStationData?.stationName["en".tr()] ?? ''),
             ),
-            transitionDuration: const Duration(milliseconds: 400),
-            transitionsBuilder: (_, anim, __, child) => SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(1, 0), end: Offset.zero,
-              ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
-              child: child,
-            ),
+            transitionDuration: const Duration(milliseconds: 650),
+            transitionsBuilder: (_, anim, __, child) {
+              // Premium 3D perspective unfold transition from right edge
+              final double rotationAngle = (1.0 - anim.value) * (3.141592653589793 / 4); // Rotates from 45 degrees
+              final double translationX = (1.0 - anim.value) * 160.0; // Slides in slightly
+              final double scale = 0.88 + (anim.value * 0.12);
+              final double opacity = anim.value.clamp(0.0, 1.0);
+
+              return Transform(
+                transform: Matrix4.identity()
+                  ..setEntry(3, 2, 0.0015) // Deep 3D perspective
+                  ..rotateY(rotationAngle)
+                  ..translate(translationX, 0.0, 0.0),
+                alignment: Alignment.centerRight,
+                child: Transform.scale(
+                  scale: scale,
+                  child: Opacity(
+                    opacity: opacity,
+                    child: child,
+                  ),
+                ),
+              );
+            },
           ),
         );
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 14),
+        margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+          borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 10, spreadRadius: 0,
+              color: color.withOpacity(0.08),
+              blurRadius: 15,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ── Illustration header ─────────────────────────────────────────
+            // ── Header Gradient ─────────────────────────────────────────
             Container(
-              height: 110,
+              height: 100,
               decoration: BoxDecoration(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
-                color: color.withValues(alpha: 0.05),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                gradient: LinearGradient(
+                  colors: [color.withOpacity(0.7), color],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
               ),
               child: Stack(
                 children: [
-                  // Big emoji background
                   Positioned(
-                    right: -10, bottom: -10,
-                    child: Text(
-                      attraction.emoji,
-                      style: TextStyle(
-                        fontSize: 90,
-                        color: color.withValues(alpha: 0.1),
+                    right: isAr ? null : -20,
+                    left: isAr ? -20 : null,
+                    bottom: -20,
+                    child: Transform.rotate(
+                      angle: 0.2,
+                      child: Text(
+                        attraction.emoji,
+                        style: TextStyle(fontSize: 100, color: Colors.white.withOpacity(0.25)),
                       ),
                     ),
                   ),
-                  // Content
                   Padding(
                     padding: const EdgeInsets.all(16),
-                    child: Column(
+                    child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: color.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: color.withOpacity(0.4)),
-                              ),
-                              child: Text(
-                                '${TourismDatabase.categoryEmoji[attraction.category]} $catLabel',
-                                style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                            const Spacer(),
-                            // Rating
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.amber.withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.star_rounded, color: Colors.amber, size: 14),
-                                  const SizedBox(width: 3),
-                                  Text(
-                                    attraction.rating.toStringAsFixed(1),
-                                    style: const TextStyle(color: Colors.amber, fontSize: 12, fontWeight: FontWeight.bold),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.25),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            catLabel,
+                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
                         ),
-                        const Spacer(),
-                        Text(
-                          attraction.emoji,
-                          style: const TextStyle(fontSize: 32),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
+                              const SizedBox(width: 4),
+                              Text(
+                                attraction.rating.toStringAsFixed(1),
+                                style: const TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -606,83 +628,70 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                 ],
               ),
             ),
-
-            // ── Info ────────────────────────────────────────────────────────
+            
+            // ── Content ────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
-                crossAxisAlignment: isAr ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     name,
-                    textAlign: isAr ? TextAlign.right : TextAlign.left,
                     style: TextStyle(
                       color: Theme.of(context).textTheme.titleMedium?.color,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 18,
                     ),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     desc,
-                    textAlign: isAr ? TextAlign.right : TextAlign.left,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 13, height: 1.5),
+                    style: TextStyle(color: Colors.grey[600], fontSize: 13, height: 1.5),
                   ),
-                  const SizedBox(height: 12),
-                  // Info pills row
+                  const SizedBox(height: 16),
+                  
+                  // ── Action Row ──────────────────────────────────
                   Wrap(
                     spacing: 8,
-                    runSpacing: 6,
+                    runSpacing: 8,
                     children: [
-                      _infoPill(Icons.directions_walk_rounded,
-                          '${attraction.walkingMinutes} min', Colors.blue),
-                      _infoPill(
-                        attraction.isFree ? Icons.check_circle_rounded : Icons.paid_rounded,
-                        attraction.admissionEGP,
+                      _modernPill(Icons.directions_walk_rounded, '${attraction.walkingMinutes} ${isAr ? 'دقيقة' : 'min'}', Colors.blue, isAr),
+                      _modernPill(
+                        attraction.isFree ? Icons.check_circle_rounded : Icons.confirmation_number_rounded,
+                        attraction.isFree ? (isAr ? 'مجاناً' : 'Free') : attraction.admissionEGP,
                         attraction.isFree ? Colors.green : Colors.orange,
+                        isAr,
+                        forceLtr: true, // Fixes LTR english string alignment inside RTL
                       ),
-                      _infoPill(Icons.access_time_rounded, attraction.openHours, Colors.purple),
+                      _modernPill(Icons.access_time_rounded, attraction.openHours, Colors.purple, isAr, forceLtr: true),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 6,
-                      children: attraction.tags.take(3).map((t) => Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).cardColor,
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
-                        ),
-                        child: Text('#$t', style: const TextStyle(color: Colors.grey, fontSize: 10)),
-                      )).toList(),
-                    ),
-                    const SizedBox(height: 12),
-                    // Web View Link
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: color,
-                          side: BorderSide(color: color.withValues(alpha: 0.3)),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                        icon: const Icon(Icons.language, size: 16),
-                        label: Text(
-                          "View in Web".tr(),
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                        ),
-                        onPressed: () async {
-                          final query = Uri.encodeComponent('$name Cairo');
-                          final url = Uri.parse('https://www.google.com/search?q=$query');
-                          if (await canLaunchUrl(url)) {
-                            await launchUrl(url, mode: LaunchMode.inAppWebView);
-                          }
-                        },
+                  const SizedBox(height: 12),
+                  // Web View Link
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: color,
+                        side: BorderSide(color: color.withValues(alpha: 0.3)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
+                      icon: const Icon(Icons.language, size: 16),
+                      label: Text(
+                        isAr ? 'عرض في جوجل' : "View in Web",
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                      onPressed: () async {
+                        final query = Uri.encodeComponent('$name Cairo');
+                        final url = Uri.parse('https://www.google.com/search?q=$query');
+                        if (await canLaunchUrl(url)) {
+                          await launchUrl(url, mode: LaunchMode.inAppWebView);
+                        }
+                      },
                     ),
+                  ),
                 ],
               ),
             ),
@@ -692,22 +701,32 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
     );
   }
 
-  Widget _infoPill(IconData icon, String text, Color color) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-    decoration: BoxDecoration(
-      color: color.withOpacity(0.1),
-      borderRadius: BorderRadius.circular(8),
-      border: Border.all(color: color.withOpacity(0.25)),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: color, size: 12),
-        const SizedBox(width: 4),
-        Text(text, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w600)),
-      ],
-    ),
-  );
+  Widget _modernPill(IconData icon, String text, Color color, bool isAr, {bool forceLtr = false}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.15)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 14),
+          const SizedBox(width: 6),
+          Directionality(
+            textDirection: forceLtr ? ui.TextDirection.ltr : (isAr ? ui.TextDirection.rtl : ui.TextDirection.ltr),
+            child: Text(
+              text,
+              style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildEmptyState(bool isAr) => Center(
     child: Column(
@@ -716,7 +735,7 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
         const Text('🔍', style: TextStyle(fontSize: 60)),
         const SizedBox(height: 12),
         Text(
-          "No places in this category".tr(),
+          isAr ? 'لا توجد أماكن في هذا التصنيف' : "No places in this category",
           style: const TextStyle(color: Colors.grey, fontSize: 14),
         ),
       ],
@@ -755,12 +774,12 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                 ),
                 // Title
                 Text(
-                  "🚇 Select a Station".tr(),
+                  isAr ? '🚇 اختر محطة' : "🚇 Select a Station",
                   style: TextStyle(color: Theme.of(context).textTheme.titleLarge?.color, fontWeight: FontWeight.bold, fontSize: 18),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  "Stations with tourism data".tr(),
+                  isAr ? 'المحطات المتوفر لها بيانات سياحية' : "Stations with tourism data",
                   style: const TextStyle(color: Colors.grey, fontSize: 12),
                 ),
                 const SizedBox(height: 12),
@@ -771,7 +790,7 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                     controller: searchCtrl,
                     style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
                     decoration: InputDecoration(
-                      hintText: "Search...".tr(),
+                      hintText: isAr ? 'بحث...' : "Search...",
                       hintStyle: const TextStyle(color: Colors.grey),
                       filled: true,
                       fillColor: Theme.of(context).scaffoldBackgroundColor,

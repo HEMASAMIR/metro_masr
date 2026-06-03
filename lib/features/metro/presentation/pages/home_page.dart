@@ -7,7 +7,13 @@ import '../../../../core/di/injection_container.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_cubit.dart';
 import '../../../../core/utils/gamification_service.dart';
+import '../../../../core/utils/dijkstra.dart';
+import '../../../splash/presentation/trip_tracking_service.dart';
 import '../../../../core/utils/metro_data.dart';
+import '../../../../core/utils/page_transitions.dart';
+import '../widgets/smart_dashboard_card.dart';
+import '../widgets/live_status_banner.dart';
+import '../../../../core/widgets/station_search_sheet.dart';
 
 import '../../../../core/utils/notification_service.dart';
 import '../../../../core/utils/responsive.dart';
@@ -20,14 +26,11 @@ import 'map_page.dart';
 import 'nearby_stations_page.dart';
 import 'subscription_optimizer_page.dart';
 import 'ar_navigation_page.dart';
-import '../../../community/presentation/pages/community_page.dart';
 
 import '../widgets/tourist_translator_modal.dart';
 
-import '../../../community/presentation/pages/lost_and_found_page.dart';
 import '../../../news/presentation/pages/news_page.dart';
 import '../../../ai_assistant/presentation/pages/ai_assistant_page.dart';
-
 
 import '../../../trip_scheduler/presentation/pages/trip_scheduler_page.dart';
 import '../../../pricing_calculator/presentation/pages/pricing_calculator_page.dart';
@@ -35,6 +38,8 @@ import '../../../pricing_calculator/presentation/pages/pricing_calculator_page.d
 import '../../../voice_command/presentation/voice_command_service.dart';
 import '../../../tourism/presentation/pages/tourist_attractions_page.dart';
 import 'line_alerts_page.dart';
+import 'train_simulator_page.dart';
+import 'nfc_wallet_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -60,7 +65,7 @@ class _HomePageState extends State<_HomePageView> {
   String? _fromStation;
   String? _toStation;
 
-  // ── Metro type toggle (for info section only) ────────────────────────────
+  // ── Metro type toggle (for info section only) ──────────────────────────────
   int _metroType = 0; // 0 = Cairo Metro, 1 = Capital Metro
 
   @override
@@ -104,49 +109,43 @@ class _HomePageState extends State<_HomePageView> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          final svc = VoiceCommandService.of(context);
-          if (svc != null) {
-            svc.startListening();
-          } else {
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              backgroundColor: Colors.transparent,
-              builder: (_) => _VoiceCommandSheet(isAr: isAr),
-            );
-          }
-        },
-        backgroundColor: AppColors.primary,
-        child: const Icon(Icons.mic, color: Colors.white),
-        tooltip: 'Voice Command',
-      ),
+
       body: VoiceCommandService(
         child: Center(
           child: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: r.maxContentWidth),
             child: SingleChildScrollView(
-              padding: EdgeInsets.all(padding),
+              padding: EdgeInsets.only(
+                left: padding,
+                right: padding,
+                top: padding,
+                bottom:
+                    padding +
+                    100, // Extra bottom padding for the floating navigation bar!
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // ── Greeting ──────────────────────────────────────────────
                   FadeInDown(
                     child: Text(
-                      "Where to today? 🚇".tr(),
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        fontSize: r.fontSize(26),
-                      ),
+                      "where_to_today".tr(),
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            fontSize: r.fontSize(26),
+                          ),
                     ),
                   ),
                   const SizedBox(height: 6),
                   FadeInDown(
                     delay: const Duration(milliseconds: 40),
                     child: Text(
-                      "Enter your start & destination – we'll find the way".tr(),
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                      "trip_planner_subtitle".tr(),
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 14,
+                      ),
                     ),
                   ),
                   SizedBox(height: r.sectionSpacing),
@@ -172,18 +171,9 @@ class _HomePageState extends State<_HomePageView> {
                   ],
                   SizedBox(height: r.sectionSpacing),
 
-                  // ── Nearest Station (GPS-based, real-time) ────────────────
-                  FadeInUp(
-                    delay: const Duration(milliseconds: 140),
-                    child: _buildNearestStationLive(context, isAr),
-                  ),
+                  _buildNearestStationLive(context, isAr),
                   SizedBox(height: r.sectionSpacing),
-
-                  // ── Map shortcut ────────────────────────────────────────
-                  FadeInUp(
-                    delay: const Duration(milliseconds: 180),
-                    child: _buildMapShortcut(context, isAr),
-                  ),
+                  _buildMapShortcut(context, isAr),
                   SizedBox(height: r.sectionSpacing * 1.5),
 
                   // ── Feature cards ─────────────────────────────────────────
@@ -199,6 +189,216 @@ class _HomePageState extends State<_HomePageView> {
     );
   }
 
+  // ── Metro Type Toggle (مترو القاهرة / قطر العاصمة) ─────────────────────
+  Widget _buildMetroTypeToggle(BuildContext context, bool isAr) {
+    final types = [
+      {
+        'label': "Cairo Metro".tr(),
+        'icon': Icons.directions_subway_rounded,
+        'color': AppColors.primary,
+        'sub': "3 Lines • 85 Stations".tr(),
+      },
+      {
+        'label': "Capital Metro".tr(),
+        'icon': Icons.train_rounded,
+        'color': const Color(0xFF9C27B0),
+        'sub': "New Monorail Line".tr(),
+      },
+    ];
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      padding: const EdgeInsets.all(5),
+      child: Row(
+        children: List.generate(types.length, (i) {
+          final t = types[i];
+          final isSelected = i == _metroType;
+          final color = t['color'] as Color;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() {
+                _metroType = i;
+                _fromStation = null;
+                _toStation = null;
+              }),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 280),
+                curve: Curves.easeInOut,
+                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+                decoration: BoxDecoration(
+                  color: isSelected ? color : Colors.transparent,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: color.withValues(alpha: 0.30),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          )
+                        ]
+                      : [],
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      t['icon'] as IconData,
+                      color: isSelected ? Colors.white : color,
+                      size: 22,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      t['label'] as String,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: isSelected
+                            ? Colors.white
+                            : Theme.of(context).textTheme.titleMedium?.color,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12.5,
+                      ),
+                    ),
+                    Text(
+                      t['sub'] as String,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: isSelected
+                            ? Colors.white.withValues(alpha: 0.80)
+                            : Colors.grey,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  // ── Capital Metro info card ──────────────────────────────────────────────
+  Widget _buildCapitalMetroSection(BuildContext context, bool isAr) {
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF9C27B0), Color(0xFF6A1B9A)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF9C27B0).withValues(alpha: 0.30),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              )
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.train_rounded, color: Colors.white, size: 28),
+                  const SizedBox(width: 10),
+                  Text(
+                    "Administrative Capital Metro".tr(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 17,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              _capitalInfoRow(
+                Icons.route_outlined,
+                "Monorail: Adly Mansour ↔ Admin. Capital".tr(),
+                isAr,
+              ),
+              const SizedBox(height: 8),
+              _capitalInfoRow(
+                Icons.access_time_rounded,
+                "Journey time: ~60 minutes".tr(),
+                isAr,
+              ),
+              const SizedBox(height: 8),
+              _capitalInfoRow(
+                Icons.payments_outlined,
+                "Ticket price: 20-40 EGP".tr(),
+                isAr,
+              ),
+              const SizedBox(height: 8),
+              _capitalInfoRow(
+                Icons.swap_horiz_rounded,
+                "Transfer: from Adly Mansour Station (Line 3)".tr(),
+                isAr,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.info_outline_rounded,
+                color: Color(0xFF9C27B0),
+                size: 22,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  "To use Cairo Metro (Lines 1, 2 & 3) switch to \"Cairo Metro\" above"
+                      .tr(),
+                  style: const TextStyle(fontSize: 13, height: 1.5),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _capitalInfoRow(IconData icon, String text, bool isAr) {
+    return Row(
+      children: [
+        Icon(icon, color: Colors.white70, size: 16),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(color: Colors.white, fontSize: 12.5),
+          ),
+        ),
+      ],
+    );
+  }
+
   // ── Nearest Station Live (GPS-based) ─────────────────────────────────────
   Widget _buildNearestStationLive(BuildContext context, bool isAr) {
     return BlocBuilder<NearbyStationsCubit, NearbyStationsState>(
@@ -209,41 +409,73 @@ class _HomePageState extends State<_HomePageView> {
             decoration: BoxDecoration(
               color: Theme.of(context).cardColor,
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.15),
+              ),
             ),
             child: Row(
               children: [
-                const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5)),
+                const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2.5),
+                ),
                 const SizedBox(width: 12),
-                Text("Locating you...".tr(), style: const TextStyle(color: AppColors.textSecondary)),
+                Text(
+                  "locating_you".tr(),
+                  style: const TextStyle(color: AppColors.textSecondary),
+                ),
               ],
             ),
           );
         }
         if (state is NearbyStationsError) {
           return GestureDetector(
-            onTap: () => context.read<NearbyStationsCubit>().getNearbyStations(),
+            onTap: () =>
+                context.read<NearbyStationsCubit>().getNearbyStations(),
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: AppColors.error.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: AppColors.error.withValues(alpha: 0.20)),
+                border: Border.all(
+                  color: AppColors.error.withValues(alpha: 0.20),
+                ),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.location_off_rounded, color: AppColors.error, size: 24),
+                  const Icon(
+                    Icons.location_off_rounded,
+                    color: AppColors.error,
+                    size: 24,
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text("Location unavailable".tr(), style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.error)),
-                        Text("Tap to enable location".tr(), style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                        Text(
+                          "location_unavailable".tr(),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.error,
+                          ),
+                        ),
+                        Text(
+                          "tap_to_enable_location".tr(),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                  const Icon(Icons.refresh_rounded, color: AppColors.error, size: 20),
+                  const Icon(
+                    Icons.refresh_rounded,
+                    color: AppColors.error,
+                    size: 20,
+                  ),
                 ],
               ),
             ),
@@ -257,50 +489,124 @@ class _HomePageState extends State<_HomePageView> {
           final distLabel = distM < 1000
               ? '${distM.round()} ${"m".tr()}'
               : '${(distM / 1000).toStringAsFixed(1)} ${"km".tr()}';
+
+          final showWalk =
+              distM <
+              10000; // Only show walking time if distance is less than 10 km
           final walkMins = (distM / 83).ceil();
-          final lineColor = s.line == 1 ? AppColors.line1 : s.line == 2 ? AppColors.line2 : AppColors.line3;
+          final infoText = showWalk
+              ? '$distLabel · ~$walkMins ${"min_walk".tr()}'
+              : distLabel;
+
+          final lineColor = s.line == 1
+              ? AppColors.line1
+              : s.line == 2
+              ? AppColors.line2
+              : AppColors.line3;
 
           return GestureDetector(
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NearbyStationsPage())),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const NearbyStationsPage()),
+            ),
             child: Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
                 color: Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(color: lineColor.withValues(alpha: 0.25)),
-                boxShadow: [BoxShadow(color: lineColor.withValues(alpha: 0.08), blurRadius: 12, offset: const Offset(0, 4))],
+                boxShadow: [
+                  BoxShadow(
+                    color: lineColor.withValues(alpha: 0.08),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: Row(
                 children: [
                   Container(
-                    width: 48, height: 48,
-                    decoration: BoxDecoration(color: lineColor.withValues(alpha: 0.12), shape: BoxShape.circle),
-                    child: Icon(Icons.location_on_rounded, color: lineColor, size: 26),
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: lineColor.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.location_on_rounded,
+                      color: lineColor,
+                      size: 26,
+                    ),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text("📍 Nearest Metro Station".tr(), style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                        Text(
+                          "nearest_metro_station".tr(),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
                         const SizedBox(height: 2),
-                        Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+                        Text(
+                          name,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 17,
+                          ),
+                        ),
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            Container(width: 8, height: 8, decoration: BoxDecoration(color: lineColor, shape: BoxShape.circle)),
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: lineColor,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
                             const SizedBox(width: 4),
-                            Text(isAr ? 'الخط ${s.line}' : 'Line ${s.line}', style: TextStyle(color: lineColor, fontSize: 11, fontWeight: FontWeight.w600)),
+                            Text(
+                              isAr ? 'الخط ${s.line}' : 'Line ${s.line}',
+                              style: TextStyle(
+                                color: lineColor,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                             const SizedBox(width: 10),
-                            const Icon(Icons.directions_walk_rounded, size: 12, color: AppColors.textSecondary),
-                            const SizedBox(width: 2),
-                            Text('$distLabel · ~$walkMins ${"min walk".tr()}', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                            Icon(
+                              showWalk
+                                  ? Icons.directions_walk_rounded
+                                  : Icons.navigation_rounded,
+                              size: 12,
+                              color: AppColors.textSecondary,
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                infoText,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.textSecondary,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                           ],
                         ),
                       ],
                     ),
                   ),
-                  const Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary, size: 22),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppColors.textSecondary,
+                    size: 22,
+                  ),
                 ],
               ),
             ),
@@ -331,7 +637,7 @@ class _HomePageState extends State<_HomePageView> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "🗺️ Plan Your Trip".tr(),
+              "plan_your_trip".tr(),
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
@@ -344,7 +650,7 @@ class _HomePageState extends State<_HomePageView> {
             _buildSearchableStationDropdown(
               context: context,
               isAr: isAr,
-              label: "📍 From (Start Station)".tr(),
+              label: "from_start_station".tr(),
               value: _fromStation,
               onChanged: (v) => setState(() => _fromStation = v),
             ),
@@ -364,9 +670,15 @@ class _HomePageState extends State<_HomePageView> {
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.20),
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.50)),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.50),
+                    ),
                   ),
-                  child: const Icon(Icons.swap_vert_rounded, color: Colors.white, size: 20),
+                  child: const Icon(
+                    Icons.swap_vert_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
                 ),
               ),
             ),
@@ -376,7 +688,7 @@ class _HomePageState extends State<_HomePageView> {
             _buildSearchableStationDropdown(
               context: context,
               isAr: isAr,
-              label: "🏁 To (Destination)".tr(),
+              label: "to_destination".tr(),
               value: _toStation,
               onChanged: (v) => setState(() => _toStation = v),
             ),
@@ -389,33 +701,60 @@ class _HomePageState extends State<_HomePageView> {
                   backgroundColor: Colors.white,
                   foregroundColor: AppColors.primary,
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   elevation: 0,
                 ),
                 icon: const Icon(Icons.directions_subway_rounded, size: 22),
                 label: Text(
-                  "Find My Route".tr(),
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  "find_my_route".tr(),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
                 onPressed: () {
                   if (_fromStation == null || _toStation == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text("Please select both stations first".tr()),
-                      backgroundColor: AppColors.error,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text("select_both_stations".tr()),
+                        backgroundColor: AppColors.error,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    );
                     return;
                   }
                   if (_fromStation == _toStation) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text("⚠️ Choose a different destination!".tr()),
-                      backgroundColor: AppColors.warning,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text("different_destination".tr()),
+                        backgroundColor: AppColors.warning,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    );
                     return;
                   }
+
+                  // ── تشغيل المنبه التلقائي (Automatic Arrival Alarm) ──
+                  final allStationsMap = MetroData.stations;
+                  final result = Dijkstra.findShortestPath(
+                    allStationsMap,
+                    _fromStation!,
+                    _toStation!,
+                  );
+                  if (result['path'] != null) {
+                    TripTrackingService.instance.startTracking(
+                      result['path'] as List<Station>,
+                    );
+                  }
+
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -442,207 +781,74 @@ class _HomePageState extends State<_HomePageView> {
     required ValueChanged<String?> onChanged,
   }) {
     final stations = _allStations;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          isExpanded: true,
-          hint: Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 14)),
-          value: value,
-          icon: Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primary),
-          dropdownColor: Colors.white,
-          items: stations.map((s) {
-            final lineColor = s.line == 1 ? AppColors.line1 : s.line == 2 ? AppColors.line2 : AppColors.line3;
-            return DropdownMenuItem(
-              value: s.id,
-              child: Row(
-                children: [
-                  Container(width: 10, height: 10, decoration: BoxDecoration(color: lineColor, shape: BoxShape.circle)),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      isAr ? s.nameAr : s.nameEn,
-                      style: const TextStyle(fontSize: 14, color: Colors.black87),
-                    ),
-                  ),
-                  if (s.isTransfer)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                      decoration: BoxDecoration(color: AppColors.warning.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(4)),
-                      child: Text("transfer".tr(), style: const TextStyle(fontSize: 9, color: AppColors.warning)),
-                    ),
-                ],
-              ),
-            );
-          }).toList(),
-          onChanged: onChanged,
+    final selectedStation = stations.where((s) => s.id == value).firstOrNull;
+    final displayName = selectedStation != null
+        ? (isAr ? selectedStation.nameAr : selectedStation.nameEn)
+        : label;
+
+    return InkWell(
+      onTap: () async {
+        final result = await StationSearchSheet.show(
+          context,
+          stations,
+          selectedStationId: value,
+        );
+        if (result != null) {
+          onChanged(result);
+        }
+      },
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
         ),
-      ),
-    );
-  }
-
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // ── Metro Type Toggle (مترو القاهرة / قطر العاصمة) ─────────────────────
-  Widget _buildMetroTypeToggle(BuildContext context, bool isAr) {
-    final types = [
-      {
-        'label': "Cairo Metro".tr(),
-        'icon': Icons.directions_subway_rounded,
-        'color': AppColors.primary,
-        'sub': "3 Lines • 85 Stations".tr(),
-      },
-      {
-        'label': "Capital Metro".tr(),
-        'icon': Icons.train_rounded,
-        'color': const Color(0xFF9C27B0),
-        'sub': "New Monorail Line".tr(),
-      },
-    ];
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
-      ),
-      padding: const EdgeInsets.all(5),
-      child: Row(
-        children: List.generate(types.length, (i) {
-          final t = types[i];
-          final isSelected = i == _metroType;
-          final color = t['color'] as Color;
-          return Expanded(
-            child: GestureDetector(
-              onTap: () => setState(() {
-                _metroType = i;
-                _fromStation = null;
-                _toStation = null;
-              }),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 280),
-                curve: Curves.easeInOut,
-                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+        child: Row(
+          children: [
+            if (selectedStation != null) ...[
+              Container(
+                width: 10,
+                height: 10,
                 decoration: BoxDecoration(
-                  color: isSelected ? color : Colors.transparent,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: isSelected
-                      ? [BoxShadow(color: color.withValues(alpha: 0.30), blurRadius: 10, offset: const Offset(0, 4))]
-                      : [],
-                ),
-                child: Column(
-                  children: [
-                    Icon(
-                      t['icon'] as IconData,
-                      color: isSelected ? Colors.white : color,
-                      size: 22,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      t['label'] as String,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: isSelected ? Colors.white : Theme.of(context).textTheme.titleMedium?.color,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12.5,
-                      ),
-                    ),
-                    Text(
-                      t['sub'] as String,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: isSelected ? Colors.white.withValues(alpha: 0.80) : Colors.grey,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ],
+                  color: selectedStation.line == 1
+                      ? AppColors.line1
+                      : selectedStation.line == 2
+                      ? AppColors.line2
+                      : AppColors.line3,
+                  shape: BoxShape.circle,
                 ),
               ),
-            ),
-          );
-        }),
-      ),
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // ── Capital Metro info card ──────────────────────────────────────────────
-  Widget _buildCapitalMetroSection(BuildContext context, bool isAr) {
-    return Column(
-      children: [
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF9C27B0), Color(0xFF6A1B9A)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [BoxShadow(color: const Color(0xFF9C27B0).withValues(alpha: 0.30), blurRadius: 16, offset: const Offset(0, 6))],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.train_rounded, color: Colors.white, size: 28),
-                  const SizedBox(width: 10),
-                  Text(
-                    "Administrative Capital Metro".tr(),
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 17),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              _capitalInfoRow(Icons.route_outlined, "Monorail: Adly Mansour ↔ Admin. Capital".tr(), isAr),
-              const SizedBox(height: 8),
-              _capitalInfoRow(Icons.access_time_rounded, "Journey time: ~60 minutes".tr(), isAr),
-              const SizedBox(height: 8),
-              _capitalInfoRow(Icons.payments_outlined, "Ticket price: 20-40 EGP".tr(), isAr),
-              const SizedBox(height: 8),
-              _capitalInfoRow(Icons.swap_horiz_rounded, "Transfer: from Adly Mansour Station (Line 3)".tr(), isAr),
+              const SizedBox(width: 8),
             ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.info_outline_rounded, color: Color(0xFF9C27B0), size: 22),
-              const SizedBox(width: 10),
-              Expanded(
+            Expanded(
+              child: Text(
+                displayName,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: selectedStation != null
+                      ? Colors.black87
+                      : Colors.grey[600],
+                ),
+              ),
+            ),
+            if (selectedStation?.isTransfer == true)
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(4),
+                ),
                 child: Text(
-                  "To use Cairo Metro (Lines 1, 2 & 3) switch to \"Cairo Metro\" above".tr(),
-                  style: const TextStyle(fontSize: 13, height: 1.5),
+                  "transfer".tr(),
+                  style: const TextStyle(fontSize: 9, color: AppColors.warning),
                 ),
               ),
-            ],
-          ),
+            Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primary),
+          ],
         ),
-      ],
-    );
-  }
-
-  Widget _capitalInfoRow(IconData icon, String text, bool isAr) {
-    return Row(
-      children: [
-        Icon(icon, color: Colors.white70, size: 16),
-        const SizedBox(width: 8),
-        Expanded(child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 12.5))),
-      ],
+      ),
     );
   }
 
@@ -650,7 +856,9 @@ class _HomePageState extends State<_HomePageView> {
   Widget _buildMapShortcut(BuildContext context, bool isAr) {
     return GestureDetector(
       onTap: () => Navigator.push(
-        context, MaterialPageRoute(builder: (_) => const MapPage())),
+        context,
+        MaterialPageRoute(builder: (_) => const MapPage()),
+      ),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
@@ -674,7 +882,11 @@ class _HomePageState extends State<_HomePageView> {
                 color: AppColors.primary.withValues(alpha: 0.10),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.map_rounded, color: AppColors.primary, size: 22),
+              child: const Icon(
+                Icons.map_rounded,
+                color: AppColors.primary,
+                size: 22,
+              ),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -683,16 +895,28 @@ class _HomePageState extends State<_HomePageView> {
                 children: [
                   Text(
                     isAr ? '🗺️ خريطة خطوط المترو' : '🗺️ Metro Lines Map',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
                   ),
                   Text(
-                    isAr ? 'شوف كل الخطوط والمحطات' : 'View all lines & stations',
-                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                    isAr
+                        ? 'شوف كل الخطوط والمحطات'
+                        : 'View all lines & stations',
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary, size: 22),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: AppColors.textSecondary,
+              size: 22,
+            ),
           ],
         ),
       ),
@@ -702,20 +926,21 @@ class _HomePageState extends State<_HomePageView> {
   String _getRealisticLineStatus(int lineId) {
     final now = DateTime.now();
     final hour = now.hour;
-    
+
     // Rush hours: 7-9 AM, 14-18 PM
     final isRushHour = (hour >= 7 && hour <= 9) || (hour >= 14 && hour <= 18);
-    
+
     if (isRushHour) {
       if (lineId == 1 && now.minute % 3 == 0) return 'minor_delays'.tr();
-      if (lineId == 2 && now.minute % 2 == 0) return 'minor_delays'.tr(); // Line 2 is notoriously more crowded
+      if (lineId == 2 && now.minute % 2 == 0)
+        return 'minor_delays'.tr(); // Line 2 is notoriously more crowded
       if (lineId == 3 && now.minute % 7 == 0) return 'minor_delays'.tr();
     } else {
       // 10% chance of random delay outside rush hours based on current 10-minute window
-      final window = now.minute ~/ 10; 
+      final window = now.minute ~/ 10;
       if ((hour + lineId + window) % 9 == 0) return 'minor_delays'.tr();
     }
-    
+
     return 'on_time'.tr();
   }
 
@@ -755,7 +980,11 @@ class _HomePageState extends State<_HomePageView> {
                     color: Colors.white.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: const Icon(Icons.directions_subway_rounded, color: Colors.white, size: 26),
+                  child: const Icon(
+                    Icons.directions_subway_rounded,
+                    color: Colors.white,
+                    size: 26,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -764,17 +993,27 @@ class _HomePageState extends State<_HomePageView> {
                     children: [
                       Text(
                         "Cairo Metro".tr(),
-                        style: const TextStyle(color: Colors.white70, fontSize: 13),
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 13,
+                        ),
                       ),
                       Text(
                         "3 Lines • 85 Stations".tr(),
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
                     ],
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(20),
@@ -782,13 +1021,21 @@ class _HomePageState extends State<_HomePageView> {
                   child: Row(
                     children: [
                       Container(
-                        width: 7, height: 7,
-                        decoration: const BoxDecoration(color: Color(0xFF4CAF50), shape: BoxShape.circle),
+                        width: 7,
+                        height: 7,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF4CAF50),
+                          shape: BoxShape.circle,
+                        ),
                       ),
                       const SizedBox(width: 5),
                       Text(
                         "Active".tr(),
-                        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
@@ -798,7 +1045,12 @@ class _HomePageState extends State<_HomePageView> {
             const SizedBox(height: 20),
             Text(
               "Plan Your Trip Now".tr(),
-              style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold, height: 1.2),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                height: 1.2,
+              ),
             ),
             const SizedBox(height: 6),
             Text(
@@ -815,11 +1067,19 @@ class _HomePageState extends State<_HomePageView> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.route_outlined, color: Color(0xFF1565C0), size: 20),
+                  const Icon(
+                    Icons.route_outlined,
+                    color: Color(0xFF1565C0),
+                    size: 20,
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     "Start Planning →".tr(),
-                    style: const TextStyle(color: Color(0xFF1565C0), fontWeight: FontWeight.bold, fontSize: 15),
+                    style: const TextStyle(
+                      color: Color(0xFF1565C0),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
                   ),
                 ],
               ),
@@ -830,8 +1090,6 @@ class _HomePageState extends State<_HomePageView> {
     );
   }
 
-
-
   // ── Single‑column list (phone portrait) ──────────────────────────────────
   Widget _buildFeatureList(BuildContext context, Responsive r) {
     final cards = _featureConfigs(context);
@@ -839,13 +1097,15 @@ class _HomePageState extends State<_HomePageView> {
       children: cards
           .asMap()
           .entries
-          .map((e) => Padding(
-                padding: EdgeInsets.only(bottom: r.sectionSpacing),
-                child: FadeInUp(
-                  delay: Duration(milliseconds: 200 * e.key),
-                  child: e.value,
-                ),
-              ))
+          .map(
+            (e) => Padding(
+              padding: EdgeInsets.only(bottom: r.sectionSpacing),
+              child: FadeInUp(
+                delay: Duration(milliseconds: 200 * e.key),
+                child: e.value,
+              ),
+            ),
+          )
           .toList(),
     );
   }
@@ -899,7 +1159,10 @@ class _HomePageState extends State<_HomePageView> {
         onTap: () {
           speak('route_planner'.tr());
           GamificationService.recordRoutePlan();
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const RoutePlannerPage()));
+          Navigator.push(
+            context,
+            RafiqPageRoute(page: const RoutePlannerPage()),
+          );
         },
       ),
       FeatureCard(
@@ -909,7 +1172,7 @@ class _HomePageState extends State<_HomePageView> {
         color: AppColors.line3,
         onTap: () {
           speak('interactive_map'.tr());
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const MapPage()));
+          Navigator.push(context, RafiqPageRoute(page: const MapPage()));
         },
       ),
       FeatureCard(
@@ -919,123 +1182,162 @@ class _HomePageState extends State<_HomePageView> {
         color: AppColors.line2,
         onTap: () {
           speak('nearby_stations'.tr());
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const NearbyStationsPage()));
+          Navigator.push(
+            context,
+            RafiqPageRoute(page: const NearbyStationsPage()),
+          );
         },
       ),
       // ── NEW FEATURE 1: AI Trip Assistant ──────────────────────────────────
       FeatureCard(
-        title: "AI Assistant 🤖".tr(),
-        subtitle: "Ask me anything about metro".tr(),
+        title: isAr ? "مساعد رفيق الذكي 🤖" : "AI Assistant 🤖",
+        subtitle: isAr
+            ? "اسألني أي شيء عن المترو"
+            : "Ask me anything about metro",
         icon: Icons.smart_toy_outlined,
         color: const Color(0xFF7C3AED),
         onTap: () {
           GamificationService.recordAiQuery();
           GamificationService.unlockBadge(BadgeType.aiUser);
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const AiAssistantPage()));
+          Navigator.push(
+            context,
+            RafiqPageRoute(page: const AiAssistantPage()),
+          );
         },
       ),
       // ── Feature 3: Trip Scheduler ──────────────────────────────────────────
       FeatureCard(
-        title: "Trip Scheduler 📅".tr(),
-        subtitle: "Recurring trips with reminders".tr(),
+        title: isAr ? "مُجدول الرحلات 📅" : "Trip Scheduler 📅",
+        subtitle: isAr
+            ? "رحلات متكررة مع تنبيهات ذكية"
+            : "Recurring trips with reminders",
         icon: Icons.calendar_month_outlined,
         color: Colors.indigo,
         onTap: () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const TripSchedulerPage()));
+          Navigator.push(
+            context,
+            RafiqPageRoute(page: const TripSchedulerPage()),
+          );
         },
       ),
       // ── NEW FEATURE 5: Pricing Calculator ─────────────────────────────────
       FeatureCard(
-        title: "Cost Calculator 💳".tr(),
-        subtitle: "Calculate, compare & save".tr(),
+        title: isAr ? "حاسبة التكلفة 💳" : "Cost Calculator 💳",
+        subtitle: isAr ? "احسب وقارن ووفر فلوسك" : "Calculate, compare & save",
         icon: Icons.calculate_outlined,
         color: Colors.green[700]!,
         onTap: () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const PricingCalculatorPage()));
+          Navigator.push(
+            context,
+            RafiqPageRoute(page: const PricingCalculatorPage()),
+          );
+        },
+      ),
+      // ── FEATURE: Train Simulator ──
+      FeatureCard(
+        title: "train_simulator".tr(),
+        subtitle: "train_sim_subtitle".tr(),
+        icon: Icons.directions_subway_rounded,
+        color: const Color(0xFF0284C7),
+        onTap: () {
+          Navigator.push(
+            context,
+            RafiqPageRoute(page: const TrainSimulatorPage()),
+          );
         },
       ),
 
       // Tourist Attractions
       FeatureCard(
-        title: "Tourist Attractions 🗺️".tr(),
-        subtitle: "Discover Egypt landmarks from any station • 4 languages".tr(),
+        title: isAr ? "المعالم السياحية 🗺️" : "Tourist Attractions 🗺️",
+        subtitle: isAr
+            ? "اكتشف معالم مصر السياحية من أي محطة"
+            : "Discover Egypt landmarks near stations",
         icon: Icons.attractions_outlined,
         color: const Color(0xFFFFB800),
         onTap: () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const TouristAttractionsPage()));
+          Navigator.push(
+            context,
+            RafiqPageRoute(page: const TouristAttractionsPage()),
+          );
         },
       ),
 
       // Line Alerts
       FeatureCard(
-        title: "Line Alerts 🔔".tr(),
-        subtitle: "Instant alerts for delays & crowd".tr(),
+        title: isAr ? "تنبيهات الخطوط 🔔" : "Line Alerts 🔔",
+        subtitle: isAr
+            ? "تنبيهات فورية للتأخير والازدحام"
+            : "Instant alerts for delays & crowd",
         icon: Icons.notifications_active_outlined,
         color: Colors.red[700]!,
         onTap: () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const LineAlertsPage()));
+          Navigator.push(context, RafiqPageRoute(page: const LineAlertsPage()));
         },
       ),
 
       FeatureCard(
         title: 'subscription_optimizer'.tr(),
-        subtitle: '',
+        subtitle: isAr
+            ? 'احسب ووفر اشتراكك الشهري'
+            : 'Calculate & optimize subscriptions',
         icon: Icons.savings_outlined,
         color: AppColors.accent,
         onTap: () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionOptimizerPage()));
+          Navigator.push(
+            context,
+            RafiqPageRoute(page: const SubscriptionOptimizerPage()),
+          );
         },
       ),
       FeatureCard(
         title: 'ar_navigation'.tr(),
-        subtitle: '',
+        subtitle: isAr
+            ? 'ابحث عن المحطة عبر الكاميرا'
+            : 'Find stations using AR camera',
         icon: Icons.view_in_ar,
         color: AppColors.primary,
         onTap: () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const ARNavigationPage()));
-        },
-      ),
-      FeatureCard(
-        title: 'community'.tr(),
-        subtitle: 'community_subtitle'.tr(),
-        icon: Icons.account_tree_outlined,
-        color: AppColors.line2,
-        onTap: () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const CommunityPage()));
-        },
-      ),
-      FeatureCard(
-        title: "Latest News".tr(),
-        subtitle: "Live updates".tr(),
-        icon: Icons.newspaper_outlined,
-        color: AppColors.primary,
-        onTap: () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const NewsPage()));
+          Navigator.push(
+            context,
+            RafiqPageRoute(page: const ARNavigationPage()),
+          );
         },
       ),
 
       FeatureCard(
-        title: "Tourist Assist".tr(),
-        subtitle: "Instant Voice Translation".tr(),
+        title: isAr ? "آخر الأخبار 📰" : "Latest News",
+        subtitle: isAr
+            ? "متابعة حية ومباشرة لأخبار المترو"
+            : "Live updates & news",
+        icon: Icons.newspaper_outlined,
+        color: AppColors.primary,
+        onTap: () {
+          Navigator.push(context, RafiqPageRoute(page: const NewsPage()));
+        },
+      ),
+
+      FeatureCard(
+        title: isAr ? "مساعد السياح 🗣️" : "Tourist Assist",
+        subtitle: isAr
+            ? "ترجمة صوتية فورية للغات مختلفة"
+            : "Instant Voice Translation",
         icon: Icons.g_translate,
         color: AppColors.primary,
         onTap: () {
           TouristTranslatorModal.show(context);
         },
       ),
-      FeatureCard(
-        title: "Lost & Found".tr(),
-        subtitle: "Report & Find lost items".tr(),
-        icon: Icons.travel_explore,
-        color: AppColors.line2,
-        onTap: () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const LostAndFoundPage()));
-        },
-      ),
     ];
   }
 
-  void _showLineDetailsModal(BuildContext context, String line, bool isOnTime, int lineNum, bool isAr) {
+  void _showLineDetailsModal(
+    BuildContext context,
+    String line,
+    bool isOnTime,
+    int lineNum,
+    bool isAr,
+  ) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1050,38 +1352,74 @@ class _HomePageState extends State<_HomePageView> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 40, height: 4, margin: const EdgeInsets.only(bottom: 24),
-              decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2)),
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 24),
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
             Row(
               children: [
                 Container(
-                  width: 48, height: 48,
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
-                     color: lineNum == 1 ? AppColors.line1.withValues(alpha: 0.1) : (lineNum == 2 ? AppColors.line2.withValues(alpha: 0.1) : AppColors.line3.withValues(alpha: 0.1)),
-                     borderRadius: BorderRadius.circular(12),
+                    color: lineNum == 1
+                        ? AppColors.line1.withValues(alpha: 0.1)
+                        : (lineNum == 2
+                              ? AppColors.line2.withValues(alpha: 0.1)
+                              : AppColors.line3.withValues(alpha: 0.1)),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(Icons.subway_rounded, color: lineNum == 1 ? AppColors.line1 : (lineNum == 2 ? AppColors.line2 : AppColors.line3)),
+                  child: Icon(
+                    Icons.subway_rounded,
+                    color: lineNum == 1
+                        ? AppColors.line1
+                        : (lineNum == 2 ? AppColors.line2 : AppColors.line3),
+                  ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(isAr ? 'الخط $lineNum' : 'Line $lineNum', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                      Text("Current Operations Status".tr(), style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                      Text(
+                        isAr ? 'الخط $lineNum' : 'Line $lineNum',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        "Current Operations Status".tr(),
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 13,
+                        ),
+                      ),
                     ],
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
-                    color: isOnTime ? AppColors.success.withValues(alpha: 0.1) : AppColors.warning.withValues(alpha: 0.1),
+                    color: isOnTime
+                        ? AppColors.success.withValues(alpha: 0.1)
+                        : AppColors.warning.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
                     isOnTime ? ("Stable".tr()) : ("Delayed".tr()),
-                    style: TextStyle(color: isOnTime ? AppColors.success : AppColors.warning, fontWeight: FontWeight.bold, fontSize: 14),
+                    style: TextStyle(
+                      color: isOnTime ? AppColors.success : AppColors.warning,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
               ],
@@ -1100,10 +1438,14 @@ class _HomePageState extends State<_HomePageView> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      isOnTime 
-                        ? ("Trains are operating normally in both directions.".tr())
-                        : ("Minor technical issue, expect slight delays.".tr()),
-                      style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color),
+                      isOnTime
+                          ? ("Trains are operating normally in both directions."
+                                .tr())
+                          : ("Minor technical issue, expect slight delays."
+                                .tr()),
+                      style: TextStyle(
+                        color: Theme.of(context).textTheme.bodyMedium?.color,
+                      ),
                     ),
                   ),
                 ],
@@ -1117,10 +1459,18 @@ class _HomePageState extends State<_HomePageView> {
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
                 icon: const Icon(Icons.notifications_active_outlined),
-                label: Text("Enable notifications for this line".tr(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                label: Text(
+                  "Enable notifications for this line".tr(),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
                 onPressed: () {
                   HapticFeedback.lightImpact();
                   Navigator.pop(ctx);
@@ -1129,12 +1479,18 @@ class _HomePageState extends State<_HomePageView> {
                     SnackBar(
                       behavior: SnackBarBehavior.floating,
                       margin: const EdgeInsets.all(16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       content: Row(
                         children: [
                           const Icon(Icons.check_circle, color: Colors.white),
                           const SizedBox(width: 12),
-                          Text(isAr ? 'تم تفعيل التنبيهات للخط $lineNum' : 'Alerts enabled for Line $lineNum'),
+                          Text(
+                            isAr
+                                ? 'تم تفعيل التنبيهات للخط $lineNum'
+                                : 'Alerts enabled for Line $lineNum',
+                          ),
                         ],
                       ),
                       backgroundColor: Colors.black87,
@@ -1151,10 +1507,18 @@ class _HomePageState extends State<_HomePageView> {
     );
   }
 
-  Widget _buildStatusCard(String line, String status, Color color, BuildContext context, Responsive r) {
+  Widget _buildStatusCard(
+    String line,
+    String status,
+    Color color,
+    BuildContext context,
+    Responsive r,
+  ) {
     final isOnTime = status == 'on_time'.tr() || status == 'مستقر';
     final lineNum = int.tryParse(line.replaceAll(RegExp(r'\D'), '')) ?? 1;
-    final stationCount = MetroData.stations.values.where((s) => s.line == lineNum).length;
+    final stationCount = MetroData.stations.values
+        .where((s) => s.line == lineNum)
+        .length;
     final lang = context.locale.languageCode;
     final isAr = lang == 'ar';
 
@@ -1188,24 +1552,41 @@ class _HomePageState extends State<_HomePageView> {
                 Container(
                   width: 4,
                   height: 44,
-                  decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 // Line name + station count
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(line, style: TextStyle(fontWeight: FontWeight.bold, fontSize: r.fontSize(14))),
                     Text(
-                      lang == 'ar' ? '$stationCount محطة' : '$stationCount stations',
-                      style: TextStyle(fontSize: r.fontSize(11), color: AppColors.textSecondary),
+                      line,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: r.fontSize(14),
+                      ),
+                    ),
+                    Text(
+                      lang == 'ar'
+                          ? '$stationCount محطة'
+                          : '$stationCount stations',
+                      style: TextStyle(
+                        fontSize: r.fontSize(11),
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
                 const Spacer(),
                 // Status badge
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: isOnTime
                         ? AppColors.success.withValues(alpha: 0.1)
@@ -1231,95 +1612,3 @@ class _HomePageState extends State<_HomePageView> {
 }
 
 // ── Fallback Voice Command Sheet ─────────────────────────────────────────────
-class _VoiceCommandSheet extends StatelessWidget {
-  final bool isAr;
-  const _VoiceCommandSheet({required this.isAr});
-
-  void _navigate(BuildContext context, String cmd) {
-    Navigator.pop(context);
-    final lower = cmd.toLowerCase();
-    Widget? dest;
-    if (lower.contains('خريطة') || lower.contains('map')) {
-      dest = const MapPage();
-    } else if (lower.contains('مخطط') || lower.contains('route') || lower.contains('رحلة') || lower.contains('plan')) {
-      dest = const RoutePlannerPage();
-    } else if (lower.contains('قريب') || lower.contains('nearby')) {
-      dest = const NearbyStationsPage();
-    } else if (lower.contains('مجتمع') || lower.contains('community')) {
-      dest = const CommunityPage();
-    } else if (lower.contains('أخبار') || lower.contains('news')) {
-      dest = const NewsPage();
-
-    } else if (lower.contains('جدول') || lower.contains('schedule')) {
-      dest = const TripSchedulerPage();
-    } else if (lower.contains('تكلفة') || lower.contains('price') || lower.contains('حاسبة') || lower.contains('calculator')) {
-      dest = const PricingCalculatorPage();
-    } else if (lower.contains('ذكاء') || lower.contains('ai') || lower.contains('مساعد') || lower.contains('assistant')) {
-      dest = const AiAssistantPage();
-    }
-    if (dest != null) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => dest!));
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final quickCmds = isAr
-        ? ['الخريطة', 'مخطط الرحلة', 'الطوارئ', 'الذكاء الاصطناعي']
-        : ['Map', 'Route Planner', 'Emergency', 'AI Assistant'];
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [AppColors.primary, AppColors.accent]),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(color: AppColors.primary.withOpacity(0.4), blurRadius: 20, spreadRadius: 5),
-                ],
-              ),
-              child: const Icon(Icons.mic, color: Colors.white, size: 32),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              "Type your command...".tr(),
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              autofocus: true,
-              decoration: InputDecoration(
-                hintText: "e.g: Open map".tr(),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                prefixIcon: const Icon(Icons.keyboard_voice),
-              ),
-              onSubmitted: (v) => _navigate(context, v),
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              children: quickCmds.map((cmd) => ActionChip(
-                label: Text(cmd, style: const TextStyle(fontSize: 12)),
-                onPressed: () => _navigate(context, cmd),
-              )).toList(),
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-
-

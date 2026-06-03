@@ -351,11 +351,12 @@ class _BlindJourneyPageState extends State<BlindJourneyPage>
   Widget _buildMainContent() {
     return ScaleTransition(
       scale: _stepAnim,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
+      child: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
             // Line badge
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -531,7 +532,7 @@ class _BlindJourneyPageState extends State<BlindJourneyPage>
           ],
         ),
       ),
-    );
+    ));
   }
 
   // ── Bottom controls ───────────────────────────────────────────────────────

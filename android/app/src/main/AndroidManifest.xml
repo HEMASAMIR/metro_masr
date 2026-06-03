@@ -3,7 +3,8 @@
     <!-- Location permissions (required by geolocator) -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <!-- Commented out to avoid Google Play rejection. Only uncomment if you submit a background location declaration form to Google Play -->
+    <!-- <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" /> -->
 
     <!-- Internet (required by flutter_tts and Google Maps) -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -11,12 +12,15 @@
     <!-- Microphone (required by speech_to_text) -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
+    <!-- Camera (required for AR Navigation) -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
     <!-- Vibration for notifications -->
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 
     <application
-        android:label="رفيق مترو"
+        android:label="رفيقك في المترو"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:enableOnBackInvokedCallback="true">

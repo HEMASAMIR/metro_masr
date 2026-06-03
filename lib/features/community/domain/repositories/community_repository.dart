@@ -13,4 +13,5 @@ abstract class CommunityRepository {
   
   Future<Either<Failure, void>> addTripPoint();
   Future<Either<Failure, Reward>> getRewardProfile();
+  Future<Either<Failure, void>> deleteReport(String id);
 }

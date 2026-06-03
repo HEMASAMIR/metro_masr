@@ -70,5 +70,9 @@
 	<string>نحتاج الكاميرا لتصوير المفقودات وحالة الزحام في المترو.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>نحتاج للوصول للصور لاختيار صور المفقودات.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>نحتاج للوصول إلى موقعك لتحديد أقرب محطات المترو وحساب المسارات.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>نحتاج للوصول إلى موقعك لتنبيهك عند اقترابك من محطة الوصول وتحديد المحطات القريبة.</string>
 </dict>
 </plist>

@@ -177,165 +177,211 @@ class ChatView extends StatelessWidget {
   }
 
   void _openChatRoom(BuildContext context, String roomName, Color themeColor) {
-    final textCtrl = TextEditingController();
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) {
-        return BlocBuilder<CommunityCubit, CommunityState>(
-          bloc: context.read<CommunityCubit>(), // Bind to existing cubit
-          builder: (context, state) {
-            List<Message> currentMessages = messages; // fallback
-            if (state is CommunityLoaded) {
-              currentMessages = state.messages;
-            }
+        return _ChatRoomModal(
+          roomName: roomName,
+          themeColor: themeColor,
+          initialMessages: messages,
+        );
+      },
+    );
+  }
+}
 
-            return Container(
-              height: MediaQuery.of(context).size.height * 0.85,
-              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-              decoration: BoxDecoration(
-                color: Theme.of(context).scaffoldBackgroundColor,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+class _ChatRoomModal extends StatefulWidget {
+  final String roomName;
+  final Color themeColor;
+  final List<Message> initialMessages;
+
+  const _ChatRoomModal({
+    required this.roomName,
+    required this.themeColor,
+    required this.initialMessages,
+  });
+
+  @override
+  State<_ChatRoomModal> createState() => _ChatRoomModalState();
+}
+
+class _ChatRoomModalState extends State<_ChatRoomModal> {
+  final _textCtrl = TextEditingController();
+  final _scrollCtrl = ScrollController();
+
+  @override
+  void dispose() {
+    _textCtrl.dispose();
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  void _scrollToBottom() {
+    if (_scrollCtrl.hasClients) {
+      _scrollCtrl.animateTo(
+        _scrollCtrl.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<CommunityCubit, CommunityState>(
+      builder: (context, state) {
+        List<Message> currentMessages = widget.initialMessages; // fallback
+        if (state is CommunityLoaded) {
+          currentMessages = state.messages;
+        }
+
+        WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.85,
+          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+          ),
+          child: Column(
+            children: [
+              // App Bar Modal Header
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                decoration: BoxDecoration(
+                  color: widget.themeColor.withOpacity(0.1),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+                ),
+                child: Row(
+                  children: [
+                    IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                    Expanded(
+                      child: Text(
+                        widget.roomName,
+                        style: TextStyle(color: widget.themeColor, fontSize: 18, fontWeight: FontWeight.bold),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(color: AppColors.success.withOpacity(0.2), borderRadius: BorderRadius.circular(10)),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.circle, color: AppColors.success, size: 8),
+                          SizedBox(width: 4),
+                          Text('Live', style: TextStyle(color: AppColors.success, fontSize: 12, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    )
+                  ],
+                ),
               ),
-              child: Column(
-                children: [
-                  // App Bar Modal Header
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                    decoration: BoxDecoration(
-                      color: themeColor.withValues(alpha: 0.1),
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-                    ),
-                    child: Row(
-                      children: [
-                        IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
-                        Expanded(
-                          child: Text(
-                            roomName,
-                            style: TextStyle(color: themeColor, fontSize: 18, fontWeight: FontWeight.bold),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(color: AppColors.success.withOpacity(0.2), borderRadius: BorderRadius.circular(10)),
-                          child: const Row(
-                            children: [
-                              Icon(Icons.circle, color: AppColors.success, size: 8),
-                              SizedBox(width: 4),
-                              Text('Live', style: TextStyle(color: AppColors.success, fontSize: 12, fontWeight: FontWeight.bold)),
-                            ],
-                          ),
-                        )
-                      ],
-                    ),
-                  ),
 
-                  // Chat Message Area
-                  Expanded(
-                    child: currentMessages.isEmpty
-                        ? Center(child: Text('ابدأ الدردشة في $roomName...', style: const TextStyle(color: Colors.grey)))
-                        : ListView.builder(
-                            padding: const EdgeInsets.all(16),
-                            itemCount: currentMessages.length,
-                            reverse: false,
-                            itemBuilder: (context, index) {
-                              final msg = currentMessages[index];
-                              final isMe = msg.senderId == 'me';
-                              return Align(
-                                alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                                child: Container(
-                                  margin: const EdgeInsets.only(bottom: 10),
-                                  constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                  decoration: BoxDecoration(
-                                    color: isMe ? themeColor : Colors.white,
-                                    boxShadow: isMe ? [] : [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5)],
-                                    borderRadius: BorderRadius.circular(16).copyWith(
-                                      bottomRight: isMe ? const Radius.circular(0) : null,
-                                      bottomLeft: !isMe ? const Radius.circular(0) : null,
+              // Chat Message Area
+              Expanded(
+                child: currentMessages.isEmpty
+                    ? Center(child: Text('ابدأ الدردشة في ${widget.roomName}...', style: const TextStyle(color: Colors.grey)))
+                    : ListView.builder(
+                        controller: _scrollCtrl,
+                        padding: const EdgeInsets.all(16),
+                        itemCount: currentMessages.length,
+                        reverse: false,
+                        itemBuilder: (context, index) {
+                          final msg = currentMessages[index];
+                          final isMe = msg.senderId == 'me';
+                          return Align(
+                            alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: isMe ? widget.themeColor : Colors.white,
+                                boxShadow: isMe ? [] : [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5)],
+                                borderRadius: BorderRadius.circular(16).copyWith(
+                                  bottomRight: isMe ? const Radius.circular(0) : null,
+                                  bottomLeft: !isMe ? const Radius.circular(0) : null,
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (!isMe)
+                                    Padding(
+                                      padding: const EdgeInsets.only(bottom: 4),
+                                      child: Text(
+                                        msg.senderName,
+                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: widget.themeColor),
+                                      ),
+                                    ),
+                                  Text(
+                                    msg.content,
+                                    style: TextStyle(color: isMe ? Colors.white : Colors.black87, fontSize: 15),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${msg.timestamp.hour}:${msg.timestamp.minute.toString().padLeft(2, '0')}',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: isMe ? Colors.white70 : Colors.grey[500],
                                     ),
                                   ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      if (!isMe)
-                                        Padding(
-                                          padding: const EdgeInsets.only(bottom: 4),
-                                          child: Text(
-                                            msg.senderName,
-                                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: themeColor),
-                                          ),
-                                        ),
-                                      Text(
-                                        msg.content,
-                                        style: TextStyle(color: isMe ? Colors.white : Colors.black87, fontSize: 15),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        '${msg.timestamp.hour}:${msg.timestamp.minute.toString().padLeft(2, '0')}',
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          color: isMe ? Colors.white70 : Colors.grey[500],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                  ),
-
-                  // Input Box
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))],
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: textCtrl,
-                            decoration: InputDecoration(
-                              hintText: 'اكتب لتسأل مجتمع المحطة...',
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
-                              fillColor: Colors.grey[100],
-                              filled: true,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                ],
+                              ),
                             ),
-                            onSubmitted: (val) {
-                              if (val.trim().isNotEmpty) {
-                                context.read<CommunityCubit>().sendMessage(val.trim());
-                                textCtrl.clear();
-                              }
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        CircleAvatar(
-                          backgroundColor: themeColor,
-                          child: IconButton(
-                            icon: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
-                            onPressed: () {
-                              if (textCtrl.text.trim().isNotEmpty) {
-                                context.read<CommunityCubit>().sendMessage(textCtrl.text.trim());
-                                textCtrl.clear();
-                              }
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                          );
+                        },
+                      ),
               ),
-            );
-          },
+
+              // Input Box
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))],
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _textCtrl,
+                        decoration: InputDecoration(
+                          hintText: 'اكتب لتسأل مجتمع المحطة...',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
+                          fillColor: Colors.grey[100],
+                          filled: true,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        ),
+                        onSubmitted: (val) {
+                          if (val.trim().isNotEmpty) {
+                            context.read<CommunityCubit>().sendMessage(val.trim());
+                            _textCtrl.clear();
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    CircleAvatar(
+                      backgroundColor: widget.themeColor,
+                      child: IconButton(
+                        icon: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                        onPressed: () {
+                          if (_textCtrl.text.trim().isNotEmpty) {
+                            context.read<CommunityCubit>().sendMessage(_textCtrl.text.trim());
+                            _textCtrl.clear();
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         );
       },
     );

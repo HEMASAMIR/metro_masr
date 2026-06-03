@@ -145,8 +145,8 @@ class VoiceCommandServiceState extends State<VoiceCommandService>
               Wrap(
                 spacing: 8,
                 children: (isAr
-                        ? ['الخريطة', 'مخطط الرحلة', 'المجتمع', 'إنجازاتي', 'المفقودات']
-                        : ['Map', 'Route Planner', 'Community', 'Achievements', 'Lost & Found'])
+                        ? ['الخريطة', 'مخطط الرحلة', 'المجتمع', 'إنجازاتي']
+                        : ['Map', 'Route Planner', 'Community', 'Achievements'])
 
                     .map(
                       (cmd) => ActionChip(

@@ -52,6 +52,15 @@ class TripSchedulerPage extends StatefulWidget {
 
 class _TripSchedulerPageState extends State<TripSchedulerPage> {
   List<ScheduledTrip> _trips = [];
+  final GlobalKey<AnimatedListState> _listKey = GlobalKey<AnimatedListState>();
+
+  String _formatTime(TimeOfDay time, bool isAr) {
+    int h = time.hour;
+    String p = h >= 12 ? (isAr ? 'م' : 'PM') : (isAr ? 'ص' : 'AM');
+    if (h == 0) h = 12;
+    else if (h > 12) h -= 12;
+    return '${h.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')} $p';
+  }
 
   @override
   void initState() {
@@ -108,14 +117,14 @@ class _TripSchedulerPageState extends State<TripSchedulerPage> {
                   ),
                 ),
                 Text(
-                  "Schedule New Trip".tr(),
+                  isAr ? 'جدولة رحلة جديدة' : "Schedule New Trip",
                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 20),
 
                 // From Station
                 _dropdownField(
-                  "From Station".tr(),
+                  isAr ? 'محطة الانطلاق' : "From Station",
                   Icons.circle,
                   Colors.green,
                   stationNames,
@@ -126,7 +135,7 @@ class _TripSchedulerPageState extends State<TripSchedulerPage> {
 
                 // To Station
                 _dropdownField(
-                  "To Station".tr(),
+                  isAr ? 'محطة الوصول' : "To Station",
                   Icons.location_on,
                   Colors.red,
                   stationNames,
@@ -145,8 +154,8 @@ class _TripSchedulerPageState extends State<TripSchedulerPage> {
                     ),
                     child: const Icon(Icons.access_time, color: AppColors.primary),
                   ),
-                  title: Text("Reminder Time".tr()),
-                  subtitle: Text('${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}'),
+                  title: Text(isAr ? 'وقت التذكير' : "Reminder Time"),
+                  subtitle: Text(_formatTime(selectedTime, isAr)),
                   onTap: () async {
                     final t = await showTimePicker(context: ctx, initialTime: selectedTime);
                     if (t != null) setModalState(() => selectedTime = t);
@@ -159,7 +168,7 @@ class _TripSchedulerPageState extends State<TripSchedulerPage> {
                 const SizedBox(height: 20),
 
                 // Days selection
-                Text("Repeat Days".tr(),
+                Text(isAr ? 'أيام التكرار' : "Repeat Days",
                     style: const TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 _buildDaySelector(days, isAr, setModalState),
@@ -185,17 +194,18 @@ class _TripSchedulerPageState extends State<TripSchedulerPage> {
                         days: days,
                       );
                       setState(() => _trips.add(trip));
+                      _listKey.currentState?.insertItem(_trips.length - 1);
                       await _saveTrips();
                       await GamificationService.recordSchedule();
                       if (ctx.mounted) Navigator.pop(ctx);
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text("✅ Trip scheduled!".tr()),
+                          content: Text(isAr ? '✅ تم جدولة الرحلة!' : "✅ Trip scheduled!"),
                           backgroundColor: Colors.green,
                         ));
                       }
                     },
-                    child: Text("Save Schedule".tr(),
+                    child: Text(isAr ? 'حفظ الموعد' : "Save Schedule",
                         style: const TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ),
@@ -278,23 +288,27 @@ class _TripSchedulerPageState extends State<TripSchedulerPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text("Trip Scheduler".tr()),
+        title: Text(isAr ? 'مُجدول الرحلات' : "Trip Scheduler"),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _addTrip,
         icon: const Icon(Icons.add),
-        label: Text("Schedule Trip".tr()),
+        label: Text(isAr ? 'جدولة رحلة' : "Schedule Trip"),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
       ),
       body: _trips.isEmpty
           ? _buildEmpty(isAr)
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _trips.length,
-              itemBuilder: (ctx, i) {
+          : AnimatedList(
+              key: _listKey,
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+              initialItemCount: _trips.length,
+              itemBuilder: (ctx, i, animation) {
                 final trip = _trips[i];
-                return _buildTripCard(trip, isAr, dayLabels, i);
+                return SizeTransition(
+                  sizeFactor: animation,
+                  child: _buildTripCard(trip, isAr, dayLabels, i),
+                );
               },
             ),
     );
@@ -308,12 +322,12 @@ class _TripSchedulerPageState extends State<TripSchedulerPage> {
           const Text('📅', style: TextStyle(fontSize: 64)),
           const SizedBox(height: 16),
           Text(
-            "No scheduled trips yet".tr(),
+            isAr ? 'لا توجد رحلات مجدولة' : "No scheduled trips yet",
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
-            'Tap "Schedule Trip" to add your daily commute and get reminders!'.tr(),
+            isAr ? 'اضغط على "جدولة رحلة" لإضافة رحلتك اليومية!' : 'Tap "Schedule Trip" to add your daily commute and get reminders!',
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.grey[600]),
           ),
@@ -336,7 +350,11 @@ class _TripSchedulerPageState extends State<TripSchedulerPage> {
         child: const Icon(Icons.delete, color: Colors.white),
       ),
       onDismissed: (_) async {
-        setState(() => _trips.removeAt(index));
+        final removed = _trips.removeAt(index);
+        _listKey.currentState?.removeItem(
+          index,
+          (context, animation) => const SizedBox(), // Dismissible handles UI, so don't double animate
+        );
         await _saveTrips();
       },
       child: Container(
@@ -374,7 +392,7 @@ class _TripSchedulerPageState extends State<TripSchedulerPage> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
-                    '${trip.time.hour.toString().padLeft(2, '0')}:${trip.time.minute.toString().padLeft(2, '0')}',
+                    _formatTime(trip.time, isAr),
                     style: TextStyle(
                       color: AppColors.primary,
                       fontWeight: FontWeight.bold,
@@ -389,6 +407,20 @@ class _TripSchedulerPageState extends State<TripSchedulerPage> {
                   onChanged: (v) async {
                     setState(() => trip.isActive = v);
                     await _saveTrips();
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  onPressed: () {
+                    final removed = _trips.removeAt(index);
+                    _listKey.currentState?.removeItem(
+                      index,
+                      (context, animation) => SizeTransition(
+                        sizeFactor: animation,
+                        child: _buildTripCard(removed, isAr, dayLabels, index),
+                      ),
+                    );
+                    _saveTrips();
                   },
                 ),
               ],

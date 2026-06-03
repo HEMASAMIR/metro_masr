@@ -13,6 +13,9 @@ enum BadgeType {
   nfcPro,
   crowdChecker,
   aiUser,
+  streakMaster,    // 7-day streak
+  weeklyChallenger, // 5 trips in one week
+  devoted,          // 30-day streak
 }
 
 class MetroBadge {
@@ -43,6 +46,8 @@ class GamificationService {
   static const String _badgesKey = 'unlocked_badges';
   static const String _streakKey = 'daily_streak';
   static const String _lastActiveKey = 'last_active_date';
+  static const String _weeklyTripsKey = 'weekly_trips';
+  static const String _weekStartKey = 'week_start_date';
 
   static late SharedPreferences _prefs;
 
@@ -86,6 +91,9 @@ class GamificationService {
     final today = DateTime.now().toIso8601String().substring(0, 10);
     if (lastActive == null) {
       await _prefs.setInt(_streakKey, 1);
+    } else if (lastActive == today) {
+      // Already recorded today, skip
+      return;
     } else {
       final last = DateTime.parse(lastActive);
       final diff = DateTime.now().difference(last).inDays;
@@ -96,7 +104,26 @@ class GamificationService {
       }
     }
     await _prefs.setString(_lastActiveKey, today);
+    
+    // Weekly trips counter
+    final weekStart = _prefs.getString(_weekStartKey);
+    final nowDate = DateTime.now();
+    if (weekStart == null || nowDate.difference(DateTime.parse(weekStart)).inDays >= 7) {
+      await _prefs.setString(_weekStartKey, today);
+      await _prefs.setInt(_weeklyTripsKey, 1);
+    } else {
+      final wt = _prefs.getInt(_weeklyTripsKey) ?? 0;
+      await _prefs.setInt(_weeklyTripsKey, wt + 1);
+    }
   }
+  
+  /// Public method to record daily app open (for streak tracking without trip)
+  static Future<void> recordDailyOpen() async {
+    await _updateStreak();
+    await _checkAndUnlockBadges();
+  }
+  
+  static int getWeeklyTrips() => _prefs.getInt(_weeklyTripsKey) ?? 0;
 
   // ── Badges ─────────────────────────────────────────────────────────────────
 
@@ -136,6 +163,15 @@ class GamificationService {
           break;
         case BadgeType.reporter:
           shouldUnlock = points >= 100;
+          break;
+        case BadgeType.streakMaster:
+          shouldUnlock = getStreak() >= 7;
+          break;
+        case BadgeType.weeklyChallenger:
+          shouldUnlock = getWeeklyTrips() >= 5;
+          break;
+        case BadgeType.devoted:
+          shouldUnlock = getStreak() >= 30;
           break;
         default:
           break;
@@ -297,6 +333,33 @@ class GamificationService {
       nameEn: 'AI Friend',
       descAr: 'تحدثت مع رفيق الذكي',
       descEn: 'Chatted with Rafiq AI',
+      requiredPoints: 0,
+    ),
+    MetroBadge(
+      type: BadgeType.streakMaster,
+      icon: '🔥',
+      nameAr: 'متابع مخلص',
+      nameEn: 'Streak Master',
+      descAr: '7 أيام متواصلة في التطبيق',
+      descEn: '7-day usage streak',
+      requiredPoints: 0,
+    ),
+    MetroBadge(
+      type: BadgeType.weeklyChallenger,
+      icon: '🏆',
+      nameAr: 'بطل الأسبوع',
+      nameEn: 'Weekly Champ',
+      descAr: '5 رحلات في أسبوع واحد',
+      descEn: '5 trips in one week',
+      requiredPoints: 0,
+    ),
+    MetroBadge(
+      type: BadgeType.devoted,
+      icon: '💎',
+      nameAr: 'من المخلصين',
+      nameEn: 'Devoted Rider',
+      descAr: '30 يوم متواصل',
+      descEn: '30-day streak',
       requiredPoints: 0,
     ),
   ];

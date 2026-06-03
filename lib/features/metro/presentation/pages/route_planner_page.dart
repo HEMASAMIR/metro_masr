@@ -1,5 +1,6 @@
 import 'package:animate_do/animate_do.dart';
 import 'package:flutter/material.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/metro_data.dart';
@@ -10,9 +11,7 @@ import '../../../../core/utils/voice_service.dart';
 import '../../../../core/utils/speech_service.dart';
 import '../cubits/route_planner/route_planner_cubit.dart';
 import '../cubits/route_planner/route_planner_state.dart';
-import '../../../../core/utils/ai_prediction_service.dart';
 import '../../domain/entities/station.dart';
-import '../widgets/trip_rating_dialog.dart';
 
 import 'blind_journey_page.dart';
 import '../../../../core/widgets/station_search_sheet.dart';
@@ -33,11 +32,19 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
   // Which field is currently being listened to: 'from', 'to', or null
   String? _listeningField;
 
+  int _selectedStationsEarly = 1;
+
   @override
   void initState() {
     super.initState();
     _startStationId = widget.initialFrom;
     _endStationId = widget.initialTo;
+
+    if (_startStationId != null && _endStationId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.read<RoutePlannerCubit>().findPath(_startStationId!, _endStationId!);
+      });
+    }
   }
 
   @override
@@ -64,7 +71,7 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
 
     setState(() => _listeningField = field);
 
-    final allStations = MetroData.stations.values.toList();
+    final allStations = {...MetroData.stations, ...MetroData.capitalStations}.values.toList();
 
     await SpeechService.startListening(
       localeId: localeId,
@@ -127,7 +134,7 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
   @override
   Widget build(BuildContext context) {
     final r = context.responsive;
-    final allStations = MetroData.stations.values.toList();
+    final allStations = {...MetroData.stations, ...MetroData.capitalStations}.values.toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -160,13 +167,6 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
       body: r.useSideBySideLayout
           ? _buildWideLayout(context, r, allStations)
           : _buildNarrowLayout(context, r, allStations),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'rateBtn',
-        backgroundColor: AppColors.primary,
-        onPressed: () => TripRatingDialog.show(context),
-        icon: const Icon(Icons.star, color: Colors.white),
-        label: Text(context.locale.languageCode == 'ar' ? 'تقييم القطار' : 'Rate Train', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-      ),
     );
   }
 
@@ -286,12 +286,31 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
                 Icon(Icons.directions_subway_outlined,
                     size: 80, color: AppColors.primary.withValues(alpha: 0.2)),
                 const SizedBox(height: 16),
-                const Text('Select your path to continue'),
+                Text('select_path'.tr()),
               ],
             ),
           );
         } else if (state is RoutePlannerLoading) {
-          return const Center(child: CircularProgressIndicator());
+          return ListView.builder(
+            padding: const EdgeInsets.all(20.0),
+            itemCount: 4,
+            itemBuilder: (ctx, i) => Shimmer.fromColors(
+              baseColor: Theme.of(ctx).brightness == Brightness.dark ? Colors.grey.shade800 : Colors.grey.shade300,
+              highlightColor: Theme.of(ctx).brightness == Brightness.dark ? Colors.grey.shade700 : Colors.grey.shade100,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Row(
+                  children: [
+                    Container(width: 20, height: 20, decoration: BoxDecoration(color: Theme.of(ctx).brightness == Brightness.dark ? Colors.grey.shade900 : Colors.white, shape: BoxShape.circle)),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Container(height: 20, decoration: BoxDecoration(color: Theme.of(ctx).brightness == Brightness.dark ? Colors.grey.shade900 : Colors.white, borderRadius: BorderRadius.circular(4))),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
         } else if (state is RoutePlannerLoaded) {
           return _buildPathResult(state);
         } else if (state is RoutePlannerError) {
@@ -429,7 +448,7 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
                 _buildInfoTag(
                   Icons.timer_outlined,
                   'estimated'.tr(),
-                  '${(state.stationCount * 2.5 + state.transfers * 3).round()} min',
+                  '${(state.stationCount * 2.5 + state.transfers * 3).round()} ${'min_short'.tr()}',
                 ),
                 _buildInfoTag(Icons.stairs_outlined, 'stations_count'.tr(args: [state.stationCount.toString()]), ''),
                 _buildInfoTag(Icons.payments_outlined, 'ticket_price'.tr(args: [state.ticketPrice.toString()]), ''),
@@ -532,7 +551,7 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
                Padding(
                  padding: const EdgeInsets.only(bottom: 12.0),
                  child: Text(
-                   '⚠️ This journey has ${state.transfers} transfer(s)',
+                   'journey_transfers'.tr(args: [state.transfers.toString()]),
                    style: const TextStyle(color: AppColors.warning, fontWeight: FontWeight.bold),
                  ),
                ),
@@ -550,21 +569,17 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
                      children: [
                        const Icon(Icons.directions_walk, color: AppColors.line2, size: 28),
                        const SizedBox(width: 12),
-                       Expanded(child: Text(state.boardingHint!, style: const TextStyle(color: AppColors.line2, fontWeight: FontWeight.bold, fontSize: 13))),
+                       Expanded(child: Text(state.boardingHint!.tr(), style: const TextStyle(color: AppColors.line2, fontWeight: FontWeight.bold, fontSize: 13))),
                      ],
                    ),
                  ),
                ),
             
             // ── Additional Services ──────────────────────────────────────
-            if (state.aiPrediction != null) ...[
-              _buildModernAiPrediction(context, state.aiPrediction!),
-              const SizedBox(height: 16),
-            ],
             _buildSmartAlarm(context, state.path),
             const SizedBox(height: 16),
             _buildBlindAssistButton(context, state.path, state.ticketPrice),
-            const SizedBox(height: 80), // Padding for FAB
+            const SizedBox(height: 20),
           ],
         ),
       ),
@@ -631,7 +646,7 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "♿ Blind Assist Mode".tr(),
+                    "blind_assist_mode".tr(),
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -640,7 +655,7 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    "Step-by-step voice guidance + haptics".tr(),
+                    "blind_assist_subtitle".tr(),
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.65),
                       fontSize: 13,
@@ -675,150 +690,58 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
     );
   }
 
-  Widget _buildModernAiPrediction(BuildContext context, AiPrediction ai) {
-    final lang = context.locale.languageCode;
-    final isHigh = ai.crowdLevel == 'high';
-    final isMed = ai.crowdLevel == 'medium';
-    final color = isHigh ? AppColors.error : isMed ? AppColors.warning : AppColors.success;
+
+
+  Widget _buildTimingChip(BuildContext context, int stations, String label, bool isAlarmActive, List<dynamic> path) {
+    final isSelected = _selectedStationsEarly == stations;
+    final activeColor = isAlarmActive ? AppColors.success : AppColors.primary;
     
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.15),
-            blurRadius: 20,
-            spreadRadius: 2,
-            offset: const Offset(0, 8),
-          ),
-        ],
-        border: Border.all(color: color.withValues(alpha: 0.3), width: 1.5),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: Stack(
-          children: [
-            Positioned(
-              right: -20,
-              top: -20,
-              child: Icon(Icons.auto_awesome, size: 100, color: color.withValues(alpha: 0.05)),
+    return Expanded(
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            _selectedStationsEarly = stations;
+          });
+          if (isAlarmActive) {
+            context.read<ArrivalAlarmCubit>().startAlarm(
+              path.cast<Station>(),
+              stationsEarly: stations,
+              lang: context.locale.languageCode,
+            );
+          }
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? activeColor.withValues(alpha: 0.12)
+                : Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected
+                  ? activeColor
+                  : Colors.grey.withValues(alpha: 0.25),
+              width: isSelected ? 1.8 : 1,
             ),
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: color.withValues(alpha: 0.10),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(Icons.psychology, color: color, size: 24),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              lang == 'ar' ? 'المستشار الذكي للسفر' : 'Smart Travel Advisor',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: color),
-                            ),
-                            Text(
-                              lang == 'ar' ? 'توقع الزحمة بالذكاء الاصطناعي' : 'AI Crowd Prediction',
-                              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildGlassCard(
-                          icon: Icons.groups_outlined,
-                          title: 'crowd_level'.tr(),
-                          value: ai.crowdLevel.toUpperCase(),
-                          color: color,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildGlassCard(
-                          icon: Icons.hourglass_empty,
-                          title: 'delay'.tr(),
-                          value: '+${ai.expectedDelayMinutes} min',
-                          color: ai.expectedDelayMinutes > 5 ? AppColors.error : AppColors.textPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [AppColors.accent.withValues(alpha: 0.15), AppColors.accent.withValues(alpha: 0.05)],
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.accent.withValues(alpha: 0.2)),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(Icons.lightbulb, color: AppColors.accent, size: 24),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                lang == 'ar' ? 'أحسن وقت سفر 💡' : 'Best Time to Travel 💡',
-                                style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.accent, fontSize: 14),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                lang == 'ar' ? ai.recommendationAr : ai.recommendationEn,
-                                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, height: 1.4),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+            boxShadow: isSelected && isAlarmActive
+                ? [BoxShadow(color: activeColor.withValues(alpha: 0.15), blurRadius: 8)]
+                : [],
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected
+                    ? activeColor
+                    : AppColors.textSecondary,
               ),
             ),
-          ],
+          ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildGlassCard({required IconData icon, required String title, required String value, required Color color}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.15)),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 28),
-          const SizedBox(height: 8),
-          Text(title, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-          const SizedBox(height: 4),
-          Text(value, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: color)),
-        ],
       ),
     );
   }
@@ -827,10 +750,114 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
     if (path.isEmpty) return const SizedBox();
     return BlocBuilder<ArrivalAlarmCubit, ArrivalAlarmState>(
       builder: (context, alarmState) {
+        final isAlarmTriggered = alarmState is ArrivalAlarmTriggered;
+        
+        if (alarmState is ArrivalAlarmActive) {
+          _selectedStationsEarly = alarmState.stationsEarly;
+        }
+        
         final isAlarmActive = alarmState is ArrivalAlarmActive &&
             alarmState.destination.id == path.last.id;
         final lang = context.locale.languageCode;
             
+        if (isAlarmTriggered) {
+          return Pulse(
+            infinite: true,
+            duration: const Duration(seconds: 2),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFD32F2F), Color(0xFFC62828)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.red.withValues(alpha: 0.4),
+                    blurRadius: 15,
+                    spreadRadius: 2,
+                  )
+                ],
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.alarm_on,
+                          color: Colors.white,
+                          size: 32,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              lang == 'ar' ? '🚨 اصحى! اقتربنا من محطتك' : '🚨 Wake Up! Approaching station',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              lang == 'ar'
+                                  ? 'استعد للنزول فوراً'
+                                  : 'Please prepare to leave the train',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.8),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.red[800],
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        elevation: 0,
+                      ),
+                      onPressed: () {
+                        context.read<ArrivalAlarmCubit>().stopAlarm();
+                      },
+                      icon: const Icon(Icons.volume_off_rounded),
+                      label: Text(
+                        lang == 'ar' ? '🔕 كتم التنبيه' : '🔕 Silence Alarm',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
         return Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -848,51 +875,85 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
               BoxShadow(color: AppColors.success.withValues(alpha: 0.2), blurRadius: 15, spreadRadius: 1)
             ] : [],
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: isAlarmActive ? AppColors.success.withValues(alpha: 0.2) : AppColors.primary.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  isAlarmActive ? Icons.notifications_active : Icons.notifications_none,
-                  color: isAlarmActive ? AppColors.success : AppColors.primary,
-                  size: 28,
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: isAlarmActive ? AppColors.success.withValues(alpha: 0.2) : AppColors.primary.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      isAlarmActive ? Icons.notifications_active : Icons.notifications_none,
+                      color: isAlarmActive ? AppColors.success : AppColors.primary,
+                      size: 28,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isAlarmActive
+                              ? (_selectedStationsEarly == 2
+                                  ? (lang == 'ar' ? 'منبه نشط (قبلها بمحطتين) ⏰' : 'Alarm Active (2 stops early) ⏰')
+                                  : (lang == 'ar' ? 'منبه نشط (قبلها بمحطة) ⏰' : 'Alarm Active (1 stop early) ⏰'))
+                              : (lang == 'ar' ? 'منبه الوصول الذكي' : 'Smart Arrival Alarm'),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            color: isAlarmActive ? AppColors.success : AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          lang == 'ar'
+                              ? 'بينبهك قبل الوصول بالمسافة اللي تختارها'
+                              : 'Alerts you before arrival by your chosen stops',
+                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Switch(
+                    value: isAlarmActive,
+                    activeTrackColor: AppColors.success,
+                    onChanged: (val) {
+                      if (val) {
+                        context.read<ArrivalAlarmCubit>().startAlarm(
+                          path.cast<Station>(),
+                          stationsEarly: _selectedStationsEarly,
+                          lang: lang,
+                        );
+                      } else {
+                        context.read<ArrivalAlarmCubit>().stopAlarm();
+                      }
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              const Divider(height: 1, thickness: 0.5),
+              const SizedBox(height: 12),
+              Text(
+                lang == 'ar' ? 'وقت التنبيه:' : 'Alert timing:',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textSecondary,
                 ),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      lang == 'ar' ? 'تنبيه ذكي (قبل محطتك)' : 'Smart Alarm (1 stop early)',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        color: isAlarmActive ? AppColors.success : AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      lang == 'ar' ? 'بينبهك قبل محطتك بمحطة عشان تقوم' : 'Alerts you 1 station before destination',
-                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                    ),
-                  ],
-                ),
-              ),
-              Switch(
-                value: isAlarmActive,
-                activeTrackColor: AppColors.success,
-                onChanged: (val) {
-                  if (val) {
-                    context.read<ArrivalAlarmCubit>().startAlarm(path.cast<Station>());
-                  } else {
-                    context.read<ArrivalAlarmCubit>().stopAlarm();
-                  }
-                },
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  _buildTimingChip(context, 1, lang == 'ar' ? 'قبلها بمحطة 📍' : '1 station early 📍', isAlarmActive, path),
+                  const SizedBox(width: 10),
+                  _buildTimingChip(context, 2, lang == 'ar' ? 'قبلها بمحطتين 📍📍' : '2 stations early 📍📍', isAlarmActive, path),
+                ],
               ),
             ],
           ),

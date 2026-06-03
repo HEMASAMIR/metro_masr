@@ -15,12 +15,24 @@ class P2PChatView extends StatefulWidget {
 class _P2PChatViewState extends State<P2PChatView> {
   final _stationController = TextEditingController();
   final _messageController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void dispose() {
     _stationController.dispose();
     _messageController.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   @override
@@ -131,6 +143,7 @@ class _P2PChatViewState extends State<P2PChatView> {
   }
 
   Widget _buildChatInterface(BuildContext context, P2PChatConnected state) {
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
     return Column(
       children: [
         Container(
@@ -153,6 +166,7 @@ class _P2PChatViewState extends State<P2PChatView> {
         ),
         Expanded(
           child: ListView.builder(
+            controller: _scrollController,
             padding: const EdgeInsets.all(16),
             itemCount: state.messages.length,
             itemBuilder: (context, index) {

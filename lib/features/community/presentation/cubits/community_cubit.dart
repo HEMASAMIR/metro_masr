@@ -109,4 +109,9 @@ class CommunityCubit extends Cubit<CommunityState> {
       }
     }
   }
+
+  Future<void> deleteReport(String id) async {
+    await repository.deleteReport(id);
+    loadCommunityData();
+  }
 }

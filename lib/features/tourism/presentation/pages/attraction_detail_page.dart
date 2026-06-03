@@ -467,6 +467,7 @@ class _AttractionDetailPageState extends State<AttractionDetailPage>
 
                   // ── Quick info cards ──────────────────────────────────────
                   _buildQuickInfoRow(a, color, isAr, lang),
+                  const SizedBox(height: 32),
 
                   // ── About (Premium) ────────────────────────────────────────
                   _buildAboutSection(a, desc, color, isAr, lang),
@@ -836,11 +837,16 @@ class _AttractionDetailPageState extends State<AttractionDetailPage>
           const SizedBox(height: 16),
 
           // Stat chips row
-          if (highlights.isNotEmpty) ..._buildHighlightChips(highlights, color),
-          const SizedBox(height: 16),
+          if (highlights.isNotEmpty) ...[
+            ..._buildHighlightChips(highlights, color),
+            const SizedBox(height: 16),
+          ],
 
           // ── "Did You Know?" shimmer card ──────────────────────────────
-          if (didYouKnow != null) ...[_buildDidYouKnowCard(didYouKnow, color, isAr), const SizedBox(height: 16)],
+          if (didYouKnow != null) ...[
+            _buildDidYouKnowCard(didYouKnow, color, isAr),
+            const SizedBox(height: 16),
+          ],
 
           // ── Expandable description ────────────────────────────────────
           _AboutExpandable(desc: desc, color: color, isAr: isAr),
@@ -877,7 +883,7 @@ class _AttractionDetailPageState extends State<AttractionDetailPage>
             ),
             const SizedBox(width: 12),
             Text(
-              "About".tr(),
+              isAr ? "عن المعلم" : "About",
               style: const TextStyle(
                 fontWeight: FontWeight.w900,
                 fontSize: 18,
@@ -933,7 +939,7 @@ class _AttractionDetailPageState extends State<AttractionDetailPage>
                   : CrossAxisAlignment.start,
               children: [
                 Text(
-                  "Did you know?".tr(),
+                  isAr ? "هل تعلم؟" : "Did you know?",
                   style: TextStyle(
                     color: color,
                     fontWeight: FontWeight.w800,
@@ -1445,6 +1451,10 @@ class _AboutExpandableState extends State<_AboutExpandable>
   @override
   Widget build(BuildContext context) {
     const collapsedLines = 3;
+    final isShort = widget.desc.length < 150;
+    final displayColor = Theme.of(context).textTheme.bodyMedium?.color ?? 
+        (Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black87);
+
     return Column(
       crossAxisAlignment: widget.isAr
           ? CrossAxisAlignment.end
@@ -1452,10 +1462,10 @@ class _AboutExpandableState extends State<_AboutExpandable>
       children: [
         // Description text with gradient fade when collapsed
         GestureDetector(
-          onTap: _toggle,
+          onTap: isShort ? null : _toggle,
           child: AnimatedCrossFade(
             duration: const Duration(milliseconds: 400),
-            crossFadeState: _expanded
+            crossFadeState: (isShort || _expanded)
                 ? CrossFadeState.showSecond
                 : CrossFadeState.showFirst,
             firstChild: Stack(
@@ -1468,8 +1478,7 @@ class _AboutExpandableState extends State<_AboutExpandable>
                   maxLines: collapsedLines,
                   overflow: TextOverflow.clip,
                   style: TextStyle(
-                    color:
-                        Theme.of(context).textTheme.bodySmall?.color,
+                    color: displayColor,
                     fontSize: 14,
                     height: 1.85,
                   ),
@@ -1504,63 +1513,63 @@ class _AboutExpandableState extends State<_AboutExpandable>
               textDirection:
                   widget.isAr ? ui.TextDirection.rtl : ui.TextDirection.ltr,
               style: TextStyle(
-                color: Theme.of(context).textTheme.bodySmall?.color,
+                color: displayColor,
                 fontSize: 14,
                 height: 1.85,
               ),
             ),
           ),
         ),
-        const SizedBox(height: 8),
-        // Read more / less button
-        GestureDetector(
-          onTap: _toggle,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  widget.color.withOpacity(0.15),
-                  widget.color.withOpacity(0.08),
+        if (!isShort) ...[
+          const SizedBox(height: 8),
+          // Read more / less button
+          GestureDetector(
+            onTap: _toggle,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    widget.color.withOpacity(0.15),
+                    widget.color.withOpacity(0.08),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: widget.color.withOpacity(0.35),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                textDirection: widget.isAr
+                    ? ui.TextDirection.rtl
+                    : ui.TextDirection.ltr,
+                children: [
+                  AnimatedRotation(
+                    duration: const Duration(milliseconds: 300),
+                    turns: _expanded ? 0.5 : 0,
+                    child: Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: widget.color,
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    (_expanded ? "Show less" : "Read more").tr(),
+                    style: TextStyle(
+                      color: widget.color,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ],
               ),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: widget.color.withOpacity(0.35),
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              textDirection: widget.isAr
-                  ? ui.TextDirection.rtl
-                  : ui.TextDirection.ltr,
-              children: [
-                AnimatedRotation(
-                  duration: const Duration(milliseconds: 300),
-                  turns: _expanded ? 0.5 : 0,
-                  child: Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    color: widget.color,
-                    size: 18,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  _expanded
-                      ? ("Show less".tr())
-                      : ("Read more".tr()),
-                  style: TextStyle(
-                    color: widget.color,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
             ),
           ),
-        ),
+        ],
       ],
     );
   }

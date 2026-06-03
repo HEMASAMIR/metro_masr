@@ -39,9 +39,10 @@ class _PricingCalculatorViewState extends State<_PricingCalculatorView> {
 
   // Monthly subscription options
   static const Map<String, double> _subscriptions = {
-    'unlimited': 350.0,
-    'zone1_2': 200.0,
-    'zone1_3': 280.0,
+    'zone1': 350.0,
+    'zone2': 450.0,
+    'zone3': 550.0,
+    'unlimited': 650.0,
   };
 
   double _getMonthlySpend(double singleFare) => singleFare * _tripsPerDay * _workingDays;
@@ -52,7 +53,7 @@ class _PricingCalculatorViewState extends State<_PricingCalculatorView> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text("Smart Pricing Calculator".tr()),
+        title: Text(isAr ? 'حاسبة التذاكر الذكية' : "Smart Pricing Calculator"),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -86,13 +87,20 @@ class _PricingCalculatorViewState extends State<_PricingCalculatorView> {
                 if (state is RoutePlannerLoaded) {
                   final singleFare = state.ticketPrice.toDouble();
                   final spend = _getMonthlySpend(singleFare);
-                  final savings = (spend - 350).clamp(0.0, double.infinity);
-                  
-                  // Zone logic
                   String zone = 'zone4';
-                  if (state.stationCount <= 9) zone = 'zone1';
-                  else if (state.stationCount <= 16) zone = 'zone2';
-                  else if (state.stationCount <= 23) zone = 'zone3';
+                  double applicableSub = _subscriptions['unlimited']!;
+                  if (state.stationCount <= 9) {
+                    zone = 'zone1';
+                    applicableSub = _subscriptions['zone1']!;
+                  } else if (state.stationCount <= 16) {
+                    zone = 'zone2';
+                    applicableSub = _subscriptions['zone2']!;
+                  } else if (state.stationCount <= 23) {
+                    zone = 'zone3';
+                    applicableSub = _subscriptions['zone3']!;
+                  }
+                  
+                  final savings = (spend - applicableSub).clamp(0.0, double.infinity);
 
                   return Column(
                     children: [
@@ -115,7 +123,7 @@ class _PricingCalculatorViewState extends State<_PricingCalculatorView> {
                     children: [
                       const Icon(Icons.info_outline, color: Colors.blue),
                       const SizedBox(width: 12),
-                      Expanded(child: Text("Select your daily commute stations and tap Calculate to see your smart subscription savings!".tr())),
+                      Expanded(child: Text(isAr ? 'اختار محطات رحلتك اليومية واضغط احسب عشان تشوف التوفير المتوقع!' : "Select your daily commute stations and tap Calculate to see your smart subscription savings!")),
                     ],
                   ),
                 );
@@ -144,14 +152,14 @@ class _PricingCalculatorViewState extends State<_PricingCalculatorView> {
             children: [
               const Icon(Icons.route, color: AppColors.primary),
               const SizedBox(width: 8),
-              Text("Your Daily Commute".tr(),
+              Text(isAr ? 'مسار رحلتك' : "Your Daily Commute",
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             ],
           ),
           const SizedBox(height: 16),
           _buildStationPicker(
             isAr: isAr,
-            hint: "Start Station".tr(),
+            hint: isAr ? 'محطة البداية' : "Start Station",
             icon: Icons.radio_button_checked,
             iconColor: AppColors.success,
             value: _fromId,
@@ -160,7 +168,7 @@ class _PricingCalculatorViewState extends State<_PricingCalculatorView> {
           const SizedBox(height: 12),
           _buildStationPicker(
             isAr: isAr,
-            hint: "Destination Station".tr(),
+            hint: isAr ? 'محطة الوصول' : "Destination Station",
             icon: Icons.location_on_rounded,
             iconColor: AppColors.error,
             value: _toId,
@@ -177,14 +185,14 @@ class _PricingCalculatorViewState extends State<_PricingCalculatorView> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               icon: const Icon(Icons.calculate, size: 20),
-              label: Text("Calculate Subscription Savings".tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
+              label: Text(isAr ? 'احسب التوفير' : "Calculate Subscription Savings", style: const TextStyle(fontWeight: FontWeight.bold)),
               onPressed: () {
                 if (_fromId == null || _toId == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Please select stations".tr())));
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isAr ? 'برجاء اختيار المحطات أولاً' : "Please select stations")));
                   return;
                 }
                 if (_fromId == _toId) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Please select different stations".tr())));
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isAr ? 'برجاء اختيار محطتين مختلفتين' : "Please select different stations")));
                   return;
                 }
                 context.read<RoutePlannerCubit>().findPath(_fromId!, _toId!);
@@ -271,14 +279,14 @@ class _PricingCalculatorViewState extends State<_PricingCalculatorView> {
             children: [
               const Icon(Icons.tune, color: AppColors.primary),
               const SizedBox(width: 8),
-              Text("Commute Habits".tr(),
+              Text(isAr ? 'عادات الاستخدام' : "Commute Habits",
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             ],
           ),
           const SizedBox(height: 20),
 
           _sliderField(
-            label: "Trips per Day".tr(),
+            label: isAr ? 'الرحلات يومياً' : "Trips per Day",
             value: _tripsPerDay,
             min: 1,
             max: 8,
@@ -295,7 +303,7 @@ class _PricingCalculatorViewState extends State<_PricingCalculatorView> {
           const SizedBox(height: 16),
 
           _sliderField(
-            label: "Working Days / Month".tr(),
+            label: isAr ? 'أيام العمل / الشهر' : "Working Days / Month",
             value: _workingDays,
             min: 15,
             max: 30,
@@ -376,15 +384,15 @@ class _PricingCalculatorViewState extends State<_PricingCalculatorView> {
           Row(
             children: [
               _resultBubble(
-                "Single Fare".tr(),
-                '${singleFare.toStringAsFixed(0)} ${"EGP".tr()}',
+                isAr ? 'سعر التذكرة' : "Single Fare",
+                '${singleFare.toStringAsFixed(0)} ${isAr ? 'جنيه' : "EGP"}',
                 AppColors.primary,
                 Icons.confirmation_number_outlined,
               ),
               const SizedBox(width: 12),
               _resultBubble(
-                "Monthly Spend".tr(),
-                '${spend.toStringAsFixed(0)} ${"EGP".tr()}',
+                isAr ? 'التكلفة الشهرية' : "Monthly Spend",
+                '${spend.toStringAsFixed(0)} ${isAr ? 'جنيه' : "EGP"}',
                 Colors.orange,
                 Icons.calendar_month,
               ),
@@ -394,14 +402,14 @@ class _PricingCalculatorViewState extends State<_PricingCalculatorView> {
           Row(
             children: [
               _resultBubble(
-                "Potential Savings".tr(),
-                savings > 0 ? '${savings.toStringAsFixed(0)} ${"EGP".tr()}' : ("None".tr()),
+                isAr ? 'التوفير المتوقع' : "Potential Savings",
+                savings > 0 ? '${savings.toStringAsFixed(0)} ${isAr ? 'جنيه' : "EGP"}' : (isAr ? 'لا يوجد' : "None"),
                 Colors.green,
                 Icons.savings_outlined,
               ),
               const SizedBox(width: 12),
               _resultBubble(
-                "Price Zone".tr(),
+                isAr ? 'المنطقة' : "Price Zone",
                 isAr
                     ? (zone == 'zone1' ? 'منطقة 1' : zone == 'zone2' ? 'منطقة 2' : zone == 'zone3' ? 'منطقة 3' : 'منطقة 4')
                     : (zone == 'zone1' ? 'Zone 1' : zone == 'zone2' ? 'Zone 2' : zone == 'zone3' ? 'Zone 3' : 'Zone 4'),
@@ -440,10 +448,11 @@ class _PricingCalculatorViewState extends State<_PricingCalculatorView> {
 
   Widget _buildComparisonCard(bool isAr, double spend) {
     final options = [
-      ("Single Tickets".tr(), spend, AppColors.primary),
-      ("Zone 1+2 Package".tr(), 200.0, AppColors.line2),
-      ("Zone 1+3 Package".tr(), 280.0, AppColors.line3),
-      ("Unlimited".tr(), 350.0, Colors.purple),
+      (isAr ? 'تذاكر عادية' : "Single Tickets", spend, AppColors.primary),
+      (isAr ? 'اشتراك منطقة (9 محطات)' : "1 Zone Package", _subscriptions['zone1']!, AppColors.line1),
+      (isAr ? 'اشتراك منطقتين (16 محطة)' : "2 Zones Package", _subscriptions['zone2']!, AppColors.line2),
+      (isAr ? 'اشتراك 3-4 مناطق' : "3-4 Zones Package", _subscriptions['zone3']!, AppColors.line3),
+      (isAr ? 'غير محدود (5-6 مناطق)' : "Unlimited", _subscriptions['unlimited']!, Colors.purple),
     ];
     final minCost = options.map((o) => o.$2).reduce((a, b) => a < b ? a : b);
 
@@ -461,7 +470,7 @@ class _PricingCalculatorViewState extends State<_PricingCalculatorView> {
             children: [
               const Icon(Icons.compare_arrows, color: AppColors.primary),
               const SizedBox(width: 8),
-              Text("Options Comparison".tr(),
+              Text(isAr ? 'مقارنة الخيارات' : "Options Comparison",
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             ],
           ),
@@ -488,14 +497,14 @@ class _PricingCalculatorViewState extends State<_PricingCalculatorView> {
                                 color: Colors.green,
                                 borderRadius: BorderRadius.circular(6),
                               ),
-                              child: Text("Best".tr(),
+                              child: Text(isAr ? 'الأفضل' : "Best",
                                   style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
                             ),
                           ],
                         ],
                       ),
                       Text(
-                        '${opt.$2.toStringAsFixed(0)} ${"EGP/mo".tr()}',
+                        '${opt.$2.toStringAsFixed(0)} ${isAr ? 'جنيه/شهر' : "EGP/mo"}',
                         style: TextStyle(
                           color: opt.$3,
                           fontWeight: FontWeight.bold,
@@ -531,14 +540,17 @@ class _PricingCalculatorViewState extends State<_PricingCalculatorView> {
     if (spend >= _subscriptions['unlimited']!) {
       color = Colors.green;
       text = isAr
-          ? 'الاشتراك الشهري غير المحدود (350 جنيه) يوفر عليك ${(spend - 350).toStringAsFixed(0)} جنيه!'
-          : 'Unlimited monthly sub (350 EGP) saves you ${(spend - 350).toStringAsFixed(0)} EGP!';
-    } else if (spend >= _subscriptions['zone1_2']!) {
+          ? 'الاشتراك الشهري غير المحدود (650 جنيه) يوفر عليك ${(spend - 650).toStringAsFixed(0)} جنيه!'
+          : 'Unlimited monthly sub (650 EGP) saves you ${(spend - 650).toStringAsFixed(0)} EGP!';
+    } else if (spend >= _subscriptions['zone2']!) {
       color = Colors.orange;
-      text = "The Zone 1+2 package (200 EGP) may save you money!".tr();
+      text = isAr ? 'اشتراك المنطقتين (450 جنيه) هيكون أوفر ليك للرحلات المتوسطة!' : "The 2 Zones package (450 EGP) may save you money!";
+    } else if (spend >= _subscriptions['zone1']!) {
+      color = Colors.orange;
+      text = isAr ? 'اشتراك المنطقة الواحدة (350 جنيه) مناسب لمشوارك!' : "The 1 Zone package (350 EGP) is perfect for you!";
     } else {
       color = Colors.blue;
-      text = "Single tickets are cheaper for your usage — keep it up!".tr();
+      text = isAr ? 'شراء التذاكر العادية أرخص ليك، استمر!' : "Single tickets are cheaper for your usage — keep it up!";
     }
 
     return Container(
@@ -558,7 +570,7 @@ class _PricingCalculatorViewState extends State<_PricingCalculatorView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "Rafiq Recommends".tr(),
+                  isAr ? 'رفيق ينصح' : "Rafiq Recommends",
                   style: TextStyle(
                     color: color,
                     fontWeight: FontWeight.bold,
@@ -586,7 +598,7 @@ class _PricingCalculatorViewState extends State<_PricingCalculatorView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Fare Schedule 2024".tr(),
+          Text(isAr ? 'أسعار التذاكر 2026' : "Fare Schedule 2026",
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
           const SizedBox(height: 12),
           Table(
@@ -596,15 +608,15 @@ class _PricingCalculatorViewState extends State<_PricingCalculatorView> {
               TableRow(
                 decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1)),
                 children: [
-                  _tableCell("Stations".tr(), isHeader: true),
-                  _tableCell("Fare".tr(), isHeader: true),
-                  _tableCell("Zone".tr(), isHeader: true),
+                  _tableCell(isAr ? 'المحطات' : "Stations", isHeader: true),
+                  _tableCell(isAr ? 'السعر' : "Fare", isHeader: true),
+                  _tableCell(isAr ? 'المنطقة' : "Zone", isHeader: true),
                 ],
               ),
-              _tableRow('1 – 9', '8 ${"EGP".tr()}', "Zone 1".tr()),
-              _tableRow('10 – 16', '10 ${"EGP".tr()}', "Zone 2".tr()),
-              _tableRow('17 – 23', '15 ${"EGP".tr()}', "Zone 3".tr()),
-              _tableRow('24+', '20 ${"EGP".tr()}', "Zone 4".tr()),
+              _tableRow('1 – 9', '8 ${isAr ? 'جنيه' : "EGP"}', isAr ? 'منطقة 1' : "Zone 1"),
+              _tableRow('10 – 16', '10 ${isAr ? 'جنيه' : "EGP"}', isAr ? 'منطقة 2' : "Zone 2"),
+              _tableRow('17 – 23', '15 ${isAr ? 'جنيه' : "EGP"}', isAr ? 'منطقة 3' : "Zone 3"),
+              _tableRow('24+', '20 ${isAr ? 'جنيه' : "EGP"}', isAr ? 'منطقة 4' : "Zone 4"),
             ],
           ),
         ],

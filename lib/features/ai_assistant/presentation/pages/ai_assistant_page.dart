@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:rafiq_metrro/features/pricing_calculator/presentation/pages/pricing_calculator_page.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/metro_data.dart';
 import '../../../../core/utils/offline_storage.dart';
+import '../../../../core/utils/dijkstra.dart';
+import '../../../../core/utils/crowd_prediction_service.dart';
+import '../../../../core/utils/egypt_time.dart';
+import '../../../metro/domain/entities/station.dart';
 import '../../../metro/presentation/pages/route_planner_page.dart';
 import '../../../metro/presentation/pages/nearby_stations_page.dart';
 import '../../../metro/presentation/pages/map_page.dart';
@@ -19,6 +25,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final List<_ChatMessage> _messages = [];
+  int _selectedNetworkIndex = 0; // 0: Cairo, 1: LRT (Capital), 2: Monorail
   bool _isTyping = false;
   late AnimationController _typingController;
 
@@ -26,7 +33,8 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     'أرخص تذكرة',
     'أقرب محطة',
     'مواعيد المترو',
-    'رصيد كارتي',
+    'المترو شغال؟',
+    'أسرع طريق',
     'أكتر خط مزدحم',
   ];
 
@@ -39,10 +47,16 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     )..repeat(reverse: true);
 
     Future.delayed(const Duration(milliseconds: 500), () {
+      final now = EgyptTime.getEgyptTime();
+      final isOpen = CrowdPredictionService.isMetroOpen(
+          hour: now.hour, weekday: now.weekday);
+      final statusEmoji = isOpen ? '🟢' : '🔴';
+      final statusAr = isOpen ? 'المترو شغال دلوقتي' : 'المترو مقفل دلوقتي';
+      final statusEn = isOpen ? 'Metro is currently running' : 'Metro is currently closed';
       _addBotMessage(
         context.locale.languageCode == 'ar'
-            ? 'مرحباً! أنا رفيق، مساعدك الذكي لمترو القاهرة 🚇\nاسألني عن المحطات، الأسعار، البدائل أو أي حاجة عاوزها!'
-            : 'Hello! I\'m Rafiq, your smart Cairo Metro assistant 🚇\nAsk me about stations, fares, routes or anything you need!',
+            ? 'مرحباً! أنا رفيق، مساعدك الذكي لمترو القاهرة 🚇\n$statusEmoji $statusAr\nاسألني عن المحطات، الأسعار، البدائل أو أي حاجة عاوزها!'
+            : 'Hello! I\'m Rafiq, your smart Cairo Metro assistant 🚇\n$statusEmoji $statusEn\nAsk me about stations, fares, routes or anything you need!',
       );
     });
   }
@@ -60,7 +74,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
       _messages.add(_ChatMessage(
         text: text,
         isUser: false,
-        time: DateTime.now(),
+        time: EgyptTime.getEgyptTime(),
         actions: actions,
       ));
     });
@@ -85,7 +99,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     final isAr = context.locale.languageCode == 'ar';
 
     setState(() {
-      _messages.add(_ChatMessage(text: text, isUser: true, time: DateTime.now()));
+      _messages.add(_ChatMessage(text: text, isUser: true, time: EgyptTime.getEgyptTime()));
       _isTyping = true;
     });
     _scrollToBottom();
@@ -98,28 +112,81 @@ class _AiAssistantPageState extends State<AiAssistantPage>
   }
 
   _BotResponse _generateResponse(String input, bool isAr) {
+    // تخصيص السياق بناءً على الشبكة المختارة
+    final networkPrefix = _selectedNetworkIndex == 1 
+        ? (isAr ? "بالنسبة لمترو العاصمة (LRT): " : "Regarding Capital Metro (LRT): ")
+        : _selectedNetworkIndex == 2 
+            ? (isAr ? "بالنسبة للمونوريل: " : "Regarding the Monorail: ")
+            : "";
+
     // ── Fare / price
     if (_contains(input, ['سعر', 'تذكرة', 'price', 'fare', 'ticket', 'كلفة', 'تكلفة', 'جنيه'])) {
+      if (_selectedNetworkIndex == 1) {
+        return _BotResponse(text: isAr ? "🎫 تذاكر مترو العاصمة بتبدأ من 15 جنيه لـ 3 محطات، وبتوصل لـ 25 جنيه لأكتر من 7 محطات." : "🎫 LRT tickets start at 15 EGP for 3 stations and go up to 25 EGP for 7+ stations.");
+      }
+      if (_selectedNetworkIndex == 2) {
+        return _BotResponse(text: isAr ? "🎫 تذاكر المونوريل متوقع تبدأ من 20 جنيه، وهتكون بنظام المناطق زي المترو بالظبط." : "🎫 Monorail tickets are expected to start at 20 EGP, using a zone-based system.");
+      }
       return _BotResponse(
         text: isAr
-            ? '🎫 أسعار تذاكر مترو القاهرة 2024:\n\n'
-                '• حتى 9 محطات → 8 جنيه\n'
-                '• 10–16 محطة → 10 جنيه\n'
-                '• 17–23 محطة → 15 جنيه\n'
-                '• أكتر من 23 محطة → 20 جنيه\n\n'
-                '💡 نصيحة: الاشتراك الشهري يوفر عليك ما يصل إلى 40%!'
-            : '🎫 Cairo Metro 2024 Fares:\n\n'
-                '• Up to 9 stations → 8 EGP\n'
-                '• 10–16 stations → 10 EGP\n'
-                '• 17–23 stations → 15 EGP\n'
-                '• 23+ stations → 20 EGP\n\n'
-                '💡 Tip: Monthly subscription saves you up to 40%!',
+            ? '🎫 أسعار التذاكر والاشتراكات الجديدة 2026:\n\n'
+                '📌 التذاكر الفردية:\n'
+                '• 9 محطات: 10 جنيه\n'
+                '• 16 محطة: 13 جنيه\n'
+                '• 23 محطة: 17 جنيه\n'
+                '• +23 محطة: 20 جنيه\n\n'
+                '💳 الاشتراكات الشهرية (60 رحلة):\n'
+                '• منطقة واحدة: 230 جنيه\n'
+                '• منطقتين: 290 جنيه\n'
+                '• 3-4 مناطق: 340 جنيه\n'
+                '• كل المناطق: 450 جنيه\n\n'
+                '💡 نصيحة: لو بتركب يومياً، الاشتراك هيوفرلك مبالغ كبيرة!'
+            : '🎫 Cairo Metro 2026 Fares:\n\n'
+                '📌 Single Tickets:\n'
+                '• 9 stations: 10 EGP\n'
+                '• 16 stations: 13 EGP\n'
+                '• 23 stations: 17 EGP\n'
+                '• 23+ stations: 20 EGP\n\n'
+                '💳 Monthly Subscriptions (60 trips):\n'
+                '• 1 Zone: 230 EGP\n'
+                '• 2 Zones: 290 EGP\n'
+                '• 3-4 Zones: 340 EGP\n'
+                '• All Zones: 450 EGP\n\n'
+                '💡 Tip: Subscribing saves you over 40%!',
         actions: [
           _QuickAction(
             label: "Calculate Mine".tr(),
             onTap: (ctx) => Navigator.push(
               ctx,
               MaterialPageRoute(builder: (_) => const RoutePlannerPage()),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // ── تحليل التوفير وتنبيه تخطي سعر الاشتراك
+    if (_contains(input, ['توفير', 'أوفر', 'وفر', 'أصرف', 'بصرف', 'save', 'savings', 'spend', 'monthly cost'])) {
+      return _BotResponse(
+        text: isAr
+            ? '📊 تحليل التوفير الشهري (على أساس 22 يوم عمل):\n\n'
+                '• منطقة واحدة: تذاكر (440ج) vs اشتراك (230ج) ⮕ توفير 210ج ✅\n'
+                '• منطقتين: تذاكر (572ج) vs اشتراك (290ج) ⮕ توفير 282ج ✅\n'
+                '• 3-4 مناطق: تذاكر (748ج) vs اشتراك (340ج) ⮕ توفير 408ج ✅\n\n'
+                '⚠️ تنبيه: استهلاكك الشهري الحالي يتخطى سعر الاشتراك! الأفضل تطلع كارت اشتراك شهري فوراً.'
+            : '📊 Monthly Savings Analysis (based on 22 working days):\n\n'
+                '• 1 Zone: Tickets (440) vs Sub (230) ⮕ Save 210 EGP ✅\n'
+                '• 2 Zones: Tickets (572) vs Sub (290) ⮕ Save 282 EGP ✅\n'
+                '• 3-4 Zones: Tickets (748) vs Sub (340) ⮕ Save 408 EGP ✅\n\n'
+                '⚠️ Alert: Your current monthly spend exceeds the subscription price! We recommend getting a monthly card.',
+        actions: [
+          _QuickAction(
+            label: "Cost Calculator".tr(),
+            onTap: (ctx) => Navigator.push(
+              ctx,
+              MaterialPageRoute(
+                builder: (_) => const PricingCalculatorPage(),
+              ),
             ),
           ),
         ],
@@ -148,42 +215,60 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     }
 
     // ── Timing / schedule
-    if (_contains(input, ['مواعيد', 'فتح', 'غلق', 'schedule', 'time', 'open', 'close', 'hours', 'ساعات', 'عمل'])) {
+    if (_contains(input, ['مواعيد', 'فتح', 'غلق', 'schedule', 'time', 'open', 'close', 'hours', 'ساعات'])) {
       return _BotResponse(
         text: isAr
             ? '🕐 مواعيد تشغيل مترو القاهرة:\n\n'
-                '• الأيام العادية: من 5:00 ص حتى 12:00 م\n'
-                '• رمضان: من 6:00 ص حتى 1:00 ص\n'
-                '• الجمعة: من 6:00 ص حتى 1:00 ص\n\n'
+                '• الأيام العادية: من 5:00 ص حتى 1:00 ص (بعد منتصف الليل)\n'
+                '• يوم الجمعة: من 5:00 ص حتى 2:00 ص\n\n'
                 '⚡ الكثافة الأعلى: 7–9 ص و 3–6 م\n'
-                '✅ أفضل وقت: بعد 9 صباحاً أو قبل 3 مساءً'
+                '✅ أفضل وقت: بعد 9 صباحاً أو بعد 9 مساءً'
             : '🕐 Cairo Metro Operating Hours:\n\n'
-                '• Weekdays: 5:00 AM – 12:00 AM\n'
-                '• Ramadan: 6:00 AM – 1:00 AM\n'
-                '• Fridays: 6:00 AM – 1:00 AM\n\n'
+                '• Regular days: 5:00 AM – 1:00 AM (+1 day)\n'
+                '• Fridays: 5:00 AM – 2:00 AM (+1 day)\n\n'
                 '⚡ Peak hours: 7–9 AM & 3–6 PM\n'
-                '✅ Best time: After 9 AM or before 3 PM',
+                '✅ Best time: After 9 AM or after 9 PM',
       );
     }
 
-    // ── Balance / wallet
-    if (_contains(input, ['رصيد', 'كارت', 'balance', 'wallet', 'card', 'فلوس'])) {
-      final balance = AppStorage.getBalance();
+    // ── Is Metro Open / Status
+    if (_contains(input, ['شغال', 'مفتوح', 'مقفل', 'شغاله', 'is open', 'is closed', 'operating', 'running'])) {
+      final now = EgyptTime.getEgyptTime();
+      final isOpen = CrowdPredictionService.isMetroOpen(hour: now.hour, weekday: now.weekday);
+      final closingTime = CrowdPredictionService.closingTime(now.weekday);
+      final closingHour = CrowdPredictionService.getLastServiceHour(now.weekday);
+      final hoursLeft = now.hour < closingHour ? closingHour - now.hour : (24 - now.hour) + closingHour;
+      
       return _BotResponse(
         text: isAr
-            ? '💳 رصيدك الحالي في محفظة رفيق:\n\n'
-                '${balance.toStringAsFixed(1)} جنيه\n\n'
-                'تقدر تشحن أكتر من مطبق رفيق مباشرةً!'
-            : '💳 Your current Rafiq wallet balance:\n\n'
-                '${balance.toStringAsFixed(1)} EGP\n\n'
-                'You can top up directly from the Rafiq app!',
+            ? (isOpen
+                ? '🟢 المترو شغال دلوقتي!\n\n'
+                  '• هيقفل الساعة $closingTime\n'
+                  '• باقي ~$hoursLeft ساعة\n\n'
+                  '💡 نصيحة: ${now.hour >= 7 && now.hour <= 9 || now.hour >= 15 && now.hour <= 18 ? "دلوقتي وقت الذروة، لو تقدر استنى شوية هيكون أحسن" : "الوقت مناسب جداً للسفر!"}'
+                : '🔴 المترو مقفل دلوقتي.\n\n'
+                  '• هيفتح تاني الساعة 5:00 صباحاً\n'
+                  '• ${now.weekday == DateTime.friday ? "النهارده الجمعة — هيشتغل لحد 2:00 ص" : "هيشتغل لحد $closingTime"}\n\n'
+                  '💤 نصيحة: ضبط منبه آخر قطار عشان ميفوتكش!')
+            : (isOpen
+                ? '🟢 Metro is running right now!\n\n'
+                  '• Closes at $closingTime\n'
+                  '• ~$hoursLeft hours remaining\n\n'
+                  '💡 Tip: ${now.hour >= 7 && now.hour <= 9 || now.hour >= 15 && now.hour <= 18 ? "It\'s peak hours now, wait a bit if you can" : "Great time to travel!"}'
+                : '🔴 Metro is currently closed.\n\n'
+                  '• Opens again at 5:00 AM\n'
+                  '• ${now.weekday == DateTime.friday ? "Today is Friday — operates until 2:00 AM" : "Operates until $closingTime"}\n\n'
+                  '💤 Tip: Set a Last Train alarm so you never miss it!'),
       );
     }
 
     // ── Nearest station
     if (_contains(input, ['أقرب', 'قريب', 'nearest', 'nearby', 'close', 'موقع', 'location'])) {
+      final networkName = _selectedNetworkIndex == 1 ? "LRT" : _selectedNetworkIndex == 2 ? "Monorail" : "Cairo Metro";
       return _BotResponse(
-        text: "📍 To find the nearest station, I need location access.\nHead to the Nearby Stations page for full details!".tr(),
+        text: isAr 
+            ? "📍 عشان أقدر أجيبلك أقرب محطة في $networkName، محتاج إذن الموقع.\nروح على صفحة المحطات القريبة وهتلاقي كل التفاصيل!"
+            : "📍 To find the nearest $networkName station, I need location access.\nHead to the Nearby Stations page for full details!",
         actions: [
           _QuickAction(
             label: "Nearby Stations".tr(),
@@ -197,7 +282,86 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     }
 
     // ── Route
-    if (_contains(input, ['روح', 'أروح', 'طريق', 'مسار', 'route', 'go to', 'from', 'to', 'من', 'إلى', 'الى', 'plan'])) {
+    if (_contains(input, ['روح', 'أروح', 'طريق', 'مسار', 'route', 'go to', 'from', 'to', 'من', 'إلى', 'الى', 'plan', 'عايز'])) {
+      // Normalize aliases
+      var searchInput = input.replaceAll('الزراعه', 'كلية الزراعة')
+                             .replaceAll('الزراعة', 'كلية الزراعة')
+                             .replaceAll('المعادى', 'المعادي')
+                             .replaceAll('كوبري القبه', 'كوبري القبة')
+                             .replaceAll('شبرا', 'شبرا الخيمة')
+                             .replaceAll('الجامعه', 'جامعة حلوان');
+
+      // Extract stations from the input
+      List<Station> found = [];
+      final allNetwork = {...MetroData.stations, ...MetroData.capitalStations};
+      for (var s in allNetwork.values) {
+        if (searchInput.contains(s.nameAr.toLowerCase()) || searchInput.contains(s.nameEn.toLowerCase())) {
+          found.add(s);
+        }
+      }
+
+      if (found.length >= 2) {
+        Station? src;
+        Station? dest;
+        for (var s in found) {
+          if (searchInput.contains('من ${s.nameAr}') || searchInput.contains('from ${s.nameEn.toLowerCase()}')) src = s;
+          else if (searchInput.contains('اروح ${s.nameAr}') || searchInput.contains('إلى ${s.nameAr}') || searchInput.contains('الى ${s.nameAr}') || searchInput.contains('to ${s.nameEn.toLowerCase()}')) dest = s;
+        }
+        
+        if (src == null || dest == null) {
+           int idx0 = searchInput.indexOf(found[0].nameAr.toLowerCase());
+           if (idx0 == -1) idx0 = searchInput.indexOf(found[0].nameEn.toLowerCase());
+           int idx1 = searchInput.indexOf(found[1].nameAr.toLowerCase());
+           if (idx1 == -1) idx1 = searchInput.indexOf(found[1].nameEn.toLowerCase());
+           
+           if (idx0 < idx1) { 
+               dest = found[0];
+               src = found[1];
+           } else {
+               dest = found[1];
+               src = found[0];
+           }
+        }
+
+        final res = Dijkstra.findShortestPath(allNetwork, src.id, dest.id);
+        final path = res['path'] as List<Station>;
+        if (path.isNotEmpty) {
+          final count = path.length - 1;
+          final time = count * 2;
+          int price = 10;
+          if (count > 23) price = 20;
+          else if (count >= 17) price = 17;
+          else if (count >= 10) price = 13;
+          
+          // إضافة نصيحة ذكية أوتوماتيكية داخل نتيجة البحث عن مسار
+          final subTextAr = "\n\n💡 نصيحة: لو هتركب المشوار ده يومياً، الاشتراك الشهري هيوفرلك حوالي ${ (price * 44) - (count >= 17 ? 340 : (count >= 10 ? 290 : 230)) } جنيه!";
+          final subTextEn = "\n\n💡 Tip: If you take this trip daily, a subscription will save you around ${ (price * 44) - (count >= 17 ? 340 : (count >= 10 ? 290 : 230)) } EGP!";
+
+          return _BotResponse(
+            text: isAr
+                ? '✅ من عيني! هتركب من محطة **${src.nameAr}** وتوصل **${dest.nameAr}**.\n\n'
+                  '• عدد المحطات: $count محطة\n'
+                  '• الوقت المتوقع: حوالي $time دقيقة\n'
+                  '• التذكرة: $price جنيه$subTextAr\n\n'
+                  'توصل بالسلامة!'
+                : '✅ Sure! You will go from **${src.nameEn}** to **${dest.nameEn}**.\n\n'
+                  '• Stations: $count stops\n'
+                  '• Estimated time: ~$time mins\n'
+                  '• Ticket: $price EGP$subTextEn\n\n'
+                  'Have a safe trip!',
+            actions: [
+              _QuickAction(
+                label: "Route Planner".tr(),
+                onTap: (ctx) => Navigator.push(
+                  ctx,
+                  MaterialPageRoute(builder: (_) => const RoutePlannerPage()),
+                ),
+              ),
+            ],
+          );
+        }
+      }
+
       return _BotResponse(
         text: "🗺️ Want to plan your trip?\nUse the Route Planner and it will calculate:\n• Shortest route\n• Station count\n• Ticket price\n• Transfer stations".tr(),
         actions: [
@@ -230,7 +394,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
 
     // ── Crowded / busy
     if (_contains(input, ['زحمة', 'مزدحم', 'crowd', 'busy', 'ازدحام', 'ضغط'])) {
-      final hour = DateTime.now().hour;
+      final hour = EgyptTime.getEgyptTime().hour;
       final String level;
       final String advice;
       if ((hour >= 7 && hour <= 9) || (hour >= 15 && hour <= 18)) {
@@ -319,6 +483,11 @@ class _AiAssistantPageState extends State<AiAssistantPage>
       ),
       body: Column(
         children: [
+          // Network Selector Tabs
+          _buildNetworkSelector(isAr),
+          
+          const Divider(height: 1),
+
           // Quick questions bar
           Container(
             height: 44,
@@ -337,7 +506,6 @@ class _AiAssistantPageState extends State<AiAssistantPage>
               ),
             ),
           ),
-          const Divider(height: 1),
           // Chat messages
           Expanded(
             child: ListView.builder(
@@ -407,6 +575,66 @@ class _AiAssistantPageState extends State<AiAssistantPage>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildNetworkSelector(bool isAr) {
+    final networks = [
+      {'name': isAr ? 'مترو القاهرة' : 'Cairo Metro', 'icon': Icons.subway_rounded},
+      {'name': isAr ? 'مترو العاصمة' : 'Capital Metro', 'icon': Icons.train_rounded},
+      {'name': isAr ? 'المونوريل' : 'Monorail', 'icon': Icons.linear_scale_rounded},
+    ];
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+      ),
+      child: Row(
+        children: List.generate(networks.length, (index) {
+          final isSelected = _selectedNetworkIndex == index;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () {
+                setState(() => _selectedNetworkIndex = index);
+                HapticFeedback.selectionClick();
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: isSelected ? AppColors.primary : AppColors.primary.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: isSelected ? [
+                    BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))
+                  ] : [],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      networks[index]['icon'] as IconData,
+                      size: 18,
+                      color: isSelected ? Colors.white : AppColors.primary,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      networks[index]['name'] as String,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        color: isSelected ? Colors.white : AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
       ),
     );
   }
@@ -513,7 +741,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
                 ],
                 const SizedBox(height: 2),
                 Text(
-                  '${msg.time.hour}:${msg.time.minute.toString().padLeft(2, '0')}',
+                  EgyptTime.formatTime(msg.time, locale: context.locale.languageCode),
                   style: TextStyle(
                     fontSize: 10,
                     color: isDark ? Colors.grey[500] : Colors.grey[400],

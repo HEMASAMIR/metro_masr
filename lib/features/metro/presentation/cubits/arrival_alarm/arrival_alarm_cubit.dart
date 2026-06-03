@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:geolocator/geolocator.dart';
@@ -16,13 +17,22 @@ abstract class ArrivalAlarmState extends Equatable {
 }
 
 class ArrivalAlarmInitial extends ArrivalAlarmState {}
+
 class ArrivalAlarmActive extends ArrivalAlarmState {
   final Station destination;
   final Station alertStation;
-  const ArrivalAlarmActive(this.destination, this.alertStation);
+  final int stationsEarly;
+  final String lang;
+  const ArrivalAlarmActive(
+    this.destination,
+    this.alertStation, {
+    this.stationsEarly = 1,
+    this.lang = 'ar',
+  });
   @override
-  List<Object?> get props => [destination, alertStation];
+  List<Object?> get props => [destination, alertStation, stationsEarly, lang];
 }
+
 class ArrivalAlarmTriggered extends ArrivalAlarmState {
   final Station destination;
   const ArrivalAlarmTriggered(this.destination);
@@ -34,82 +44,153 @@ class ArrivalAlarmCubit extends Cubit<ArrivalAlarmState> {
   ArrivalAlarmCubit() : super(ArrivalAlarmInitial());
 
   StreamSubscription<Position>? _positionStream;
+  Timer? _alarmTimer;
 
   /// Starts the alarm based on the user's computed route.
-  /// It identifies the station *before* the destination to alert the user early.
-  void startAlarm(List<Station> path) {
+  /// It identifies the station before the destination based on stationsEarly setting to alert the user.
+  void startAlarm(
+    List<Station> path, {
+    int stationsEarly = 1,
+    String lang = 'ar',
+  }) {
     if (path.isEmpty) return;
-    
-    final destination = path.last;
-    // The station immediately before the destination (or destination if only 1 station)
-    final alertStation = path.length > 1 ? path[path.length - 2] : destination;
 
-    emit(ArrivalAlarmActive(destination, alertStation));
+    final destination = path.last;
+    // Calculate the alert station index based on preference
+    int alertIndex = path.length - 1 - stationsEarly;
+    if (alertIndex < 0)
+      alertIndex = 0; // fallback if path is shorter than chosen stops
+
+    final alertStation = path[alertIndex];
+
+    emit(
+      ArrivalAlarmActive(
+        destination,
+        alertStation,
+        stationsEarly: stationsEarly,
+        lang: lang,
+      ),
+    );
 
     _positionStream?.cancel();
-    _positionStream = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 50,
-      ),
-    ).listen((position) {
-      final distanceToAlertStation = LocationUtils.calculateDistance(
-        position.latitude,
-        position.longitude,
-        alertStation.latitude,
-        alertStation.longitude,
-      );
+    _positionStream =
+        Geolocator.getPositionStream(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 50,
+          ),
+        ).listen((position) {
+          final distanceToAlertStation = LocationUtils.calculateDistance(
+            position.latitude,
+            position.longitude,
+            alertStation.latitude,
+            alertStation.longitude,
+          );
 
-      // Trigger if we are within 500 meters of the ALERT station, which is ONE station before destination.
-      if (distanceToAlertStation < 500) { 
-        _triggerAlarm(destination, alertStation);
-      }
+          // Trigger if we are within 500 meters of the ALERT station.
+          if (distanceToAlertStation < 500) {
+            _triggerAlarm(path, destination, alertStation, stationsEarly, lang);
+          }
+        });
+  }
+
+  void _triggerAlarm(
+    List<Station> path,
+    Station destination,
+    Station alertStation,
+    int stationsEarly,
+    String lang,
+  ) {
+    // Cancel location tracking once triggered
+    _positionStream?.cancel();
+    _positionStream = null;
+
+    final int alertIndex = path.indexOf(alertStation);
+    final int remaining = alertIndex != -1
+        ? (path.length - 1 - alertIndex)
+        : stationsEarly;
+    final Station? nextStation =
+        (alertIndex != -1 && alertIndex < path.length - 1)
+        ? path[alertIndex + 1]
+        : null;
+
+    // Create the alert title & body
+    final String title;
+    final String body;
+
+    if (lang == 'ar') {
+      final String remainingStr = remaining == 1
+          ? 'محطة واحدة'
+          : remaining == 2
+          ? 'محطتان'
+          : '$remaining محطات';
+
+      final String nextStr = nextStation != null
+          ? 'المحطة القادمة هي ${nextStation.nameAr}.'
+          : '';
+
+      title = '⏰ تنبيه اقتراب الوصول!';
+      body =
+          'اصحى! متبقي $remainingStr للوصول إلى محطة ${destination.nameAr}. $nextStr استعد للنزول.';
+    } else {
+      final String remainingStr = remaining == 1
+          ? '1 station'
+          : '$remaining stations';
+      final String nextStr = nextStation != null
+          ? 'The next station is ${nextStation.nameEn}.'
+          : '';
+
+      title = '⏰ Arrival Alert!';
+      body =
+          'Wake up! $remainingStr left to reach ${destination.nameEn}. $nextStr Please prepare to get off.';
+    }
+
+    emit(ArrivalAlarmTriggered(destination));
+
+    // Show initial notification
+    NotificationService.showNotification(id: 1, title: title, body: body);
+
+    // Speak and vibrate immediately
+    _playVibrationAndVoice(body, lang);
+
+    // Set up periodic timer to repeat every 8 seconds until silenced
+    _alarmTimer?.cancel();
+    _alarmTimer = Timer.periodic(const Duration(seconds: 8), (timer) {
+      NotificationService.showNotification(id: 1, title: title, body: body);
+      _playVibrationAndVoice(body, lang);
     });
   }
 
-  void _triggerAlarm(Station destination, Station alertStation) {
-    // We can infer language from context in UI, but here we'll use tr() keys.
-    // If the alertStation is the destination itself, text varies.
-    final bool isSame = destination.id == alertStation.id;
-    
-    final title = isSame ? 'وصول وشيك!' : 'تنبيه ذكي: المحطة القادمة هي وجهتك!';
-    final body = isSame 
-        ? 'لقد اقتربت من محطة ${destination.nameAr}'
-        : 'استعد! محطتك (${destination.nameAr}) هي المحطة التالية بعد ${alertStation.nameAr}.';
-
-    NotificationService.showNotification(
-      id: 1,
-      title: title,
-      body: body,
-    );
-    // Voice prompt
-    VoiceService.speak(body, 'ar'); // Fallback to ar, ideally we'd pass locale
+  void _playVibrationAndVoice(String message, String lang) {
+    // TTS-only: speak the message first
+    VoiceService.speak(message, lang);
 
     // Extremely strong hardware vibration pattern to wake user up
     Vibration.hasCustomVibrationsSupport().then((hasCustom) {
       if (hasCustom == true) {
         Vibration.vibrate(
-          pattern: [0, 1500, 500, 1500, 500, 1500, 500, 1500, 500, 2000],
-          intensities: [0, 255, 0, 255, 0, 255, 0, 255, 0, 255],
+          pattern: [0, 1500, 500, 1500, 500, 1500, 500, 2000],
+          intensities: [0, 255, 0, 255, 0, 255, 0, 255],
         );
       } else {
         Vibration.vibrate(duration: 5000);
       }
     });
-
-    emit(ArrivalAlarmTriggered(destination));
-    stopAlarm();
   }
 
   void stopAlarm() {
     _positionStream?.cancel();
     _positionStream = null;
+    _alarmTimer?.cancel();
+    _alarmTimer = null;
+    VoiceService.stop();
     emit(ArrivalAlarmInitial());
   }
 
   @override
   Future<void> close() {
     _positionStream?.cancel();
+    _alarmTimer?.cancel();
     return super.close();
   }
 }

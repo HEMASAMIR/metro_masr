@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../../../core/models/user_review.dart';
 import '../../../../core/theme/app_colors.dart';
+import 'package:shimmer/shimmer.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PUBLIC ENTRY POINT – drop this anywhere in the scroll view
@@ -182,9 +183,32 @@ class _AttractionReviewsSectionState extends State<AttractionReviewsSection> {
 
         // ── Review list ───────────────────────────────────────────────────
         if (_loading)
-          const Padding(
+          Padding(
             padding: EdgeInsets.all(24),
-            child: Center(child: CircularProgressIndicator()),
+            child: SizedBox(
+              width: double.infinity,
+              child: ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(0),
+                itemCount: 2,
+                itemBuilder: (context, i) {
+                  final isDark = Theme.of(context).brightness == Brightness.dark;
+                  return Shimmer.fromColors(
+                    baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                    highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
+                    child: Container(
+                      height: 120,
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.grey.shade900 : Colors.white,
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
           )
         else if (_reviews.isEmpty)
           _EmptyReviews(isAr: isAr, color: color)

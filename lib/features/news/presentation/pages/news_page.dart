@@ -1,5 +1,6 @@
 import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:animate_do/animate_do.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/di/injection_container.dart';
@@ -107,7 +108,7 @@ class _NewsTabView extends StatefulWidget {
 
 class _NewsTabViewState extends State<_NewsTabView> with TickerProviderStateMixin {
   late TabController _tabCtrl;
-  String _selectedCountry = 'eg';
+  final String _selectedCountry = 'eg';
 
   @override
   void initState() {
@@ -131,11 +132,11 @@ class _NewsTabViewState extends State<_NewsTabView> with TickerProviderStateMixi
         headerSliverBuilder: (_, __) => [
           SliverAppBar(
             pinned: true,
-            expandedHeight: 130,
+            expandedHeight: 150,
             backgroundColor: AppColors.primary,
             foregroundColor: Colors.white,
             flexibleSpace: FlexibleSpaceBar(
-              titlePadding: const EdgeInsets.only(left: 16, bottom: 56),
+              titlePadding: const EdgeInsets.only(left: 16, right: 16, bottom: 64),
               title: Text(
                 "📰 Metro News".tr(),
                 style: const TextStyle(
@@ -152,7 +153,7 @@ class _NewsTabViewState extends State<_NewsTabView> with TickerProviderStateMixi
                   alignment: Alignment.centerRight,
                   child: Opacity(
                     opacity: 0.06,
-                    child: Icon(Icons.train_rounded, size: 160, color: Colors.white),
+                    child: const Icon(Icons.train_rounded, size: 160, color: Colors.white),
                   ),
                 ),
               ),
@@ -160,6 +161,7 @@ class _NewsTabViewState extends State<_NewsTabView> with TickerProviderStateMixi
             bottom: TabBar(
               controller: _tabCtrl,
               isScrollable: true,
+              tabAlignment: TabAlignment.start,
               indicatorColor: Colors.white,
               indicatorWeight: 3,
               labelColor: Colors.white,
@@ -204,7 +206,23 @@ class _EgNewsTab extends StatelessWidget {
     return BlocBuilder<NewsBloc, NewsState>(
       builder: (context, state) {
         if (state is NewsLoading) {
-          return const Center(child: CircularProgressIndicator());
+          return ListView.builder(
+            padding: const EdgeInsets.only(top: 16, bottom: 24, left: 16, right: 16),
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: 6,
+            itemBuilder: (ctx, i) => Shimmer.fromColors(
+              baseColor: Theme.of(ctx).brightness == Brightness.dark ? Colors.grey.shade800 : Colors.grey.shade300,
+              highlightColor: Theme.of(ctx).brightness == Brightness.dark ? Colors.grey.shade700 : Colors.grey.shade100,
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                height: 140,
+                decoration: BoxDecoration(
+                  color: Theme.of(ctx).brightness == Brightness.dark ? Colors.grey.shade900 : Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+            ),
+          );
         }
         if (state is NewsError) {
           return _ErrorView(message: state.message, countryCode: countryCode, isAr: isAr);

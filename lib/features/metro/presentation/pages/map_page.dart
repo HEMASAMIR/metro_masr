@@ -47,14 +47,6 @@ class _MapPageState extends State<MapPage> {
             icon: Icon(_isDark ? Icons.wb_sunny_rounded : Icons.nights_stay_rounded, color: Colors.white),
             onPressed: () => setState(() => _isDark = !_isDark),
           ),
-          IconButton(
-            icon: const Icon(Icons.center_focus_strong_rounded, color: Colors.white),
-            tooltip: "Center Map".tr(),
-            onPressed: () {
-               _mapController.move(_initialCenter, 13.0);
-               setState(() => _selectedStation = null);
-            },
-          ),
         ],
       ),
       body: Stack(
@@ -97,7 +89,7 @@ class _MapPageState extends State<MapPage> {
             
           if (_selectedStation != null)
              Positioned(
-               bottom: 24,
+               bottom: Navigator.canPop(context) ? 24 : 110,
                left: 16,
                right: 16,
                child: _buildStationCard(context, isAr),

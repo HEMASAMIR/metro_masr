@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/gamification_service.dart';
@@ -30,11 +31,17 @@ class _MainNavShellState extends State<MainNavShell> {
   @override
   void initState() {
     super.initState();
-    GamificationService.init();
+    _initGamification();
+  }
+
+  Future<void> _initGamification() async {
+    await GamificationService.init();
+    await GamificationService.recordDailyOpen();
   }
 
   void _onTap(int index) {
     if (index == _currentIndex) return;
+    HapticFeedback.selectionClick();
     setState(() => _currentIndex = index);
   }
 

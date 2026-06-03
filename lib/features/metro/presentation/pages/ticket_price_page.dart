@@ -2,6 +2,7 @@ import 'package:animate_do/animate_do.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/metro_data.dart';
@@ -9,6 +10,7 @@ import '../../../../core/utils/responsive.dart';
 import '../../domain/entities/station.dart';
 import '../cubits/route_planner/route_planner_cubit.dart';
 import '../cubits/route_planner/route_planner_state.dart';
+import '../../../../core/widgets/station_search_sheet.dart';
 
 /// Ticket Price Calculator – production-grade, uses real RoutePlannerCubit
 class TicketPricePage extends StatelessWidget {
@@ -87,7 +89,12 @@ class _TicketPriceViewState extends State<_TicketPriceView> {
             ),
 
             Padding(
-              padding: EdgeInsets.all(r.pagePadding),
+              padding: EdgeInsets.only(
+                left: r.pagePadding,
+                right: r.pagePadding,
+                top: r.pagePadding,
+                bottom: r.pagePadding + 100, // Extra bottom padding for the floating navigation bar!
+              ),
               child: Column(
                 children: [
                   // ── Form card ─────────────────────────────────────────
@@ -213,9 +220,18 @@ class _TicketPriceViewState extends State<_TicketPriceView> {
                   BlocBuilder<RoutePlannerCubit, RoutePlannerState>(
                     builder: (context, state) {
                       if (state is RoutePlannerLoading) {
-                        return const Padding(
-                          padding: EdgeInsets.all(32),
-                          child: CircularProgressIndicator(),
+                        final isDark = Theme.of(context).brightness == Brightness.dark;
+                        return Shimmer.fromColors(
+                          baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                          highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
+                          child: Container(
+                            height: 180,
+                            margin: const EdgeInsets.symmetric(vertical: 20),
+                            decoration: BoxDecoration(
+                              color: isDark ? Colors.grey.shade900 : Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                          ),
                         );
                       }
                       if (state is RoutePlannerError) {
@@ -350,61 +366,88 @@ class _TicketPriceViewState extends State<_TicketPriceView> {
     required String? value,
     required ValueChanged<String?> onChanged,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: iconColor, size: 20),
-          const SizedBox(width: 8),
-          Expanded(
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                isExpanded: true,
-                value: value,
-                hint: Text(hint, style: TextStyle(color: Colors.grey[600], fontSize: 14)),
-                icon: const Icon(Icons.keyboard_arrow_down_rounded),
-                items: _allStations.map((s) {
-                  final lineColor = s.line == 1 ? AppColors.line1 : s.line == 2 ? AppColors.line2 : AppColors.line3;
-                  return DropdownMenuItem(
-                    value: s.id,
-                    child: Row(
+    final selected = value != null
+        ? _allStations.firstWhere((s) => s.id == value, orElse: () => _allStations.first)
+        : null;
+    final lineColor = selected == null
+        ? Colors.grey
+        : selected.line == 1
+            ? AppColors.line1
+            : selected.line == 2
+                ? AppColors.line2
+                : AppColors.line3;
+
+    return GestureDetector(
+      onTap: () async {
+        final result = await StationSearchSheet.show(
+          context,
+          _allStations,
+          selectedStationId: value,
+        );
+        if (result != null) {
+          onChanged(result);
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: selected != null ? lineColor.withValues(alpha: 0.5) : Colors.grey.withValues(alpha: 0.25),
+            width: selected != null ? 1.5 : 1,
+          ),
+          borderRadius: BorderRadius.circular(14),
+          color: selected != null ? lineColor.withValues(alpha: 0.04) : Colors.transparent,
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: selected != null ? lineColor : iconColor, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: selected == null
+                  ? Text(hint, style: TextStyle(color: Colors.grey[600], fontSize: 14))
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(width: 9, height: 9, decoration: BoxDecoration(color: lineColor, shape: BoxShape.circle)),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            isAr ? s.nameAr : s.nameEn,
-                            style: const TextStyle(fontSize: 14),
-                          ),
+                        Text(
+                          isAr ? selected.nameAr : selected.nameEn,
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14,
+                              color: Theme.of(context).textTheme.bodyLarge?.color),
                         ),
-                        if (s.isTransfer)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                            decoration: BoxDecoration(
-                              color: AppColors.accent.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(6),
+                        Row(
+                          children: [
+                            Container(width: 8, height: 8,
+                                margin: const EdgeInsets.only(right: 5),
+                                decoration: BoxDecoration(color: lineColor, shape: BoxShape.circle)),
+                            Text(
+                              isAr ? 'الخط ${selected.line}' : 'Line ${selected.line}',
+                              style: TextStyle(fontSize: 11, color: lineColor, fontWeight: FontWeight.w600),
                             ),
-                            child: Text(
-                              "transfer".tr(),
-                              style: const TextStyle(fontSize: 9, color: AppColors.accent),
-                            ),
-                          ),
+                            if (selected.isTransfer) ...
+                              [
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.accent.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(5),
+                                  ),
+                                  child: Text("transfer".tr(),
+                                      style: const TextStyle(fontSize: 9, color: AppColors.accent)),
+                                ),
+                              ],
+                          ],
+                        ),
                       ],
                     ),
-                  );
-                }).toList(),
-                onChanged: onChanged,
-              ),
             ),
-          ),
-        ],
+            Icon(Icons.keyboard_arrow_down_rounded,
+                color: selected != null ? lineColor : Colors.grey),
+          ],
+        ),
       ),
     );
   }
+
 
   Widget _buildResultCard(BuildContext context, bool isAr, RoutePlannerLoaded state, int mins) {
     final perPersonPrice = state.ticketPrice;
@@ -534,12 +577,12 @@ class _TicketPriceViewState extends State<_TicketPriceView> {
   }
 
   Widget _buildPriceGuide(BuildContext context, bool isAr) {
-    // Official Cairo Metro ticket prices (as of 2024)
+    // Official Cairo Metro ticket prices (as of 2026)
     final prices = [
-      ("1–9 Stations".tr(), "EGP 8".tr()),
-      ("10–16 Stations".tr(), "EGP 10".tr()),
-      ("17–23 Stations".tr(), "EGP 15".tr()),
-      ("24+ Stations".tr(), "EGP 20".tr()),
+      ("1–9 Stations".tr(), "ticket_price".tr(args: ["10"])),
+      ("10–16 Stations".tr(), "ticket_price".tr(args: ["12"])),
+      ("17–23 Stations".tr(), "ticket_price".tr(args: ["15"])),
+      ("24+ Stations".tr(), "ticket_price".tr(args: ["20"])),
     ];
 
     return Container(

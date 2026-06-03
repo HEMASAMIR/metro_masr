@@ -5,7 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_cubit.dart';
 import '../../../../core/utils/gamification_service.dart';
 import '../../../../core/utils/offline_storage.dart';
-import '../../../gamification/presentation/pages/achievements_page.dart';
+import '../../../../core/utils/notification_service.dart';
 import '../../../splash/presentation/onboarding_screen.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -20,9 +20,6 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _crowdAlerts = true;
   bool _tripReminders = true;
   String _selectedLang = 'ar';
-  int _points = 0;
-  int _trips = 0;
-  String _level = '';
 
   @override
   void initState() {
@@ -37,9 +34,6 @@ class _SettingsPageState extends State<SettingsPage> {
       _crowdAlerts = AppStorage.getCrowdAlerts();
       _tripReminders = AppStorage.getTripReminders();
       _selectedLang = context.locale.languageCode;
-      _points = GamificationService.getPoints();
-      _trips = GamificationService.getTrips();
-      _level = GamificationService.getCurrentLevel(_points);
     });
   }
 
@@ -74,12 +68,13 @@ class _SettingsPageState extends State<SettingsPage> {
         centerTitle: true,
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 16,
+          bottom: 116, // Extra bottom padding for the floating navigation bar!
+        ),
         children: [
-          // ── Profile / Stats card ──────────────────────────────────────────
-          _buildProfileCard(isAr),
-          const SizedBox(height: 20),
-
           // ── Appearance ────────────────────────────────────────────────────
           _sectionLabel("Appearance".tr()),
           _buildAppearanceCard(context, isDark, isAr),
@@ -105,88 +100,6 @@ class _SettingsPageState extends State<SettingsPage> {
           _buildAboutCard(isAr),
           const SizedBox(height: 40),
         ],
-      ),
-    );
-  }
-
-  // ── Profile card ────────────────────────────────────────────────────────────
-  Widget _buildProfileCard(bool isAr) {
-    final nextPts = GamificationService.getNextLevelPoints(_points);
-    final progress = (_points / nextPts).clamp(0.0, 1.0);
-
-    return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const AchievementsPage()),
-      ).then((_) => _loadSettings()),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF1A56DB), Color(0xFF4F8AFF)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withOpacity(0.4),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withOpacity(0.2),
-                  ),
-                  child: const Icon(Icons.emoji_events_rounded, color: Colors.white, size: 28),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _level,
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        isAr ? '$_points نقطة • $_trips رحلة' : '$_points pts • $_trips trips',
-                        style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13),
-                      ),
-                    ],
-                  ),
-                ),
-                const Icon(Icons.chevron_right, color: Colors.white),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Text(
-              "Progress to next level".tr(),
-              style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 11),
-            ),
-            const SizedBox(height: 6),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: progress,
-                minHeight: 6,
-                backgroundColor: Colors.white24,
-                valueColor: const AlwaysStoppedAnimation(Colors.white),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

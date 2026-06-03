@@ -9,6 +9,7 @@ import '../../../../core/utils/metro_schedule_service.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../../core/utils/voice_service.dart';
 import '../cubits/nearby_stations_cubit.dart';
+import 'package:shimmer/shimmer.dart';
 class NearbyStationsPage extends StatelessWidget {
   const NearbyStationsPage({super.key});
 
@@ -54,17 +55,21 @@ class _NearbyStationsView extends StatelessWidget {
   }
 
   Widget _buildLoading(BuildContext context, String lang) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const CircularProgressIndicator(),
-          const SizedBox(height: 16),
-          Text(
-            lang == 'ar' ? 'جاري تحديد موقعك...' : 'Locating you...',
-            style: const TextStyle(color: AppColors.textSecondary),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return ListView.builder(
+      padding: const EdgeInsets.all(20),
+      itemCount: 4,
+      itemBuilder: (ctx, i) => Shimmer.fromColors(
+        baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+        highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
+        child: Container(
+          height: i == 0 ? 180 : 80,
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.grey.shade900 : Colors.white,
+            borderRadius: BorderRadius.circular(i == 0 ? 28 : 16),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -104,6 +109,31 @@ class _NearbyStationsView extends StatelessWidget {
     return ListView(
       padding: EdgeInsets.all(r.pagePadding),
       children: [
+        if (state.isMockedForDemo) ...[
+          Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.amber.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.amber.withValues(alpha: 0.35)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline_rounded, color: Colors.amber, size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    lang == 'ar'
+                        ? '📍 تم ضبط موقعك افتراضياً في وسط القاهرة لتجربة المحاكي!'
+                        : '📍 Location defaulted to Downtown Cairo for emulator testing!',
+                    style: const TextStyle(color: Colors.amber, fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         // ── Nearest station hero card ────────────────────────────────
         if (nearest != null) _buildHeroCard(context, nearest, lang, r),
         const SizedBox(height: 20),
@@ -254,26 +284,6 @@ class _NearbyStationsView extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                icon: Icon(Icons.info_outline_rounded, size: 20, color: color),
-                label: Text(
-                  lang == 'ar' ? 'عرض تفاصيل المحطة' : 'View Station Details',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: color),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: color.withValues(alpha: 0.15),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    side: BorderSide(color: color.withValues(alpha: 0.3)),
-                  ),
-                  elevation: 0,
-                ),
-                onPressed: () {},
-              ),
-            ),
           ],
         ),
       ),

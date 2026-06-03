@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'core/di/injection_container.dart' as di;
+import 'package:workmanager/workmanager.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/theme_cubit.dart';
 import 'core/utils/notification_service.dart';
@@ -14,7 +15,6 @@ import 'features/shell/presentation/main_nav_shell.dart';
 import 'core/utils/gamification_service.dart';
 import 'features/auth/data/auth_service.dart';
 import 'features/auth/cubit/auth_cubit.dart';
-import 'package:workmanager/workmanager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -134,7 +134,7 @@ class MetroApp extends StatelessWidget {
                 surface: AppColors.surface,
                 brightness: Brightness.light,
               ),
-              textTheme: GoogleFonts.outfitTextTheme(Theme.of(context).textTheme).apply(
+              textTheme: GoogleFonts.outfitTextTheme(ThemeData.light().textTheme).apply(
                 bodyColor: AppColors.textPrimary,
                 displayColor: AppColors.textPrimary,
               ),
@@ -224,3 +224,10 @@ class MetroApp extends StatelessWidget {
     );
   }
 }
+
+
+
+/**
+ * https://HEMASAMIR.github.io/metro_masr/privacy.html
+ * https://github.com/HEMASAMIR/metro_masr/blob/main/PRIVACY_POLICY.md
+ */

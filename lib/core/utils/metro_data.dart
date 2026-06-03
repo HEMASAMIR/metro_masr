@@ -1,13 +1,13 @@
 import '../../features/metro/domain/entities/station.dart';
 
 /// Cairo Metro official data.
-/// Ticket prices effective 27 March 2026 (Ministry of Transport decree):
+/// Ticket prices effective 2026 (Ministry of Transport decree):
 ///   ≤ 9  stations → 10 EGP
 ///   ≤ 16 stations → 12 EGP
 ///   ≤ 23 stations → 15 EGP
-///   ≤ 39 stations → 20 EGP
+///   > 23 stations → 20 EGP
 class MetroData {
-  // ─── 2026 Pricing ─────────────────────────────────────────────────────────
+  // ─── Official Pricing (Updated 2026) ────────────────────────────────────
   static int calculateTicketPrice(int stationCount) {
     if (stationCount <= 9) return 10;
     if (stationCount <= 16) return 12;
@@ -496,5 +496,143 @@ class MetroData {
         {'ar': 'مخرج جامعة القاهرة', 'en': 'Cairo University Exit'},
         {'ar': 'مخرج شارع الجيزة', 'en': 'Giza St. Exit'},
       ]),
+  };
+
+  static final Map<String, Station> capitalStations = {
+    // ════════════════════════════════════════════════════════════════════
+    // LINE 4 — LRT   Adly Mansour ↔ Arts & Culture City
+    // ════════════════════════════════════════════════════════════════════
+    'l4_adly_mansour': const Station(
+      id: 'l4_adly_mansour', nameEn: 'Adly Mansour (LRT)', nameAr: 'عدلي منصور (LRT)', line: 4,
+      latitude: 30.1437, longitude: 31.4251,
+      isTransfer: true,
+      connectedTo: ['l4_obour']),
+    'l4_obour': const Station(
+      id: 'l4_obour', nameEn: 'El Obour', nameAr: 'العبور', line: 4,
+      latitude: 30.1550, longitude: 31.4500,
+      connectedTo: ['l4_adly_mansour', 'l4_mostaqbal']),
+    'l4_mostaqbal': const Station(
+      id: 'l4_mostaqbal', nameEn: 'Mostaqbal', nameAr: 'المستقبل', line: 4,
+      latitude: 30.1500, longitude: 31.4800,
+      connectedTo: ['l4_obour', 'l4_shorouk']),
+    'l4_shorouk': const Station(
+      id: 'l4_shorouk', nameEn: 'El Shorouk', nameAr: 'الشروق', line: 4,
+      latitude: 30.1450, longitude: 31.5200,
+      connectedTo: ['l4_mostaqbal', 'l4_new_heliopolis']),
+    'l4_new_heliopolis': const Station(
+      id: 'l4_new_heliopolis', nameEn: 'New Heliopolis', nameAr: 'هليوبوليس الجديدة', line: 4,
+      latitude: 30.1400, longitude: 31.5600,
+      connectedTo: ['l4_shorouk', 'l4_badr']),
+    'l4_badr': const Station(
+      id: 'l4_badr', nameEn: 'Badr', nameAr: 'بدر', line: 4,
+      latitude: 30.1350, longitude: 31.6000,
+      connectedTo: ['l4_new_heliopolis', 'l4_knowledge_city', 'l4_gardens']),
+    'l4_knowledge_city': const Station(
+      id: 'l4_knowledge_city', nameEn: 'Knowledge City', nameAr: 'مدينة المعرفة', line: 4,
+      latitude: 30.1700, longitude: 31.6200,
+      connectedTo: ['l4_badr']),
+    'l4_gardens': const Station(
+      id: 'l4_gardens', nameEn: 'Capital Gardens', nameAr: 'حدائق العاصمة', line: 4,
+      latitude: 30.1000, longitude: 31.6400,
+      connectedTo: ['l4_badr', 'l4_airport']),
+    'l4_airport': const Station(
+      id: 'l4_airport', nameEn: 'Capital Airport', nameAr: 'مطار العاصمة', line: 4,
+      latitude: 30.0700, longitude: 31.6800,
+      connectedTo: ['l4_gardens', 'l4_arts_culture']),
+    'l4_arts_culture': const Station(
+      id: 'l4_arts_culture', nameEn: 'Arts & Culture City', nameAr: 'مدينة الفنون والثقافة', line: 4,
+      latitude: 30.0400, longitude: 31.7200,
+      isTransfer: true,
+      connectedTo: ['l4_airport']),
+
+    // ════════════════════════════════════════════════════════════════════
+    // LINE 5 — Monorail   Stadium ↔ New Administrative Capital
+    // ════════════════════════════════════════════════════════════════════
+    'l5_stadium': const Station(
+      id: 'l5_stadium', nameEn: 'Stadium (Monorail)', nameAr: 'الاستاد (مونوريل)', line: 5,
+      latitude: 30.0730, longitude: 31.2960,
+      isTransfer: true,
+      connectedTo: ['l5_hisham_barakat']),
+    'l5_hisham_barakat': const Station(
+      id: 'l5_hisham_barakat', nameEn: 'Hisham Barakat', nameAr: 'هشام بركات', line: 5,
+      latitude: 30.0700, longitude: 31.3100,
+      connectedTo: ['l5_stadium', 'l5_nouri_khattab']),
+    'l5_nouri_khattab': const Station(
+      id: 'l5_nouri_khattab', nameEn: 'Nouri Khattab', nameAr: 'نوري خطاب', line: 5,
+      latitude: 30.0650, longitude: 31.3300,
+      connectedTo: ['l5_hisham_barakat', 'l5_el_zohour']),
+    'l5_el_zohour': const Station(
+      id: 'l5_el_zohour', nameEn: 'El Zohour', nameAr: 'الزهور', line: 5,
+      latitude: 30.0600, longitude: 31.3500,
+      connectedTo: ['l5_nouri_khattab', 'l5_free_zone']),
+    'l5_free_zone': const Station(
+      id: 'l5_free_zone', nameEn: 'Free Zone', nameAr: 'المنطقة الحرة', line: 5,
+      latitude: 30.0500, longitude: 31.3700,
+      connectedTo: ['l5_el_zohour', 'l5_moshir_tantawy']),
+    'l5_moshir_tantawy': const Station(
+      id: 'l5_moshir_tantawy', nameEn: 'Marshal Tantawy', nameAr: 'المشير طنطاوي', line: 5,
+      latitude: 30.0400, longitude: 31.3900,
+      connectedTo: ['l5_free_zone', 'l5_cairo_festival']),
+    'l5_cairo_festival': const Station(
+      id: 'l5_cairo_festival', nameEn: 'Cairo Festival City', nameAr: 'كايرو فيستيفال', line: 5,
+      latitude: 30.0300, longitude: 31.4100,
+      connectedTo: ['l5_moshir_tantawy', 'l5_choueifat']),
+    'l5_choueifat': const Station(
+      id: 'l5_choueifat', nameEn: 'Choueifat', nameAr: 'الشويفات', line: 5,
+      latitude: 30.0200, longitude: 31.4300,
+      connectedTo: ['l5_cairo_festival', 'l5_air_hospital']),
+    'l5_air_hospital': const Station(
+      id: 'l5_air_hospital', nameEn: 'Air Hospital', nameAr: 'المستشفى الجوي', line: 5,
+      latitude: 30.0100, longitude: 31.4500,
+      connectedTo: ['l5_choueifat', 'l5_narges']),
+    'l5_narges': const Station(
+      id: 'l5_narges', nameEn: 'Narges', nameAr: 'النرجس', line: 5,
+      latitude: 30.0000, longitude: 31.4700,
+      connectedTo: ['l5_air_hospital', 'l5_mohammed_naguib']),
+    'l5_mohammed_naguib': const Station(
+      id: 'l5_mohammed_naguib', nameEn: 'Mohammed Naguib', nameAr: 'محمد نجيب', line: 5,
+      latitude: 29.9900, longitude: 31.4900,
+      connectedTo: ['l5_narges', 'l5_auc']),
+    'l5_auc': const Station(
+      id: 'l5_auc', nameEn: 'American University', nameAr: 'الجامعة الأمريكية', line: 5,
+      latitude: 29.9800, longitude: 31.5100,
+      connectedTo: ['l5_mohammed_naguib', 'l5_emaar']),
+    'l5_emaar': const Station(
+      id: 'l5_emaar', nameEn: 'Emaar', nameAr: 'إعمار', line: 5,
+      latitude: 29.9700, longitude: 31.5300,
+      connectedTo: ['l5_auc', 'l5_nafoura']),
+    'l5_nafoura': const Station(
+      id: 'l5_nafoura', nameEn: 'Nafoura Square', nameAr: 'ميدان النافورة', line: 5,
+      latitude: 29.9800, longitude: 31.5500,
+      connectedTo: ['l5_emaar', 'l5_barwa']),
+    'l5_barwa': const Station(
+      id: 'l5_barwa', nameEn: 'Al Barwa', nameAr: 'البروة', line: 5,
+      latitude: 29.9900, longitude: 31.5700,
+      connectedTo: ['l5_nafoura', 'l5_middle_ring']),
+    'l5_middle_ring': const Station(
+      id: 'l5_middle_ring', nameEn: 'Middle Ring Road', nameAr: 'الدائري الأوسطي', line: 5,
+      latitude: 30.0000, longitude: 31.5900,
+      connectedTo: ['l5_barwa', 'l5_mohammed_bin_zayed']),
+    'l5_mohammed_bin_zayed': const Station(
+      id: 'l5_mohammed_bin_zayed', nameEn: 'Mohammed Bin Zayed', nameAr: 'محمد بن زايد', line: 5,
+      latitude: 30.0100, longitude: 31.6100,
+      connectedTo: ['l5_middle_ring', 'l5_regional_ring']),
+    'l5_regional_ring': const Station(
+      id: 'l5_regional_ring', nameEn: 'Regional Ring Road', nameAr: 'الدائري الإقليمي', line: 5,
+      latitude: 30.0200, longitude: 31.6300,
+      connectedTo: ['l5_mohammed_bin_zayed', 'l5_masa']),
+    'l5_masa': const Station(
+      id: 'l5_masa', nameEn: 'Al Masa Hotel', nameAr: 'فندق الماسة', line: 5,
+      latitude: 30.0300, longitude: 31.6500,
+      connectedTo: ['l5_regional_ring', 'l5_ministries']),
+    'l5_ministries': const Station(
+      id: 'l5_ministries', nameEn: 'Ministries District', nameAr: 'حي الوزارات', line: 5,
+      latitude: 30.0400, longitude: 31.6800,
+      connectedTo: ['l5_masa', 'l5_admin_capital']),
+    'l5_admin_capital': const Station(
+      id: 'l5_admin_capital', nameEn: 'Admin Capital', nameAr: 'العاصمة الإدارية', line: 5,
+      latitude: 30.0400, longitude: 31.7200,
+      isTransfer: true,
+      connectedTo: ['l5_ministries']),
   };
 }

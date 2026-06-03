@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../domain/entities/news_article.dart';
 
 class NewsCardWidget extends StatelessWidget {
@@ -37,63 +38,37 @@ class NewsCardWidget extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (article.imageUrl != null)
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                  child: Hero(
-                    tag: article.url,
-                    child: Image.network(
-                      article.imageUrl!,
-                      height: 180,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        height: 180,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Theme.of(context).primaryColor.withOpacity(0.8),
-                              Theme.of(context).primaryColor.withOpacity(0.4),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                        ),
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            Positioned(
-                              right: -30,
-                              bottom: -30,
-                              child: Icon(
-                                Icons.newspaper_rounded,
-                                size: 140,
-                                color: Colors.white.withOpacity(0.1),
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                child: Hero(
+                  tag: '${article.url}_${article.title}',
+                  child: article.imageUrl != null && article.imageUrl!.isNotEmpty
+                      ? Image.network(
+                          article.imageUrl!,
+                          height: 180,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Shimmer.fromColors(
+                              baseColor: Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.grey.shade800
+                                  : Colors.grey.shade300,
+                              highlightColor: Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.grey.shade700
+                                  : Colors.grey.shade100,
+                              child: Container(
+                                height: 180,
+                                width: double.infinity,
+                                color: Colors.white,
                               ),
-                            ),
-                            Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.newspaper_rounded, size: 48, color: Colors.white.withOpacity(0.8)),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'أخبار رفيق',
-                                  style: TextStyle(
-                                    color: Colors.white.withOpacity(0.8),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 18,
-                                    letterSpacing: 1.2,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) => _buildPlaceholderImage(context),
+                        )
+                      : _buildPlaceholderImage(context),
                 ),
+              ),
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
@@ -154,6 +129,101 @@ class NewsCardWidget extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildPlaceholderImage(BuildContext context) {
+    return Container(
+      height: 180,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Theme.of(context).primaryColor,
+            Theme.of(context).primaryColor.withOpacity(0.6),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Sleek glassmorphic abstract light patterns
+          Positioned(
+            left: -40,
+            top: -40,
+            child: Container(
+              width: 160,
+              height: 160,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.06),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          Positioned(
+            right: -20,
+            bottom: -30,
+            child: Icon(
+              Icons.train_rounded,
+              size: 140,
+              color: Colors.white.withOpacity(0.04),
+            ),
+          ),
+          // Sweep animation overlay using Shimmer
+          Positioned.fill(
+            child: Shimmer.fromColors(
+              baseColor: Colors.white.withOpacity(0.0),
+              highlightColor: Colors.white.withOpacity(0.12),
+              period: const Duration(milliseconds: 2200),
+              child: Container(color: Colors.white),
+            ),
+          ),
+          // Content
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Pulse(
+                infinite: true,
+                duration: const Duration(milliseconds: 2500),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.12),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white.withOpacity(0.2), width: 1.5),
+                  ),
+                  child: const Icon(
+                    Icons.newspaper_rounded,
+                    size: 34,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'أخبار رفيق',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.9),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Container(
+                width: 50,
+                height: 2,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(1),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
