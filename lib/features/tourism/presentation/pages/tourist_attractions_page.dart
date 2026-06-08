@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:ui' as ui;
 import 'package:easy_localization/easy_localization.dart';
+import 'package:rafiq_metrro/features/ai_assistant/presentation/pages/ai_chat_page.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/tourism_data.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -36,8 +37,6 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
   StationAttractions? _currentStationData;
   bool _showAllMode = true; // true = show all top picks, false = station mode
   SortOption _selectedSort = SortOption.recommended;
-
-
 
   @override
   void initState() {
@@ -86,17 +85,25 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
     if (_selectedCategory != null) {
       list = list.where((a) => a.category == _selectedCategory).toList();
     }
-    
+
     List<TouristAttraction> sorted = List.from(list);
     switch (_selectedSort) {
       case SortOption.recommended:
         // No explicit sort, use default order
         break;
       case SortOption.priceLowToHigh:
-        sorted.sort((a, b) => _extractPrice(a.admissionEGP).compareTo(_extractPrice(b.admissionEGP)));
+        sorted.sort(
+          (a, b) => _extractPrice(
+            a.admissionEGP,
+          ).compareTo(_extractPrice(b.admissionEGP)),
+        );
         break;
       case SortOption.priceHighToLow:
-        sorted.sort((a, b) => _extractPrice(b.admissionEGP).compareTo(_extractPrice(a.admissionEGP)));
+        sorted.sort(
+          (a, b) => _extractPrice(
+            b.admissionEGP,
+          ).compareTo(_extractPrice(a.admissionEGP)),
+        );
         break;
       case SortOption.highestRated:
         sorted.sort((a, b) => b.rating.compareTo(a.rating));
@@ -118,10 +125,12 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
     return 0.0;
   }
 
-  String _lang(BuildContext context) =>
-      context.locale.languageCode == 'ar' ? 'ar'
-      : context.locale.languageCode == 'fr' ? 'fr'
-      : context.locale.languageCode == 'de' ? 'de'
+  String _lang(BuildContext context) => context.locale.languageCode == 'ar'
+      ? 'ar'
+      : context.locale.languageCode == 'fr'
+      ? 'fr'
+      : context.locale.languageCode == 'de'
+      ? 'de'
       : 'en';
 
   @override
@@ -148,7 +157,10 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
             title: Text(
               isAr ? '🗺️ المعالم السياحية' : "🗺️ Tourist Attractions",
               style: TextStyle(
-                color: Theme.of(context).textTheme.titleLarge?.color, fontWeight: FontWeight.bold, fontSize: 18),
+                color: Theme.of(context).textTheme.titleLarge?.color,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
             ),
             bottom: PreferredSize(
               preferredSize: const Size.fromHeight(56),
@@ -164,9 +176,14 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
             if (_currentStationData != null) _buildStationBanner(isAr),
             if (!_showAllMode && _currentStationData == null)
               _buildNoResultsBanner(isAr),
-              
+
             // ── Sorting Row ───────────────────────────────────────────────────
-            _buildSortRow(isAr, lang, filtered.length, _currentAttractions.length),
+            _buildSortRow(
+              isAr,
+              lang,
+              filtered.length,
+              _currentAttractions.length,
+            ),
 
             // ── Attractions list ──────────────────────────────────────────────
             Expanded(
@@ -174,19 +191,30 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                   ? _buildEmptyState(isAr)
                   : LayoutBuilder(
                       builder: (context, constraints) {
-                        int count = constraints.maxWidth > 1300 ? 4 : (constraints.maxWidth > 900 ? 3 : (constraints.maxWidth > 650 ? 2 : 1));
+                        int count = constraints.maxWidth > 1300
+                            ? 4
+                            : (constraints.maxWidth > 900
+                                  ? 3
+                                  : (constraints.maxWidth > 650 ? 2 : 1));
                         if (count == 1) {
                           return ListView.builder(
                             padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
                             itemCount: filtered.length,
                             itemBuilder: (_, i) => _buildAttractionCard(
-                              filtered[i], lang, isAr, i,
-                              stationName: _currentStationData?.stationName["en".tr()] ?? '',
+                              filtered[i],
+                              lang,
+                              isAr,
+                              i,
+                              stationName:
+                                  _currentStationData?.stationName["en".tr()] ??
+                                  '',
                             ),
                           );
                         } else {
                           double spacing = 16.0;
-                          double width = (constraints.maxWidth - (spacing * (count + 1))) / count;
+                          double width =
+                              (constraints.maxWidth - (spacing * (count + 1))) /
+                              count;
                           return SingleChildScrollView(
                             padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
                             child: Wrap(
@@ -196,8 +224,14 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                                 return SizedBox(
                                   width: width,
                                   child: _buildAttractionCard(
-                                    filtered[i], lang, isAr, i,
-                                    stationName: _currentStationData?.stationName["en".tr()] ?? '',
+                                    filtered[i],
+                                    lang,
+                                    isAr,
+                                    i,
+                                    stationName:
+                                        _currentStationData?.stationName["en"
+                                            .tr()] ??
+                                        '',
                                   ),
                                 );
                               }),
@@ -212,13 +246,30 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
       ),
 
       // ── FAB: Browse all stations ──────────────────────────────────────────
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.train_rounded),
-        label: Text(isAr ? 'اختر محطة' : "Pick Station"),
-        onPressed: () => _showStationPicker(context, isAr),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // زر رفيق الذكي الجديد
+          FloatingActionButton(
+            heroTag: 'ai_chat_fab',
+            backgroundColor: Colors.black,
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AiChatPage()),
+            ),
+            child: const Text('🤖', style: TextStyle(fontSize: 24)),
+          ),
+          const SizedBox(height: 12),
+          // زر اختيار المحطة (تم تصغيره قليلاً ليعطي الأولوية للذكاء الاصطناعي)
+          FloatingActionButton.extended(
+            heroTag: 'station_picker_fab',
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+            icon: const Icon(Icons.train_rounded),
+            label: Text(isAr ? 'اختر محطة' : "Pick Station"),
+            onPressed: () => _showStationPicker(context, isAr),
+          ),
+        ],
       ),
     );
   }
@@ -243,8 +294,13 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
               ),
               const SizedBox(height: 4),
               Text(
-                isAr ? 'معالم عند كل محطة • ٤ لغات • مرشد ذكي' : "Landmarks at every station • 4 languages • Smart guide",
-                style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 13),
+                isAr
+                    ? 'معالم عند كل محطة • ٤ لغات • مرشد ذكي'
+                    : "Landmarks at every station • 4 languages • Smart guide",
+                style: TextStyle(
+                  color: Theme.of(context).textTheme.bodySmall?.color,
+                  fontSize: 13,
+                ),
               ),
             ],
           ),
@@ -261,7 +317,9 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
         controller: _searchCtrl,
         style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
         decoration: InputDecoration(
-          hintText: isAr ? 'ابحث عن محطة (مثل الأوبرا)' : "Search station (e.g. Opera)",
+          hintText: isAr
+              ? 'ابحث عن محطة (مثل الأوبرا)'
+              : "Search station (e.g. Opera)",
           hintStyle: const TextStyle(color: Colors.grey),
           filled: true,
           fillColor: Theme.of(context).cardColor,
@@ -273,7 +331,10 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
             borderRadius: BorderRadius.circular(14),
             borderSide: const BorderSide(color: AppColors.primary),
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 10,
+          ),
           suffixIcon: _searchCtrl.text.isNotEmpty
               ? IconButton(
                   icon: const Icon(Icons.clear, color: Colors.grey),
@@ -313,11 +374,15 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
               backgroundColor: Theme.of(context).cardColor,
               selectedColor: AppColors.primary.withValues(alpha: 0.1),
               labelStyle: TextStyle(
-                color: _selectedCategory == null ? AppColors.primary : Colors.grey,
+                color: _selectedCategory == null
+                    ? AppColors.primary
+                    : Colors.grey,
                 fontSize: 12,
               ),
               side: BorderSide(
-                color: _selectedCategory == null ? AppColors.primary : Colors.grey.withValues(alpha: 0.2),
+                color: _selectedCategory == null
+                    ? AppColors.primary
+                    : Colors.grey.withValues(alpha: 0.2),
               ),
             ),
           ),
@@ -339,7 +404,11 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                   color: isSelected ? color : Colors.grey,
                   fontSize: 12,
                 ),
-                side: BorderSide(color: isSelected ? color : Colors.grey.withValues(alpha: 0.2)),
+                side: BorderSide(
+                  color: isSelected
+                      ? color
+                      : Colors.grey.withValues(alpha: 0.2),
+                ),
               ),
             );
           }),
@@ -370,12 +439,13 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
               children: [
                 Text(
                   st.stationName["en".tr()] ?? '',
-                  style: TextStyle(color: Theme.of(context).textTheme.titleSmall?.color, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: Theme.of(context).textTheme.titleSmall?.color,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 Text(
-                  isAr
-                    ? '$count مكان سياحي قريب'
-                    : '$count nearby attractions',
+                  isAr ? '$count مكان سياحي قريب' : '$count nearby attractions',
                   style: const TextStyle(color: Colors.grey, fontSize: 12),
                 ),
               ],
@@ -411,8 +481,8 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
           Expanded(
             child: Text(
               isAr
-                ? '"$_selectedStation" — لا توجد بيانات سياحية بعد لهذه المحطة'
-                : '"$_selectedStation" — No tourism data yet for this station',
+                  ? '"$_selectedStation" — لا توجد بيانات سياحية بعد لهذه المحطة'
+                  : '"$_selectedStation" — No tourism data yet for this station',
               style: const TextStyle(color: Colors.orange, fontSize: 12),
             ),
           ),
@@ -422,7 +492,12 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
   }
 
   // ── Sorting Row ────────────────────────────────────────────────────────────
-  Widget _buildSortRow(bool isAr, String lang, int visibleCount, int totalCount) {
+  Widget _buildSortRow(
+    bool isAr,
+    String lang,
+    int visibleCount,
+    int totalCount,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Row(
@@ -430,7 +505,9 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
         children: [
           Expanded(
             child: Text(
-              isAr ? 'عرض $visibleCount من $totalCount' : 'Showing $visibleCount of $totalCount',
+              isAr
+                  ? 'عرض $visibleCount من $totalCount'
+                  : 'Showing $visibleCount of $totalCount',
               style: TextStyle(color: Colors.grey[600], fontSize: 12),
               overflow: TextOverflow.ellipsis,
             ),
@@ -452,10 +529,15 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                   );
                 },
                 icon: const Icon(Icons.map_outlined, size: 14),
-                label: Text(isAr ? 'خريطة' : 'Map', style: const TextStyle(fontSize: 12)),
+                label: Text(
+                  isAr ? 'خريطة' : 'Map',
+                  style: const TextStyle(fontSize: 12),
+                ),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
                   side: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
                 ),
               ),
@@ -472,17 +554,36 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                   child: DropdownButton<SortOption>(
                     value: _selectedSort,
                     icon: const Icon(Icons.keyboard_arrow_down, size: 14),
-                    style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 11),
+                    style: TextStyle(
+                      color: Theme.of(context).textTheme.bodyMedium?.color,
+                      fontSize: 11,
+                    ),
                     alignment: AlignmentDirectional.centerEnd,
                     onChanged: (SortOption? newValue) {
-                      if (newValue != null) setState(() => _selectedSort = newValue);
+                      if (newValue != null)
+                        setState(() => _selectedSort = newValue);
                     },
                     items: [
-                      DropdownMenuItem(value: SortOption.recommended, child: Text(isAr ? 'موصى به' : 'Rec')),
-                      DropdownMenuItem(value: SortOption.priceLowToHigh, child: Text(isAr ? 'السعر (أقل)' : 'Low Price')),
-                      DropdownMenuItem(value: SortOption.priceHighToLow, child: Text(isAr ? 'السعر (أعلى)' : 'High Price')),
-                      DropdownMenuItem(value: SortOption.highestRated, child: Text(isAr ? 'تقييم' : 'Rated')),
-                      DropdownMenuItem(value: SortOption.newest, child: Text(isAr ? 'الأحدث' : 'New')),
+                      DropdownMenuItem(
+                        value: SortOption.recommended,
+                        child: Text(isAr ? 'موصى به' : 'Rec'),
+                      ),
+                      DropdownMenuItem(
+                        value: SortOption.priceLowToHigh,
+                        child: Text(isAr ? 'السعر (أقل)' : 'Low Price'),
+                      ),
+                      DropdownMenuItem(
+                        value: SortOption.priceHighToLow,
+                        child: Text(isAr ? 'السعر (أعلى)' : 'High Price'),
+                      ),
+                      DropdownMenuItem(
+                        value: SortOption.highestRated,
+                        child: Text(isAr ? 'تقييم' : 'Rated'),
+                      ),
+                      DropdownMenuItem(
+                        value: SortOption.newest,
+                        child: Text(isAr ? 'الأحدث' : 'New'),
+                      ),
                     ],
                   ),
                 ),
@@ -505,7 +606,8 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
     final color = Color(TourismDatabase.categoryColor[attraction.category]!);
     final name = attraction.name[lang] ?? attraction.name['en']!;
     final desc = attraction.description[lang] ?? attraction.description['en']!;
-    final catLabel = TourismDatabase.categoryLabel[attraction.category]?[lang] ?? '';
+    final catLabel =
+        TourismDatabase.categoryLabel[attraction.category]?[lang] ?? '';
 
     return GestureDetector(
       onTap: () {
@@ -523,8 +625,11 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
             transitionDuration: const Duration(milliseconds: 650),
             transitionsBuilder: (_, anim, __, child) {
               // Premium 3D perspective unfold transition from right edge
-              final double rotationAngle = (1.0 - anim.value) * (3.141592653589793 / 4); // Rotates from 45 degrees
-              final double translationX = (1.0 - anim.value) * 160.0; // Slides in slightly
+              final double rotationAngle =
+                  (1.0 - anim.value) *
+                  (3.141592653589793 / 4); // Rotates from 45 degrees
+              final double translationX =
+                  (1.0 - anim.value) * 160.0; // Slides in slightly
               final double scale = 0.88 + (anim.value * 0.12);
               final double opacity = anim.value.clamp(0.0, 1.0);
 
@@ -536,10 +641,7 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                 alignment: Alignment.centerRight,
                 child: Transform.scale(
                   scale: scale,
-                  child: Opacity(
-                    opacity: opacity,
-                    child: child,
-                  ),
+                  child: Opacity(opacity: opacity, child: child),
                 ),
               );
             },
@@ -566,7 +668,9 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
             Container(
               height: 100,
               decoration: BoxDecoration(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(24),
+                ),
                 gradient: LinearGradient(
                   colors: [color.withOpacity(0.7), color],
                   begin: Alignment.topLeft,
@@ -583,7 +687,10 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                       angle: 0.2,
                       child: Text(
                         attraction.emoji,
-                        style: TextStyle(fontSize: 100, color: Colors.white.withOpacity(0.25)),
+                        style: TextStyle(
+                          fontSize: 100,
+                          color: Colors.white.withOpacity(0.25),
+                        ),
                       ),
                     ),
                   ),
@@ -594,18 +701,28 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.25),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
                             catLabel,
-                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(10),
@@ -613,11 +730,19 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
+                              const Icon(
+                                Icons.star_rounded,
+                                color: Colors.amber,
+                                size: 16,
+                              ),
                               const SizedBox(width: 4),
                               Text(
                                 attraction.rating.toStringAsFixed(1),
-                                style: const TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                  color: Colors.black87,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ],
                           ),
@@ -628,7 +753,7 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                 ],
               ),
             ),
-            
+
             // ── Content ────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.all(16),
@@ -648,24 +773,44 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                     desc,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: Colors.grey[600], fontSize: 13, height: 1.5),
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 13,
+                      height: 1.5,
+                    ),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // ── Action Row ──────────────────────────────────
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      _modernPill(Icons.directions_walk_rounded, '${attraction.walkingMinutes} ${isAr ? 'دقيقة' : 'min'}', Colors.blue, isAr),
                       _modernPill(
-                        attraction.isFree ? Icons.check_circle_rounded : Icons.confirmation_number_rounded,
-                        attraction.isFree ? (isAr ? 'مجاناً' : 'Free') : attraction.admissionEGP,
+                        Icons.directions_walk_rounded,
+                        '${attraction.walkingMinutes} ${isAr ? 'دقيقة' : 'min'}',
+                        Colors.blue,
+                        isAr,
+                      ),
+                      _modernPill(
+                        attraction.isFree
+                            ? Icons.check_circle_rounded
+                            : Icons.confirmation_number_rounded,
+                        attraction.isFree
+                            ? (isAr ? 'مجاناً' : 'Free')
+                            : attraction.admissionEGP,
                         attraction.isFree ? Colors.green : Colors.orange,
                         isAr,
-                        forceLtr: true, // Fixes LTR english string alignment inside RTL
+                        forceLtr:
+                            true, // Fixes LTR english string alignment inside RTL
                       ),
-                      _modernPill(Icons.access_time_rounded, attraction.openHours, Colors.purple, isAr, forceLtr: true),
+                      _modernPill(
+                        Icons.access_time_rounded,
+                        attraction.openHours,
+                        Colors.purple,
+                        isAr,
+                        forceLtr: true,
+                      ),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -676,16 +821,23 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                       style: OutlinedButton.styleFrom(
                         foregroundColor: color,
                         side: BorderSide(color: color.withValues(alpha: 0.3)),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                       icon: const Icon(Icons.language, size: 16),
                       label: Text(
                         isAr ? 'عرض في جوجل' : "View in Web",
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       onPressed: () async {
                         final query = Uri.encodeComponent('$name Cairo');
-                        final url = Uri.parse('https://www.google.com/search?q=$query');
+                        final url = Uri.parse(
+                          'https://www.google.com/search?q=$query',
+                        );
                         if (await canLaunchUrl(url)) {
                           await launchUrl(url, mode: LaunchMode.inAppWebView);
                         }
@@ -701,7 +853,13 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
     );
   }
 
-  Widget _modernPill(IconData icon, String text, Color color, bool isAr, {bool forceLtr = false}) {
+  Widget _modernPill(
+    IconData icon,
+    String text,
+    Color color,
+    bool isAr, {
+    bool forceLtr = false,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
@@ -715,10 +873,16 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
           Icon(icon, color: color, size: 14),
           const SizedBox(width: 6),
           Directionality(
-            textDirection: forceLtr ? ui.TextDirection.ltr : (isAr ? ui.TextDirection.rtl : ui.TextDirection.ltr),
+            textDirection: forceLtr
+                ? ui.TextDirection.ltr
+                : (isAr ? ui.TextDirection.rtl : ui.TextDirection.ltr),
             child: Text(
               text,
-              style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: color,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -754,14 +918,16 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
           final query = searchCtrl.text.toLowerCase();
           // Show stations that have data + filter by search
           final withData = TourismDatabase.data
-              .where((s) =>
-                  query.isEmpty ||
-                  (s.stationName['ar'] ?? '').toLowerCase().contains(query) ||
-                  (s.stationName['en'] ?? '').toLowerCase().contains(query))
+              .where(
+                (s) =>
+                    query.isEmpty ||
+                    (s.stationName['ar'] ?? '').toLowerCase().contains(query) ||
+                    (s.stationName['en'] ?? '').toLowerCase().contains(query),
+              )
               .toList();
           return Container(
             height: MediaQuery.of(context).size.height * 0.75,
-            decoration:  BoxDecoration(
+            decoration: BoxDecoration(
               color: Theme.of(context).cardColor,
               borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
@@ -769,17 +935,28 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
               children: [
                 // Handle
                 Container(
-                  width: 40, height: 4, margin: const EdgeInsets.only(top: 12, bottom: 16),
-                  decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2)),
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(top: 12, bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
                 // Title
                 Text(
                   isAr ? '🚇 اختر محطة' : "🚇 Select a Station",
-                  style: TextStyle(color: Theme.of(context).textTheme.titleLarge?.color, fontWeight: FontWeight.bold, fontSize: 18),
+                  style: TextStyle(
+                    color: Theme.of(context).textTheme.titleLarge?.color,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  isAr ? 'المحطات المتوفر لها بيانات سياحية' : "Stations with tourism data",
+                  isAr
+                      ? 'المحطات المتوفر لها بيانات سياحية'
+                      : "Stations with tourism data",
                   style: const TextStyle(color: Colors.grey, fontSize: 12),
                 ),
                 const SizedBox(height: 12),
@@ -788,15 +965,30 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: TextField(
                     controller: searchCtrl,
-                    style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
+                    style: TextStyle(
+                      color: Theme.of(context).textTheme.bodyLarge?.color,
+                    ),
                     decoration: InputDecoration(
                       hintText: isAr ? 'بحث...' : "Search...",
                       hintStyle: const TextStyle(color: Colors.grey),
                       filled: true,
                       fillColor: Theme.of(context).scaffoldBackgroundColor,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
-                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: Colors.grey.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: Colors.grey.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
                       prefixIcon: const Icon(Icons.search, color: Colors.grey),
                     ),
                     onChanged: (_) => setLocalState(() {}),
@@ -813,22 +1005,38 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                       final count = st.attractions.length;
                       return ListTile(
                         leading: Container(
-                          width: 40, height: 40,
+                          width: 40,
+                          height: 40,
                           decoration: BoxDecoration(
                             color: AppColors.primary.withOpacity(0.15),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: const Icon(Icons.train_rounded, color: AppColors.primary, size: 20),
+                          child: const Icon(
+                            Icons.train_rounded,
+                            color: AppColors.primary,
+                            size: 20,
+                          ),
                         ),
                         title: Text(
                           st.stationName["en".tr()] ?? '',
-                          style: TextStyle(color: Theme.of(context).textTheme.titleMedium?.color, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            color: Theme.of(
+                              context,
+                            ).textTheme.titleMedium?.color,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                         subtitle: Text(
                           isAr ? '$count أماكن سياحية' : '$count attractions',
-                          style: const TextStyle(color: Colors.grey, fontSize: 11),
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 11,
+                          ),
                         ),
-                        trailing: const Icon(Icons.chevron_right, color: AppColors.primary),
+                        trailing: const Icon(
+                          Icons.chevron_right,
+                          color: AppColors.primary,
+                        ),
                         onTap: () {
                           Navigator.pop(context);
                           _selectStationByName(st.stationName['en']!);

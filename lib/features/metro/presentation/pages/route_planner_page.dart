@@ -15,11 +15,13 @@ import '../../domain/entities/station.dart';
 
 import 'blind_journey_page.dart';
 import '../../../../core/widgets/station_search_sheet.dart';
+import '../widgets/nearby_osm_places_widget.dart';
 
 class RoutePlannerPage extends StatefulWidget {
   final String? initialFrom;
   final String? initialTo;
-  const RoutePlannerPage({super.key, this.initialFrom, this.initialTo});
+  final int metroType;
+  const RoutePlannerPage({super.key, this.initialFrom, this.initialTo, this.metroType = 0});
 
   @override
   State<RoutePlannerPage> createState() => _RoutePlannerPageState();
@@ -71,7 +73,9 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
 
     setState(() => _listeningField = field);
 
-    final allStations = {...MetroData.stations, ...MetroData.capitalStations}.values.toList();
+    final allStations = widget.metroType == 0 
+        ? MetroData.stations.values.toList() 
+        : MetroData.capitalStations.values.toList();
 
     await SpeechService.startListening(
       localeId: localeId,
@@ -134,7 +138,9 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
   @override
   Widget build(BuildContext context) {
     final r = context.responsive;
-    final allStations = {...MetroData.stations, ...MetroData.capitalStations}.values.toList();
+    final allStations = widget.metroType == 0 
+        ? MetroData.stations.values.toList() 
+        : MetroData.capitalStations.values.toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -579,6 +585,10 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
             _buildSmartAlarm(context, state.path),
             const SizedBox(height: 16),
             _buildBlindAssistButton(context, state.path, state.ticketPrice),
+            const SizedBox(height: 24),
+            
+            // ── OSM Nearby Places ──────────────────────────────────────────
+            const NearbyOsmPlacesWidget(),
             const SizedBox(height: 20),
           ],
         ),

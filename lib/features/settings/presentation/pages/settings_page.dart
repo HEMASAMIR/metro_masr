@@ -63,10 +63,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final isAr = _selectedLang == 'ar';
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text("Settings".tr()),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: Text("Settings".tr()), centerTitle: true),
       body: ListView(
         padding: const EdgeInsets.only(
           left: 16,
@@ -114,7 +111,7 @@ class _SettingsPageState extends State<SettingsPage> {
         subtitle: isDark ? ("Enabled".tr()) : ("Disabled".tr()),
         trailing: Switch(
           value: isDark,
-          activeColor: AppColors.primary,
+          activeThumbColor: AppColors.primary,
           onChanged: (_) => context.read<ThemeCubit>().toggleTheme(),
         ),
       ),
@@ -143,11 +140,13 @@ class _SettingsPageState extends State<SettingsPage> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? AppColors.primary.withOpacity(0.15)
+                    ? AppColors.primary.withValues(alpha: 0.15)
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: isSelected ? AppColors.primary : Colors.grey.withOpacity(0.3),
+                  color: isSelected
+                      ? AppColors.primary
+                      : Colors.grey.withValues(alpha: 0.3),
                   width: isSelected ? 2 : 1,
                 ),
               ),
@@ -159,13 +158,19 @@ class _SettingsPageState extends State<SettingsPage> {
                   Text(
                     l.$3,
                     style: TextStyle(
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.normal,
                       color: isSelected ? AppColors.primary : null,
                     ),
                   ),
                   if (isSelected) ...[
                     const SizedBox(width: 6),
-                    const Icon(Icons.check_circle, color: AppColors.primary, size: 16),
+                    const Icon(
+                      Icons.check_circle,
+                      color: AppColors.primary,
+                      size: 16,
+                    ),
                   ],
                 ],
               ),
@@ -186,7 +191,7 @@ class _SettingsPageState extends State<SettingsPage> {
         subtitle: "Core app alerts".tr(),
         trailing: Switch(
           value: _notificationsEnabled,
-          activeColor: AppColors.primary,
+          activeThumbColor: AppColors.primary,
           onChanged: (v) {
             setState(() => _notificationsEnabled = v);
             _saveSetting('notifications_enabled', v);
@@ -201,7 +206,7 @@ class _SettingsPageState extends State<SettingsPage> {
         subtitle: "Alert on heavy crowd".tr(),
         trailing: Switch(
           value: _crowdAlerts && _notificationsEnabled,
-          activeColor: AppColors.primary,
+          activeThumbColor: AppColors.primary,
           onChanged: _notificationsEnabled
               ? (v) {
                   setState(() => _crowdAlerts = v);
@@ -218,7 +223,7 @@ class _SettingsPageState extends State<SettingsPage> {
         subtitle: "Remind before scheduled trip".tr(),
         trailing: Switch(
           value: _tripReminders && _notificationsEnabled,
-          activeColor: AppColors.primary,
+          activeThumbColor: AppColors.primary,
           onChanged: _notificationsEnabled
               ? (v) {
                   setState(() => _tripReminders = v);
@@ -242,12 +247,20 @@ class _SettingsPageState extends State<SettingsPage> {
             context: context,
             builder: (ctx) => AlertDialog(
               title: Text("Confirm Reset".tr()),
-              content: Text("All your points and badges will be erased. Are you sure?".tr()),
+              content: Text(
+                "All your points and badges will be erased. Are you sure?".tr(),
+              ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text("Cancel".tr())),
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: Text("Cancel".tr()),
+                ),
                 TextButton(
                   onPressed: () => Navigator.pop(ctx, true),
-                  child: Text("Reset".tr(), style: const TextStyle(color: Colors.red)),
+                  child: Text(
+                    "Reset".tr(),
+                    style: const TextStyle(color: Colors.red),
+                  ),
                 ),
               ],
             ),
@@ -255,9 +268,10 @@ class _SettingsPageState extends State<SettingsPage> {
           if (confirmed == true) {
             await GamificationService.reset();
             await _loadSettings();
-            if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text("✅ Reset done".tr()),
-            ));
+            if (mounted)
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text("✅ Reset done".tr())));
           }
         },
       ),
@@ -267,7 +281,10 @@ class _SettingsPageState extends State<SettingsPage> {
         iconColor: Colors.blue,
         title: "Show Onboarding Again".tr(),
         onTap: () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const OnboardingScreen()));
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+          );
         },
       ),
     ]);
@@ -276,12 +293,6 @@ class _SettingsPageState extends State<SettingsPage> {
   // ── About card ──────────────────────────────────────────────────────────────
   Widget _buildAboutCard(bool isAr) {
     return _card([
-      _tileRow(
-        icon: Icons.info_outline_rounded,
-        iconColor: AppColors.primary,
-        title: "Rafiq Metro — Version 2.0".tr(),
-        subtitle: isAr ? 'مشروع تخرج ${DateTime.now().year}' : 'Graduation Project ${DateTime.now().year}',
-      ),
       const Divider(height: 1),
       _tileRow(
         icon: Icons.train_rounded,
@@ -295,28 +306,28 @@ class _SettingsPageState extends State<SettingsPage> {
   // ── Helpers ─────────────────────────────────────────────────────────────────
 
   Widget _sectionLabel(String text) => Padding(
-        padding: const EdgeInsets.only(left: 4, bottom: 8),
-        child: Text(
-          text,
-          style: TextStyle(
-            color: Colors.grey[600],
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 1,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.only(left: 4, bottom: 8),
+    child: Text(
+      text,
+      style: TextStyle(
+        color: Colors.grey[600],
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 1,
+      ),
+    ),
+  );
 
   Widget _card(List<Widget> children) => Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
-          ],
-        ),
-        child: Column(children: children),
-      );
+    decoration: BoxDecoration(
+      color: Theme.of(context).cardColor,
+      borderRadius: BorderRadius.circular(16),
+      boxShadow: [
+        BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10),
+      ],
+    ),
+    child: Column(children: children),
+  );
 
   Widget _settingRow({
     required IconData icon,
@@ -324,34 +335,42 @@ class _SettingsPageState extends State<SettingsPage> {
     required String title,
     String? subtitle,
     Widget? trailing,
-  }) =>
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: iconColor, size: 20),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                  if (subtitle != null)
-                    Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-                ],
-              ),
-            ),
-            if (trailing != null) trailing,
-          ],
+  }) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    child: Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: iconColor.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: iconColor, size: 20),
         ),
-      );
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+              if (subtitle != null)
+                Text(
+                  subtitle,
+                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                ),
+            ],
+          ),
+        ),
+        ?trailing,
+      ],
+    ),
+  );
 
   Widget _tileRow({
     required IconData icon,
@@ -359,18 +378,17 @@ class _SettingsPageState extends State<SettingsPage> {
     required String title,
     String? subtitle,
     VoidCallback? onTap,
-  }) =>
-      InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: _settingRow(
-          icon: icon,
-          iconColor: iconColor,
-          title: title,
-          subtitle: subtitle,
-          trailing: onTap != null
-              ? Icon(Icons.chevron_right, color: Colors.grey[400], size: 20)
-              : null,
-        ),
-      );
+  }) => InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(16),
+    child: _settingRow(
+      icon: icon,
+      iconColor: iconColor,
+      title: title,
+      subtitle: subtitle,
+      trailing: onTap != null
+          ? Icon(Icons.chevron_right, color: Colors.grey[400], size: 20)
+          : null,
+    ),
+  );
 }

@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:rafiq_metrro/core/utils/notification_service.dart';
 import 'package:rafiq_metrro/core/utils/voice_service.dart';
+import 'package:rafiq_metrro/core/utils/tourism_data.dart';
+import 'package:rafiq_metrro/core/utils/gamification_service.dart';
 import 'package:rafiq_metrro/features/metro/domain/entities/station.dart';
 
 /// خدمة تتبع الرحلة والتنبيه التلقائي قبل الوصول بمحطتين
@@ -14,16 +17,35 @@ class TripTrackingService {
   List<Station>? _currentPath;
   bool _hasWarnedPreArrival = false;
   bool _hasWarnedFinalArrival = false;
+  final Set<String> _notifiedTourismStations =
+      {}; // لمنع تكرار التنبيه لنفس المحطة في نفس الرحلة
   Timer? _alarmTimer; // التايمر المسؤول عن "الزن"
 
   /// ابدأ تتبع الرحلة أوتوماتيكياً
   Future<void> startTracking(List<Station> path) async {
-    if (path.length < 2) return;
+    try {
+      if (path.length < 2) return;
+
+      // التحقق من صلاحيات الموقع
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) return;
+      }
+      
+      if (permission == LocationPermission.deniedForever) return;
+    } catch (e) {
+      return;
+    }
 
     // تصحيح حالة التتبع
     _currentPath = path;
     _hasWarnedPreArrival = false;
     _hasWarnedFinalArrival = false;
+    _notifiedTourismStations.clear();
     _stopAlarm();
     _stopStream();
 
@@ -43,6 +65,9 @@ class TripTrackingService {
 
   void _checkProximity(Position pos) {
     if (_currentPath == null || _currentPath!.isEmpty) return;
+
+    // أولاً: فحص الأماكن السياحية القريبة في كل المحطات اللي بنعدي عليها
+    _checkNearbyAttractions(pos);
 
     final destination = _currentPath!.last;
 
@@ -111,6 +136,69 @@ class TripTrackingService {
         body: "إنت دلوقتي في محطة ${destination.nameAr}. حمد الله على السلامة!",
       );
       _stopStream(); // وقف التتبع طالما وصلنا
+    }
+  }
+
+  /// فحص إذا كان المستخدم يقترب من محطة بها معالم سياحية
+  void _checkNearbyAttractions(Position pos) {
+    if (_currentPath == null) return;
+
+    for (var station in _currentPath!) {
+      // لو نبهنا عنها قبل كدة في الرحلة دي خلاص
+      if (_notifiedTourismStations.contains(station.id)) continue;
+
+      double distance = Geolocator.distanceBetween(
+        pos.latitude,
+        pos.longitude,
+        station.latitude,
+        station.longitude,
+      );
+
+      final tourismData = TourismDatabase.findByStation(station.id);
+      if (tourismData == null || tourismData.attractions.isEmpty) continue;
+
+      // تحديد مسافة التنبيه: 1 كم لو فيه نادي رياضي، و 400 متر لأي حاجة تانية
+      bool hasSport = tourismData.attractions.any(
+        (a) => a.category == AttractionCategory.sport,
+      );
+      double alertThreshold = hasSport ? 1000.0 : 400.0;
+
+      // لو المسافة أقل من الحد المسموح، نبه المستخدم
+      if (distance < alertThreshold) {
+        _notifiedTourismStations.add(station.id);
+
+        // تسجيل كل المعالم في المحطة كأماكن مكتشفة في نظام الجوائز
+        for (var attraction in tourismData.attractions) {
+          GamificationService.recordDiscovery(attraction.id);
+        }
+
+        // البحث عن أول نادي رياضي (Sport) في المعالم القريبة من هذه المحطة
+        final featured = tourismData.attractions.firstWhere(
+          (a) => a.category == AttractionCategory.sport,
+          orElse: () => tourismData.attractions.first,
+        );
+
+        final isSport = featured.category == AttractionCategory.sport;
+        final msg = isSport
+            ? "يا بطل، إنت دلوقتي عند محطة ${station.nameAr}. عارف إنك قريب من ${featured.name['ar']} ${featured.emoji}؟ لو حابب تروح النادي، ده أنسب وقت!"
+            : "يا بطل، إنت دلوقتي عند محطة ${station.nameAr}. عارف إن فيه هنا ${featured.name['ar']} ${featured.emoji}؟ ده على بعد ${featured.walkingMinutes} دقايق بس.";
+
+        NotificationService.showNotification(
+          id: station.id.hashCode, // ID فريد لكل محطة
+          title: isSport ? "🏆 نادي رياضي قريب" : "💡 معلومة سياحية سريعة",
+          body: msg,
+          imageUrl: featured.effectiveImageUrl, // إظهار صورة المعلم في الإشعار
+          customSound: isSport ? 'club_alert' : null, // تشغيل صوت خاص بالنوادي
+        );
+
+        // اهتزاز مخصص للنوادي الرياضية (نبضتين قويتين)
+        if (isSport) {
+          HapticFeedback.heavyImpact();
+          Future.delayed(const Duration(milliseconds: 300), () => HapticFeedback.heavyImpact());
+        }
+
+        VoiceService.speak(msg, 'ar');
+      }
     }
   }
 

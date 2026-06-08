@@ -106,9 +106,16 @@ class _AiAssistantPageState extends State<AiAssistantPage>
 
     await Future.delayed(const Duration(milliseconds: 1200));
 
-    final response = _generateResponse(text.toLowerCase(), isAr);
-    setState(() => _isTyping = false);
-    _addBotMessage(response.text, actions: response.actions);
+    try {
+      final response = _generateResponse(text.toLowerCase(), isAr);
+      setState(() => _isTyping = false);
+      _addBotMessage(response.text, actions: response.actions);
+    } catch (e) {
+      setState(() => _isTyping = false);
+      _addBotMessage(isAr 
+        ? "عذراً، فيه حاجة محملتش صح. جرب تسألني تاني كمان ثانية." 
+        : "Sorry, something isn't ready yet. Please try again in a moment.");
+    }
   }
 
   _BotResponse _generateResponse(String input, bool isAr) {
@@ -284,12 +291,17 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     // ── Route
     if (_contains(input, ['روح', 'أروح', 'طريق', 'مسار', 'route', 'go to', 'from', 'to', 'من', 'إلى', 'الى', 'plan', 'عايز'])) {
       // Normalize aliases
-      var searchInput = input.replaceAll('الزراعه', 'كلية الزراعة')
-                             .replaceAll('الزراعة', 'كلية الزراعة')
-                             .replaceAll('المعادى', 'المعادي')
-                             .replaceAll('كوبري القبه', 'كوبري القبة')
-                             .replaceAll('شبرا', 'شبرا الخيمة')
-                             .replaceAll('الجامعه', 'جامعة حلوان');
+      final replacements = {
+        'الزراعه': 'كلية الزراعة',
+        'الزراعة': 'كلية الزراعة',
+        'المعادى': 'المعادي',
+        'كوبري القبه': 'كوبري القبة',
+        'شبرا': 'شبرا الخيمة',
+        'الجامعه': 'جامعة حلوان',
+        'رمسيس': 'الشهداء',
+      };
+      var searchInput = input;
+      replacements.forEach((key, value) => searchInput = searchInput.replaceAll(key, value));
 
       // Extract stations from the input
       List<Station> found = [];

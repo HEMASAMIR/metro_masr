@@ -8,3 +8,7 @@
 
 # Dart AOT
 -keep class * implements io.flutter.plugin.common.MethodChannel$MethodCallHandler { *; }
+
+# Fix for Google Play Core missing classes during R8 minification
+-dontwarn com.google.android.play.core.**
+-keep class com.google.android.play.core.** { *; }

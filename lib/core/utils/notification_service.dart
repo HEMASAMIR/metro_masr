@@ -1,137 +1,144 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 
-/// Enhanced NotificationService for Cairo Metro Master.
-/// Supports: arrival alarms, line-delay alerts, general metro notifications.
 class NotificationService {
-  static final FlutterLocalNotificationsPlugin _plugin =
+  static final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
-  // Notification channel IDs
-  static const String _arrivalChannelId   = 'arrival_alarm_channel';
-  static const String _delayChannelId     = 'delay_alert_channel';
-  static const String _generalChannelId   = 'general_metro_channel';
-
-  // Notification IDs (stable, reusable)
-  static const int arrivalNotifId  = 1;
-  static const int delayLine1Id    = 10;
-  static const int delayLine2Id    = 11;
-  static const int delayLine3Id    = 12;
-  static const int generalId       = 20;
+  static const int arrivalNotifId = 1001;
+  // صورة بديلة "شيك" في حالة فشل التحميل
+  static const String _chicPlaceholder =
+      "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=500";
 
   static Future<void> init() async {
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
 
-    const initSettings = InitializationSettings(android: androidSettings);
-    await _plugin.initialize(initSettings);
+    const InitializationSettings initializationSettings =
+        InitializationSettings(android: initializationSettingsAndroid);
+
+    await _notificationsPlugin.initialize(initializationSettings);
+
+    // تعريف القنوات لضمان عمل الأصوات المخصصة والاهتزاز
+    const AndroidNotificationChannel tourismChannel =
+        AndroidNotificationChannel(
+          'rafiq_metro_tourism',
+          'Metro Tourism Alerts',
+          importance: Importance.max,
+        );
+
+    const AndroidNotificationChannel sportsChannel = AndroidNotificationChannel(
+      'sports_clubs_channel',
+      'Sports Club Alerts',
+      importance: Importance.max,
+      sound: RawResourceAndroidNotificationSound('club_alert'),
+      playSound: true,
+    );
+
+    final androidPlugin = _notificationsPlugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    await androidPlugin?.createNotificationChannel(tourismChannel);
+    await androidPlugin?.createNotificationChannel(sportsChannel);
   }
 
-  // ── Generic show ──────────────────────────────────────────────────────────
+  /// تحميل الصورة وحفظها مؤقتاً لعرضها في الإشعار
+  static Future<String> _downloadAndSaveFile(
+    String url,
+    String fileName,
+  ) async {
+    final Directory directory = await getApplicationDocumentsDirectory();
+    final String filePath = '${directory.path}/$fileName';
+    final http.Response response = await http
+        .get(Uri.parse(url))
+        .timeout(const Duration(seconds: 5));
+
+    if (response.statusCode != 200) throw Exception("Failed to load image");
+
+    final File file = File(filePath);
+    await file.writeAsBytes(response.bodyBytes);
+    return filePath;
+  }
+
   static Future<void> showNotification({
     required int id,
     required String title,
     required String body,
-    String channelId = _generalChannelId,
-    String channelName = 'Metro Notifications',
-    Importance importance = Importance.defaultImportance,
-    Priority priority = Priority.defaultPriority,
-    String summaryText = 'Rafiq Metro',
+    String? payload,
+    String? imageUrl,
+    String? customSound,
   }) async {
-    final androidDetails = AndroidNotificationDetails(
-      channelId,
-      channelName,
-      importance: importance,
-      priority: priority,
-      icon: '@mipmap/ic_launcher',
-      color: const Color(0xFF1565C0), // App primary color
-      styleInformation: BigTextStyleInformation(
-        body,
-        htmlFormatBigText: true,
-        contentTitle: '<b>$title</b>',
-        htmlFormatContentTitle: true,
-        summaryText: summaryText,
-      ),
+    BigPictureStyleInformation? bigPictureStyleInformation;
+    // تحديد الصورة المستخدمة: الأصلية أو البديلة الشيك
+    String imageToUse = (imageUrl != null && imageUrl.isNotEmpty)
+        ? imageUrl
+        : _chicPlaceholder;
+
+    try {
+      final String bigPicturePath = await _downloadAndSaveFile(
+        imageToUse,
+        'notification_img_${imageToUse.hashCode}',
+      );
+      bigPictureStyleInformation = BigPictureStyleInformation(
+        FilePathAndroidBitmap(bigPicturePath),
+        largeIcon: FilePathAndroidBitmap(bigPicturePath),
+        contentTitle: title,
+        summaryText: body,
+      );
+    } catch (e) {
+      debugPrint("Chic Notification Image failed: $e");
+    }
+
+    final AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+          customSound != null ? 'sports_clubs_channel' : 'rafiq_metro_tourism',
+          customSound != null ? 'Sports Club Alerts' : 'Metro Tourism Alerts',
+          channelDescription: 'Notifications for nearby attractions',
+          importance: Importance.max,
+          priority: Priority.high,
+          styleInformation: bigPictureStyleInformation,
+          sound: customSound != null
+              ? RawResourceAndroidNotificationSound(customSound)
+              : null,
+          playSound: true,
+        );
+
+    final NotificationDetails platformChannelSpecifics = NotificationDetails(
+      android: androidPlatformChannelSpecifics,
     );
-    await _plugin.show(id, title, body, NotificationDetails(android: androidDetails));
+
+    await _notificationsPlugin.show(
+      id,
+      title,
+      body,
+      platformChannelSpecifics,
+      payload: payload,
+    );
   }
 
-  // ── Arrival alarm ─────────────────────────────────────────────────────────
-  /// Fires when user is approaching their destination station.
-  static Future<void> showArrivalAlarm({
-    required String stationNameAr,
-    required String stationNameEn,
-    bool isArabic = true,
-  }) async {
-    final title = isArabic ? '📍 اقتربت من محطتك!' : '📍 Almost There!';
-    final body  = isArabic
-        ? 'أنت على وشك الوصول إلى <b>$stationNameAr</b>.<br>استعد للنزول وتأكد من اصطحاب كافة أغراضك، نتمنى لك يوماً سعيداً! ✨'
-        : 'You are approaching <b>$stationNameEn</b>.<br>Please get ready to leave the train and ensure you have all your belongings. Have a great day! ✨';
-
-    await showNotification(
-      id: arrivalNotifId,
-      title: title,
-      body: body,
-      channelId: _arrivalChannelId,
-      channelName: 'Arrival Alarm',
-      importance: Importance.max,
-      priority: Priority.high,
-      summaryText: isArabic ? 'تنبيه الوصول' : 'Arrival Alert',
-    );
-  }
-
-  // ── Line delay alert ──────────────────────────────────────────────────────
-  /// Fires when a delay is detected on a metro line.
+  /// إرسال تنبيه بوجود تأخير في أحد الخطوط
   static Future<void> showLineDelayAlert({
     required int lineNumber,
     required int delayMinutes,
-    bool isArabic = true,
+    required bool isArabic,
   }) async {
-    final notifId = lineNumber == 1 ? delayLine1Id
-                  : lineNumber == 2 ? delayLine2Id
-                  : delayLine3Id;
-
-    final title = isArabic
-        ? '⚠️ تحديث حركة الخط $lineNumber'
-        : '⚠️ Line $lineNumber Status Update';
-    final body = isArabic
-        ? 'نأسف لإبلاغك بوجود تأخير يقدر بحوالي <b>$delayMinutes دقيقة</b> في حركة الخط $lineNumber.<br>يرجى ترتيب مواعيدك أو استخدام بدائل النقل المتاحة عبر التطبيق.'
-        : 'We regret to inform you of an estimated <b>$delayMinutes-minute</b> delay on Line $lineNumber.<br>Please adjust your schedule or check the app for alternative routes.';
+    final String title = isArabic
+        ? "⚠️ تنبيه تأخير: الخط $lineNumber"
+        : "⚠️ Delay Alert: Line $lineNumber";
+    final String body = isArabic
+        ? "يوجد تأخير متوقع حوالي $delayMinutes دقائق. نأسف للإزعاج."
+        : "Expect a delay of around $delayMinutes minutes. Sorry for the inconvenience.";
 
     await showNotification(
-      id: notifId,
+      id: 200 + lineNumber,
       title: title,
       body: body,
-      channelId: _delayChannelId,
-      channelName: 'Line Delay Alerts',
-      importance: Importance.high,
-      priority: Priority.high,
-      summaryText: isArabic ? 'تحديثات الحركة' : 'Status Update',
+      imageUrl:
+          "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=500", // صورة رمزية للتنبيه
     );
   }
-
-  // ── Crowd alert ───────────────────────────────────────────────────────────
-  static Future<void> showCrowdAlert({
-    required String stationName,
-    required String crowdLevel,
-    bool isArabic = true,
-  }) async {
-    final emoji = crowdLevel == 'high' ? '🔴' : '🟡';
-    final title = isArabic ? '$emoji تنبيه الازدحام: $stationName' : '$emoji Crowd Alert: $stationName';
-    final body  = isArabic
-        ? 'الزحمة في محطة <b>$stationName</b> حالياً ${crowdLevel == 'high' ? 'شديدة جداً' : 'متوسطة'}.<br>لرحلة أكثر راحة، ننصحك بتأجيل رحلتك قليلاً أو تجنب أوقات الذروة.'
-        : 'The crowd at <b>$stationName</b> is currently ${crowdLevel == 'high' ? 'very heavy' : 'moderate'}.<br>For a more comfortable trip, consider delaying your journey slightly.';
-
-    await showNotification(
-      id: generalId,
-      title: title,
-      body: body,
-      channelId: _generalChannelId,
-      channelName: 'Metro Notifications',
-      summaryText: isArabic ? 'حالة الزحام' : 'Crowd Status',
-    );
-  }
-
-  // ── Cancel ────────────────────────────────────────────────────────────────
-  static Future<void> cancelAll() async => _plugin.cancelAll();
-  static Future<void> cancel(int id) async => _plugin.cancel(id);
 }

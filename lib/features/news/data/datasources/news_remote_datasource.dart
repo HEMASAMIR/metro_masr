@@ -11,10 +11,13 @@ class NewsRemoteDataSourceImpl implements NewsRemoteDataSource {
   NewsRemoteDataSourceImpl({required this.dio});
 
   static const String _baseUrl = 'https://newsapi.org/v2';
-  static const String _apiKey = 'YOUR_API_KEY';
+  // يفضل جلب المفتاح من Environment Variables
+  static const String _apiKey = String.fromEnvironment('NEWS_API_KEY');
 
   @override
   Future<List<NewsArticleModel>> getTopHeadlines(String countryCode) async {
+    if (_apiKey.isEmpty || _apiKey == 'YOUR_API_KEY') return _getMockArticles();
+
     try {
       final response = await dio.get(
         '$_baseUrl/top-headlines',

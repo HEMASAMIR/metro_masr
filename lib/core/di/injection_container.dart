@@ -1,4 +1,6 @@
+import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
+
 import '../../features/metro/data/repositories/metro_repository_impl.dart';
 import '../../features/metro/domain/repositories/metro_repository.dart';
 import '../../features/metro/presentation/cubits/route_planner/route_planner_cubit.dart';
@@ -8,7 +10,6 @@ import '../../features/community/domain/repositories/community_repository.dart';
 import '../../features/community/data/repositories/community_repository_impl.dart';
 import '../../features/community/presentation/cubits/community_cubit.dart';
 import '../../core/theme/theme_cubit.dart';
-import 'package:dio/dio.dart';
 import '../../features/news/data/datasources/news_remote_datasource.dart';
 import '../../features/news/data/repositories/news_repository_impl.dart';
 import '../../features/news/domain/repositories/news_repository.dart';

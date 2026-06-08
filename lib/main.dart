@@ -13,10 +13,8 @@ import 'features/metro/presentation/cubits/route_planner/route_planner_cubit.dar
 import 'features/metro/presentation/cubits/arrival_alarm/arrival_alarm_cubit.dart';
 import 'features/shell/presentation/main_nav_shell.dart';
 import 'core/utils/gamification_service.dart';
-import 'features/auth/data/auth_service.dart';
-import 'features/auth/cubit/auth_cubit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 @pragma('vm:entry-point')
 void callbackDispatcher() {
@@ -26,31 +24,33 @@ void callbackDispatcher() {
       final prefs = await SharedPreferences.getInstance();
       final saved = prefs.getStringList('line_alert_subscriptions') ?? [];
       final alertDelays = prefs.getBool('alert_delays') ?? true;
-      
+
       if (saved.isNotEmpty && alertDelays) {
-         // Simulate checking live API for delays in background
-         final now = DateTime.now();
-         if (now.minute % 10 == 0) { // arbitrary condition for background delay
-           final line = int.tryParse(saved.first) ?? 1;
-           await NotificationService.showLineDelayAlert(
-             lineNumber: line,
-             delayMinutes: 5 + (line * 2),
-             isArabic: true,
-           );
-         }
+        // Simulate checking live API for delays in background
+        final now = DateTime.now();
+        if (now.minute % 10 == 0) {
+          // arbitrary condition for background delay
+          final line = int.tryParse(saved.first) ?? 1;
+          await NotificationService.showLineDelayAlert(
+            lineNumber: line,
+            delayMinutes: 5 + (line * 2),
+            isArabic: true,
+          );
+        }
       }
-      
+
       // Daily Support Notification (+201055673184)
       final now = DateTime.now();
       final todayStr = '${now.year}-${now.month}-${now.day}';
       final lastSupportStr = prefs.getString('last_support_date');
-      
+
       // Send only once a day, and preferably during daytime (e.g. between 10 AM and 8 PM)
       if (lastSupportStr != todayStr && now.hour >= 10 && now.hour <= 20) {
         await NotificationService.showNotification(
           id: 999,
           title: 'دعم تطبيق المترو | Support the App 🚀',
-          body: 'لو عجبك التطبيق ادعمنا عشان نكمله بالعربي والإنجليزي! تواصل معنا على: +201055673184',
+          body:
+              'لو عجبك التطبيق ادعمنا عشان نكمله بالعربي والإنجليزي! تواصل معنا على: +201055673184',
         );
         await prefs.setString('last_support_date', todayStr);
       }
@@ -62,30 +62,32 @@ void callbackDispatcher() {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Supabase Initialization
-  await Supabase.initialize(
-    url: 'https://mrqkmuxfckffkkltpdri.supabase.co',
-    anonKey: 'sb_publishable_vybCTs7cuYw04y4bYztFaw_yTj8qbtG',
-  );
-
   await EasyLocalization.ensureInitialized();
   await NotificationService.init();
-  await VoiceService.init();
+  try {
+    await VoiceService.init();
+  } catch (e) {
+    debugPrint("⚠️ Voice Service initialization failed: $e");
+  }
   await AppStorage.init();
   await GamificationService.init();
   await di.init();
-  await AuthService.instance.init(); // restore Google session if any
-  
-  Workmanager().initialize(
-    callbackDispatcher,
-    isInDebugMode: false,
-  );
+
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    debugPrint(
+      "⚠️ Dotenv Load Error: $e. Check if .env exists and is in pubspec.yaml assets.",
+    );
+  }
+
+  Workmanager().initialize(callbackDispatcher, isInDebugMode: false);
   Workmanager().registerPeriodicTask(
     "1",
     "lineAlertsTask",
     frequency: const Duration(minutes: 15),
   );
-  
+
   runApp(
     EasyLocalization(
       supportedLocales: const [
@@ -111,9 +113,6 @@ class MetroApp extends StatelessWidget {
         BlocProvider(create: (context) => di.sl<ThemeCubit>()),
         BlocProvider(create: (context) => di.sl<RoutePlannerCubit>()),
         BlocProvider(create: (context) => di.sl<ArrivalAlarmCubit>()),
-        BlocProvider(
-          create: (_) => AuthCubit(AuthService.instance),
-        ),
       ],
       child: BlocBuilder<ThemeCubit, ThemeMode>(
         builder: (context, themeMode) {
@@ -134,10 +133,13 @@ class MetroApp extends StatelessWidget {
                 surface: AppColors.surface,
                 brightness: Brightness.light,
               ),
-              textTheme: GoogleFonts.outfitTextTheme(ThemeData.light().textTheme).apply(
-                bodyColor: AppColors.textPrimary,
-                displayColor: AppColors.textPrimary,
-              ),
+              textTheme:
+                  GoogleFonts.outfitTextTheme(
+                    ThemeData.light().textTheme,
+                  ).apply(
+                    bodyColor: AppColors.textPrimary,
+                    displayColor: AppColors.textPrimary,
+                  ),
               appBarTheme: const AppBarTheme(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
@@ -181,10 +183,11 @@ class MetroApp extends StatelessWidget {
                 secondary: AppColors.accent,
                 surface: AppColors.surfaceDark,
               ),
-              textTheme: GoogleFonts.outfitTextTheme(ThemeData.dark().textTheme).apply(
-                bodyColor: AppColors.textPrimaryDark,
-                displayColor: AppColors.textPrimaryDark,
-              ),
+              textTheme: GoogleFonts.outfitTextTheme(ThemeData.dark().textTheme)
+                  .apply(
+                    bodyColor: AppColors.textPrimaryDark,
+                    displayColor: AppColors.textPrimaryDark,
+                  ),
               appBarTheme: const AppBarTheme(
                 backgroundColor: AppColors.surfaceDark,
                 foregroundColor: Colors.white,

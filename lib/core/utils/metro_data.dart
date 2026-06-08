@@ -5,13 +5,14 @@ import '../../features/metro/domain/entities/station.dart';
 ///   ≤ 9  stations → 10 EGP
 ///   ≤ 16 stations → 12 EGP
 ///   ≤ 23 stations → 15 EGP
+///   ≤ 23 stations → 17 EGP
 ///   > 23 stations → 20 EGP
 class MetroData {
   // ─── Official Pricing (Updated 2026) ────────────────────────────────────
   static int calculateTicketPrice(int stationCount) {
     if (stationCount <= 9) return 10;
-    if (stationCount <= 16) return 12;
-    if (stationCount <= 23) return 15;
+    if (stationCount <= 16) return 13;
+    if (stationCount <= 23) return 17;
     return 20;
   }
 
