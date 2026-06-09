@@ -150,7 +150,10 @@ class _NearbyPlacesPageState extends State<NearbyPlacesPage> {
     final stationData = TourismDatabase.findByStation(_selectedStationId ?? '');
 
     // دمج البيانات المحلية المختارة مع بيانات OSM الشاملة
-    var list = [...(stationData?.attractions ?? []), ..._osmAttractions];
+    List<TouristAttraction> list = [
+      if (stationData != null) ...stationData.attractions,
+      ..._osmAttractions,
+    ];
 
     // منطق التصفية والبحث
     if (_selectedCategory != null) {
@@ -196,16 +199,7 @@ class _NearbyPlacesPageState extends State<NearbyPlacesPage> {
           _buildHeader(isAr),
           _buildCategoryFilters(isAr),
           Expanded(
-            child: list.isEmpty
-                ? _buildEmptyState(isAr)
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: list.length,
-                    itemBuilder: (context, index) => FadeInUp(
-                      delay: Duration(milliseconds: index * 50),
-                      child: _buildLargePlaceCard(list[index], isAr),
-                    ),
-                  ),
+            child: _buildList(list, isAr),
           ),
         ],
       ),
@@ -324,7 +318,7 @@ class _NearbyPlacesPageState extends State<NearbyPlacesPage> {
               setState(() {
                 _selectedCategory = cats[i]['cat'] as AttractionCategory?;
               });
-                _fetchOsmData(); // جلب البيانات فور تغيير الفئة
+              _fetchOsmData(); // جلب البيانات فور تغيير الفئة
             },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
@@ -367,7 +361,7 @@ class _NearbyPlacesPageState extends State<NearbyPlacesPage> {
       return ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: 3,
-        itemBuilder: (_, __) => _buildShimmerCard(),
+        itemBuilder: (_, _) => _buildShimmerCard(),
       );
     }
 
@@ -540,18 +534,22 @@ class _NearbyPlacesPageState extends State<NearbyPlacesPage> {
                   const SizedBox(height: 16),
                   Row(
                     children: [
-                      _buildIconLabel(
-                        Icons.directions_walk,
-                        "${place.walkingMinutes} ${isAr ? "دقائق" : "min"}",
-                        AppColors.primary,
+                      Flexible(
+                        child: _buildIconLabel(
+                          Icons.directions_walk,
+                          "${place.walkingMinutes} ${isAr ? "دقائق" : "min"}",
+                          AppColors.primary,
+                        ),
                       ),
                       const SizedBox(width: 16),
-                      _buildIconLabel(
-                        Icons.payments_outlined,
-                        place.admissionEGP,
-                        Colors.green,
+                      Expanded(
+                        child: _buildIconLabel(
+                          Icons.payments_outlined,
+                          place.admissionEGP,
+                          Colors.green,
+                        ),
                       ),
-                      const Spacer(),
+                      const SizedBox(width: 8),
                       Material(
                         color: AppColors.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
@@ -581,12 +579,17 @@ class _NearbyPlacesPageState extends State<NearbyPlacesPage> {
 
   Widget _buildIconLabel(IconData icon, String label, Color color) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, size: 16, color: color),
         const SizedBox(width: 4),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+        Flexible(
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
       ],
     );
@@ -653,9 +656,9 @@ class _NearbyPlacesPageState extends State<NearbyPlacesPage> {
                   const SizedBox(height: 16),
                   Row(
                     children: [
-                      Container(height: 16, width: 80, color: Colors.white),
+                      Flexible(child: Container(height: 16, width: 80, color: Colors.white)),
                       const SizedBox(width: 16),
-                      Container(height: 16, width: 80, color: Colors.white),
+                      Expanded(child: Container(height: 16, color: Colors.white)),
                     ],
                   ),
                 ],

@@ -1,20 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/utils/speech_service.dart';
 import '../../metro/presentation/pages/route_planner_page.dart';
 import '../../metro/presentation/pages/nearby_stations_page.dart';
 import '../../metro/presentation/pages/map_page.dart';
 import '../../metro/presentation/pages/subscription_optimizer_page.dart';
-import '../../community/presentation/pages/community_page.dart';
 import '../../news/presentation/pages/news_page.dart';
-import '../../ai_assistant/presentation/pages/ai_assistant_page.dart';
 import '../../crowd_prediction/presentation/pages/crowd_prediction_page.dart';
-import '../../gamification/presentation/pages/achievements_page.dart';
 import '../../trip_scheduler/presentation/pages/trip_scheduler_page.dart';
 import '../../pricing_calculator/presentation/pages/pricing_calculator_page.dart';
-
-
 
 enum VoiceCommandState { idle, listening, processing, done }
 
@@ -44,9 +38,10 @@ class VoiceCommandServiceState extends State<VoiceCommandService>
       vsync: this,
       duration: const Duration(milliseconds: 600),
     )..repeat(reverse: true);
-    _micAnimation = Tween<double>(begin: 0.85, end: 1.15).animate(
-      CurvedAnimation(parent: _micController, curve: Curves.easeInOut),
-    );
+    _micAnimation = Tween<double>(
+      begin: 0.85,
+      end: 1.15,
+    ).animate(CurvedAnimation(parent: _micController, curve: Curves.easeInOut));
   }
 
   @override
@@ -108,7 +103,7 @@ class VoiceCommandServiceState extends State<VoiceCommandService>
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primary.withOpacity(0.4),
+                        color: AppColors.primary.withValues(alpha: 0.4),
                         blurRadius: 20,
                         spreadRadius: 5,
                       ),
@@ -120,7 +115,10 @@ class VoiceCommandServiceState extends State<VoiceCommandService>
               const SizedBox(height: 16),
               Text(
                 "Say your command...".tr(),
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
@@ -133,7 +131,9 @@ class VoiceCommandServiceState extends State<VoiceCommandService>
                 autofocus: true,
                 decoration: InputDecoration(
                   hintText: "Type command here...".tr(),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   prefixIcon: const Icon(Icons.keyboard_voice),
                 ),
                 onSubmitted: (v) {
@@ -144,20 +144,23 @@ class VoiceCommandServiceState extends State<VoiceCommandService>
               const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
-                children: (isAr
-                        ? ['الخريطة', 'مخطط الرحلة', 'المجتمع', 'إنجازاتي']
-                        : ['Map', 'Route Planner', 'Community', 'Achievements'])
-
-                    .map(
-                      (cmd) => ActionChip(
-                        label: Text(cmd, style: const TextStyle(fontSize: 12)),
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          _executeCommand(cmd, isAr);
-                        },
-                      ),
-                    )
-                    .toList(),
+                children:
+                    (isAr
+                            ? ['الخريطة', 'مخطط الرحلة', 'أسعار التذاكر']
+                            : ['Map', 'Route Planner', 'Ticket Prices'])
+                        .map(
+                          (cmd) => ActionChip(
+                            label: Text(
+                              cmd,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              _executeCommand(cmd, isAr);
+                            },
+                          ),
+                        )
+                        .toList(),
               ),
               const SizedBox(height: 8),
             ],
@@ -183,23 +186,16 @@ class VoiceCommandServiceState extends State<VoiceCommandService>
       destination = const RoutePlannerPage();
     } else if (_has(cmd, ['قريب', 'nearby', 'محطات قريبة'])) {
       destination = const NearbyStationsPage();
-    } else if (_has(cmd, ['مجتمع', 'community'])) {
-      destination = const CommunityPage();
     } else if (_has(cmd, ['أخبار', 'news'])) {
       destination = const NewsPage();
     } else if (_has(cmd, ['اشتراك', 'subscription', 'optimize'])) {
       destination = const SubscriptionOptimizerPage();
-    } else if (_has(cmd, ['ذكاء', 'ai', 'مساعد', 'assistant', 'رفيق'])) {
-      destination = const AiAssistantPage();
     } else if (_has(cmd, ['ازدحام', 'زحمة', 'crowd'])) {
       destination = const CrowdPredictionPage();
-    } else if (_has(cmd, ['إنجاز', 'نقاط', 'شارات', 'achievement', 'badge', 'points'])) {
-      destination = const AchievementsPage();
     } else if (_has(cmd, ['جدول', 'schedule', 'مجدل'])) {
       destination = const TripSchedulerPage();
     } else if (_has(cmd, ['تكلفة', 'سعر', 'price', 'calculator', 'حاسبة'])) {
       destination = const PricingCalculatorPage();
-
     }
 
     Future.delayed(const Duration(milliseconds: 200), () {
@@ -207,17 +203,22 @@ class VoiceCommandServiceState extends State<VoiceCommandService>
     });
 
     if (destination != null && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(isAr ? '✅ فهمت: "$command"' : '✅ Got it: "$command"'),
-        backgroundColor: Colors.green,
-        duration: const Duration(seconds: 1),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isAr ? '✅ فهمت: "$command"' : '✅ Got it: "$command"'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 1),
+        ),
+      );
       Navigator.push(context, MaterialPageRoute(builder: (_) => destination!));
-    } else if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text("🤔 Command not recognized, try again".tr()),
-        backgroundColor: Colors.orange,
-      ));
+    } else if (context.mounted && command.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isAr ? 'لم أفهم الأمر، جرب مرة أخرى' : "Command not recognized",
+          ),
+        ),
+      );
     }
   }
 

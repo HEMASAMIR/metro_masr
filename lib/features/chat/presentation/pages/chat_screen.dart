@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:rafiq_metrro/core/theme/app_colors.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shimmer/shimmer.dart';
 
 class MetroChatScreen extends StatefulWidget {
@@ -25,88 +24,37 @@ class _MetroChatScreenState extends State<MetroChatScreen> {
   List<Map<String, dynamic>> messages = [];
   final ScrollController _scrollController = ScrollController();
   bool isConnecting = true;
-  RealtimeChannel? _channel;
   bool _isDisposed = false;
   bool _adminModeEnabled = false;
 
   @override
   void initState() {
     super.initState();
-    _connectSupabaseDatabase();
+    _loadInitialMockMessages();
   }
 
-  void _connectSupabaseDatabase() {
-    // 1. تحميل الرسائل القديمة
-    _loadPreviousMessages();
-
-    // 2. الاستماع لأي رسالة جديدة تضاف في الداتابيز
-    try {
-      _channel = Supabase.instance.client
-          .channel('public:messages:${widget.roomId}')
-          .onPostgresChanges(
-            event: PostgresChangeEvent.insert,
-            schema: 'public',
-            table: 'messages',
-            filter: PostgresChangeFilter(
-              type: PostgresChangeFilterType.eq,
-              column: 'room_id',
-              value: widget.roomId,
-            ),
-            callback: (payload) {
-              if (mounted && !_isDisposed) {
-                setState(() {
-                  messages.add(Map<String, dynamic>.from(payload.newRecord));
-                });
-                _scrollToBottom();
-              }
-            },
-          )
-          .subscribe((status, [error]) {
-            if (status == RealtimeSubscribeStatus.subscribed) {
-              if (mounted && !_isDisposed) {
-                setState(() {
-                  isConnecting = false;
-                });
-              }
-            } else if (status == RealtimeSubscribeStatus.closed ||
-                status == RealtimeSubscribeStatus.channelError) {
-              if (mounted && !_isDisposed) {
-                setState(() {
-                  isConnecting = true;
-                });
-              }
-            }
-          });
-    } catch (e) {
-      debugPrint('Error subscribing to supabase channel: $e');
-      if (mounted && !_isDisposed) {
-        setState(() {
-          isConnecting = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _loadPreviousMessages() async {
-    try {
-      final response = await Supabase.instance.client
-          .from('messages')
-          .select()
-          .eq('room_id', widget.roomId)
-          .order('created_at', ascending: true)
-          .limit(100);
-
-      if (mounted && !_isDisposed) {
-        setState(() {
-          messages = List<Map<String, dynamic>>.from(response);
-          // إذا انتهى التحميل ولم يتم الاتصال بالـ realtime بعد
-          if (isConnecting) isConnecting = false;
-        });
-        _scrollToBottom();
-      }
-    } catch (e) {
-      debugPrint('Error loading messages: $e');
-    }
+  void _loadInitialMockMessages() {
+    // رسائل وهمية عشان الـ UI ميبقاش فاضي قدام العميل
+    setState(() {
+      messages = [
+        {
+          'sender': 'أحمد علي',
+          'text': 'يا جماعة حد عارف المترو زحمة دلوقتي في السادات؟',
+          'created_at': DateTime.now()
+              .subtract(const Duration(minutes: 10))
+              .toIso8601String(),
+        },
+        {
+          'sender': 'سارة محمود',
+          'text': 'لا يا أحمد، الخط التاني رايق وزي الفل ✅',
+          'created_at': DateTime.now()
+              .subtract(const Duration(minutes: 5))
+              .toIso8601String(),
+        },
+      ];
+      isConnecting = false;
+    });
+    _scrollToBottom();
   }
 
   Future<void> _sendMessage({
@@ -128,18 +76,12 @@ class _MetroChatScreenState extends State<MetroChatScreen> {
 
     _messageController.clear();
 
-    try {
-      await Supabase.instance.client.from('messages').insert(messageData);
-    } catch (e) {
-      debugPrint(
-        'Error sending message (falling back to local simulation): $e',
-      );
-      if (mounted && !_isDisposed) {
-        setState(() {
-          messages.add(messageData);
-        });
-        _scrollToBottom();
-      }
+    // محاكاة الإرسال محلياً فقط
+    if (mounted && !_isDisposed) {
+      setState(() {
+        messages.add(messageData);
+      });
+      _scrollToBottom();
     }
   }
 
@@ -241,9 +183,6 @@ class _MetroChatScreenState extends State<MetroChatScreen> {
   @override
   void dispose() {
     _isDisposed = true;
-    if (_channel != null) {
-      Supabase.instance.client.removeChannel(_channel!);
-    }
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -402,8 +341,8 @@ class _MetroChatScreenState extends State<MetroChatScreen> {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(
-                    Theme.of(context).brightness == Brightness.dark
+                  color: Colors.black.withValues(
+                    alpha: Theme.of(context).brightness == Brightness.dark
                         ? 0.2
                         : 0.05,
                   ),
@@ -424,7 +363,7 @@ class _MetroChatScreenState extends State<MetroChatScreen> {
                       children: [
                         CircleAvatar(
                           radius: 12,
-                          backgroundColor: Colors.indigo.withOpacity(0.1),
+                          backgroundColor: Colors.indigo.withValues(alpha: 0.1),
                           child: Icon(
                             Icons.person,
                             size: 14,
@@ -487,7 +426,7 @@ class _MetroChatScreenState extends State<MetroChatScreen> {
         color: Theme.of(context).cardColor,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),
@@ -618,24 +557,21 @@ class _MetroChatScreenState extends State<MetroChatScreen> {
   }
 
   Future<void> _deleteMessage(String messageId) async {
-    try {
-      await Supabase.instance.client
-          .from('messages')
-          .delete()
-          .eq('id', messageId);
-      if (mounted && !_isDisposed) {
-        setState(() {
-          messages.removeWhere((msg) => msg['id']?.toString() == messageId);
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تم حذف الرسالة المخالفة بنجاح 🗑️🛡️'),
-            backgroundColor: Colors.redAccent,
-          ),
+    // حذف محلي فقط
+    if (mounted && !_isDisposed) {
+      setState(() {
+        messages.removeWhere(
+          (msg) =>
+              msg['id']?.toString() == messageId ||
+              msg['created_at'] == messageId,
         );
-      }
-    } catch (e) {
-      debugPrint('Error deleting message: $e');
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تم حذف الرسالة المخالفة بنجاح 🗑️🛡️'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
     }
   }
 }

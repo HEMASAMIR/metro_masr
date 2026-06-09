@@ -3,6 +3,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:rafiq_metrro/features/pricing_calculator/presentation/pages/pricing_calculator_page.dart';
 import 'package:rafiq_metrro/features/tourism/presentation/pages/nearby_places_page.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -13,7 +14,6 @@ import '../../../splash/presentation/trip_tracking_service.dart';
 import '../../../../core/utils/metro_data.dart';
 import '../../../../core/utils/page_transitions.dart';
 import '../../../../core/widgets/station_search_sheet.dart';
-import '../../../../core/utils/notification_service.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../../core/utils/voice_service.dart';
 import '../cubits/nearby_stations_cubit.dart';
@@ -26,9 +26,7 @@ import 'subscription_optimizer_page.dart';
 import 'ar_navigation_page.dart';
 import '../widgets/tourist_translator_modal.dart';
 import '../../../news/presentation/pages/news_page.dart';
-import '../../../ai_assistant/presentation/pages/ai_assistant_page.dart';
 import '../../../trip_scheduler/presentation/pages/trip_scheduler_page.dart';
-import '../../../pricing_calculator/presentation/pages/pricing_calculator_page.dart';
 import '../../../voice_command/presentation/voice_command_service.dart';
 import '../../../tourism/presentation/pages/tourist_attractions_page.dart';
 import 'line_alerts_page.dart';
@@ -1074,22 +1072,6 @@ class _HomePageState extends State<_HomePageView> {
           Navigator.push(
             context,
             RafiqPageRoute(page: const NearbyStationsPage()),
-          );
-        },
-      ),
-      FeatureCard(
-        title: isAr ? "مساعد رفيق الذكي 🤖" : "AI Assistant 🤖",
-        subtitle: isAr
-            ? "اسألني أي شيء عن المترو"
-            : "Ask me anything about metro",
-        icon: Icons.smart_toy_outlined,
-        color: const Color(0xFF7C3AED),
-        onTap: () {
-          GamificationService.recordAiQuery();
-          GamificationService.unlockBadge(BadgeType.aiUser);
-          Navigator.push(
-            context,
-            RafiqPageRoute(page: const AiAssistantPage()),
           );
         },
       ),
