@@ -158,7 +158,7 @@ class OsmService {
   static Future<List<TouristAttraction>> fetchNearbyAmenities(
     double lat,
     double lng, {
-    double radius = 1200,
+    double radius = 1500, // Increased to 1500 to catch everything around station
     AttractionCategory? category,
     CancelToken? cancelToken,
   }) async {
@@ -181,44 +181,80 @@ class OsmService {
     String filter = "";
 
     if (category == null) {
-      // البحث العام عن كل شيء (الحالة الافتراضية)
+      // البحث العام عن كل شيء (الحالة الافتراضية) مع دعم الطرق والعلاقات والمناطق بالكامل
       filter =
           """
-        node["amenity"~"restaurant|cafe|fast_food|bar|pub|cinema|theatre|nightclub|community_centre"](around:$radius, $lat, $lng);
-        node["tourism"~"museum|attraction|viewpoint|zoo|artwork"](around:$radius, $lat, $lng);
-        node["leisure"~"park|garden|sports_centre|stadium|fitness_centre|playground|club"](around:$radius, $lat, $lng);
-        way["amenity"~"restaurant|cafe|cinema|theatre"](around:$radius, $lat, $lng);
-        way["leisure"~"park|garden|sports_centre|stadium"](around:$radius, $lat, $lng);
+        node["amenity"~"restaurant|cafe|fast_food|bar|pub|cinema|theatre|nightclub|community_centre|food_court"](around:$radius, $lat, $lng);
+        node["tourism"~"museum|attraction|viewpoint|zoo|artwork|gallery"](around:$radius, $lat, $lng);
+        node["leisure"~"park|garden|sports_centre|stadium|fitness_centre|playground|club|sports_hall"](around:$radius, $lat, $lng);
+        
+        way["amenity"~"restaurant|cafe|fast_food|bar|pub|cinema|theatre|nightclub|food_court"](around:$radius, $lat, $lng);
+        way["tourism"~"museum|attraction|gallery"](around:$radius, $lat, $lng);
+        way["leisure"~"park|garden|sports_centre|stadium|fitness_centre|club|sports_hall"](around:$radius, $lat, $lng);
+        
+        relation["amenity"~"restaurant|cafe|cinema|theatre"](around:$radius, $lat, $lng);
+        relation["tourism"~"museum|attraction"](around:$radius, $lat, $lng);
+        relation["leisure"~"park|garden|sports_centre|stadium|club"](around:$radius, $lat, $lng);
       """;
     } else {
-      // بناء استعلام مخصص بناءً على فئة المكان المختار في التطبيق
+      // بناء استعلام مخصص بناءً على فئة المكان المختار في التطبيق (نوادي، كافيهات، إلخ)
       switch (category) {
         case AttractionCategory.restaurant:
           filter =
-              'node["amenity"~"restaurant|fast_food|food_court"](around:$radius, $lat, $lng); way["amenity"~"restaurant|fast_food"](around:$radius, $lat, $lng);';
+              """
+              node["amenity"~"restaurant|fast_food|food_court"](around:$radius, $lat, $lng);
+              way["amenity"~"restaurant|fast_food|food_court"](around:$radius, $lat, $lng);
+              relation["amenity"~"restaurant|fast_food|food_court"](around:$radius, $lat, $lng);
+              """;
           break;
         case AttractionCategory.cafe:
           filter =
-              'node["amenity"~"cafe|bar|pub"](around:$radius, $lat, $lng); way["amenity"~"cafe"](around:$radius, $lat, $lng);';
+              """
+              node["amenity"~"cafe|bar|pub"](around:$radius, $lat, $lng);
+              way["amenity"~"cafe|bar|pub"](around:$radius, $lat, $lng);
+              relation["amenity"~"cafe|bar|pub"](around:$radius, $lat, $lng);
+              """;
           break;
         case AttractionCategory.museum:
           filter =
-              'node["tourism"~"museum|artwork|attraction|gallery"](around:$radius, $lat, $lng);';
+              """
+              node["tourism"~"museum|artwork|attraction|gallery"](around:$radius, $lat, $lng);
+              way["tourism"~"museum|artwork|attraction|gallery"](around:$radius, $lat, $lng);
+              relation["tourism"~"museum|artwork|attraction|gallery"](around:$radius, $lat, $lng);
+              """;
           break;
         case AttractionCategory.park:
           filter =
-              'node["leisure"~"park|garden|nature_reserve"](around:$radius, $lat, $lng); way["leisure"~"park|garden"](around:$radius, $lat, $lng);';
+              """
+              node["leisure"~"park|garden|nature_reserve"](around:$radius, $lat, $lng);
+              way["leisure"~"park|garden|nature_reserve"](around:$radius, $lat, $lng);
+              relation["leisure"~"park|garden|nature_reserve"](around:$radius, $lat, $lng);
+              """;
           break;
         case AttractionCategory.sport:
+          // النوادي الرياضية والملاعب والصالات
           filter =
-              'node["leisure"~"sports_centre|stadium|fitness_centre|club"](around:$radius, $lat, $lng); way["leisure"~"sports_centre|stadium"](around:$radius, $lat, $lng);';
+              """
+              node["leisure"~"sports_centre|stadium|fitness_centre|club|sports_hall|playground"](around:$radius, $lat, $lng);
+              way["leisure"~"sports_centre|stadium|fitness_centre|club|sports_hall|playground"](around:$radius, $lat, $lng);
+              relation["leisure"~"sports_centre|stadium|fitness_centre|club|sports_hall"](around:$radius, $lat, $lng);
+              """;
           break;
         case AttractionCategory.entertainment:
           filter =
-              'node["amenity"~"cinema|theatre|nightclub|casino|arts_centre"](around:$radius, $lat, $lng); way["amenity"~"cinema|theatre"](around:$radius, $lat, $lng);';
+              """
+              node["amenity"~"cinema|theatre|nightclub|casino|arts_centre"](around:$radius, $lat, $lng);
+              way["amenity"~"cinema|theatre|nightclub|casino|arts_centre"](around:$radius, $lat, $lng);
+              relation["amenity"~"cinema|theatre|nightclub|casino|arts_centre"](around:$radius, $lat, $lng);
+              """;
           break;
         default:
-          filter = 'node(around:$radius, $lat, $lng);';
+          filter =
+              """
+              node(around:$radius, $lat, $lng);
+              way(around:$radius, $lat, $lng);
+              relation(around:$radius, $lat, $lng);
+              """;
       }
     }
 
@@ -252,7 +288,7 @@ class OsmService {
         if (response.statusCode == 200) {
           final List elements = response.data['elements'] ?? [];
           final results = elements
-              .map((e) => _mapOsmElementToAttraction(e))
+              .map((e) => _mapOsmElementToAttraction(e, lat, lng))
               .toList();
 
           // حفظ في الكاش
@@ -284,6 +320,8 @@ class OsmService {
 
   static TouristAttraction _mapOsmElementToAttraction(
     Map<String, dynamic> element,
+    double refLat,
+    double refLng,
   ) {
     final tags = element['tags'] ?? {};
     final id = element['id'].toString();
@@ -308,7 +346,7 @@ class OsmService {
     if (amenity == 'restaurant' || amenity == 'fast_food') {
       category = AttractionCategory.restaurant;
       emoji = "🍔";
-    } else if (amenity == 'cafe') {
+    } else if (amenity == 'cafe' || amenity == 'bar' || amenity == 'pub') {
       category = AttractionCategory.cafe;
       emoji = "☕";
     } else if (tourism == 'museum') {
@@ -317,17 +355,32 @@ class OsmService {
     } else if (leisure == 'park' || leisure == 'garden') {
       category = AttractionCategory.park;
       emoji = "🌳";
-    } else if (leisure != null &&
-        (leisure.toString().contains('sports') ||
-            leisure == 'stadium' ||
-            leisure == 'fitness_centre')) {
+    } else if (leisure == 'club' ||
+        leisure == 'sports_centre' ||
+        leisure == 'stadium' ||
+        leisure == 'fitness_centre' ||
+        leisure == 'sports_hall' ||
+        leisure == 'playground' ||
+        tags['club'] == 'sport' ||
+        tags['sport'] != null) {
       category = AttractionCategory.sport;
       emoji = "🏆";
     } else if (amenity == 'cinema' ||
         amenity == 'theatre' ||
-        amenity == 'nightclub') {
+        amenity == 'nightclub' ||
+        amenity == 'casino' ||
+        amenity == 'arts_centre') {
       category = AttractionCategory.entertainment;
       emoji = "🎭";
+    }
+
+    // حساب المسافة الحقيقية وزمن السير بالدقائق بدلاً من القيمة الثابتة
+    int minutesVal = 5;
+    if (lat != null && lng != null) {
+      final distance = _calculateDistance(refLat, refLng, lat, lng);
+      // سرعة المشي المتوسطة: 80 متر في الدقيقة (حوالي 4.8 كم/ساعة)
+      minutesVal = (distance / 80).round();
+      if (minutesVal < 1) minutesVal = 1;
     }
 
     return TouristAttraction(
@@ -349,7 +402,7 @@ class OsmService {
       openHours: tags['opening_hours'] ?? "Check locally",
       isFree: true,
       admissionEGP: "N/A",
-      walkingMinutes: "5-10",
+      walkingMinutes: "$minutesVal",
       tags: [amenity ?? tourism ?? leisure ?? "osm"],
       lat: lat,
       lng: lng,
