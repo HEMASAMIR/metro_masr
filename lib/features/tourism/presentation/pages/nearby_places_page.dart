@@ -67,6 +67,7 @@ class _NearbyPlacesPageState extends State<NearbyPlacesPage>
         }
       },
     );
+    _tabBarAnimCtrl.forward();
     _initialize();
   }
 
@@ -103,7 +104,7 @@ class _NearbyPlacesPageState extends State<NearbyPlacesPage>
           setState(() {
             _selectedStationId = '_current_location';
           });
-          _tabBarAnimCtrl.reverse();
+          _tabBarAnimCtrl.forward();
         }
       }
     } catch (e) {
@@ -249,20 +250,17 @@ class _NearbyPlacesPageState extends State<NearbyPlacesPage>
           const OfflineBanner(),
           _buildHeader(isAr),
           _buildCategoryFilters(isAr),
-          // ── Animated Proximity Tab Bar (station mode only) ───────────────
-          if (_selectedStationId != '_current_location')
-            _buildProximityTabBar(isAr, list),
+          // ── Animated Proximity Tab Bar ───────────────────────────────────
+          _buildProximityTabBar(isAr, list),
           // ── Content ────────────────────────────────────────────────────
           Expanded(
-            child: _selectedStationId != '_current_location'
-                ? TabBarView(
-                    controller: _tabController,
-                    children: [
-                      _buildList(_nearOf(list), isAr),
-                      _buildList(_farOf(list), isAr),
-                    ],
-                  )
-                : _buildList(list, isAr),
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildList(_nearOf(list), isAr),
+                _buildList(_farOf(list), isAr),
+              ],
+            ),
           ),
           if (_bannerAd != null && _isAdLoaded)
             Container(
@@ -308,11 +306,7 @@ class _NearbyPlacesPageState extends State<NearbyPlacesPage>
                           _tabController.index = 0;
                         });
                         _fetchOsmData();
-                        if (v != '_current_location') {
-                          _tabBarAnimCtrl.forward(from: 0);
-                        } else {
-                          _tabBarAnimCtrl.reverse();
-                        }
+                        _tabBarAnimCtrl.forward(from: 0);
                       },
                       items: [
                         DropdownMenuItem(
