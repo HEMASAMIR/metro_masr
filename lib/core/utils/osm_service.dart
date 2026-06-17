@@ -184,17 +184,17 @@ class OsmService {
       // البحث العام عن كل شيء (الحالة الافتراضية) مع دعم الطرق والعلاقات والمناطق بالكامل
       filter =
           """
-        node["amenity"~"restaurant|cafe|fast_food|bar|pub|cinema|theatre|nightclub|community_centre|food_court"](around:$radius, $lat, $lng);
-        node["tourism"~"museum|attraction|viewpoint|zoo|artwork|gallery"](around:$radius, $lat, $lng);
-        node["leisure"~"park|garden|sports_centre|stadium|fitness_centre|playground|club|sports_hall"](around:$radius, $lat, $lng);
+        node["amenity"~"restaurant|cafe|fast_food|bar|pub|cinema|theatre|nightclub|community_centre|food_court|ice_cream|bakery"](around:$radius, $lat, $lng);
+        node["tourism"~"museum|attraction|viewpoint|zoo|artwork|gallery|aquarium|theme_park"](around:$radius, $lat, $lng);
+        node["leisure"~"park|garden|sports_centre|stadium|fitness_centre|playground|club|sports_hall|theme_park|water_park"](around:$radius, $lat, $lng);
         
-        way["amenity"~"restaurant|cafe|fast_food|bar|pub|cinema|theatre|nightclub|food_court"](around:$radius, $lat, $lng);
-        way["tourism"~"museum|attraction|gallery"](around:$radius, $lat, $lng);
-        way["leisure"~"park|garden|sports_centre|stadium|fitness_centre|club|sports_hall"](around:$radius, $lat, $lng);
+        way["amenity"~"restaurant|cafe|fast_food|bar|pub|cinema|theatre|nightclub|food_court|ice_cream|bakery"](around:$radius, $lat, $lng);
+        way["tourism"~"museum|attraction|gallery|artwork|zoo|aquarium|theme_park"](around:$radius, $lat, $lng);
+        way["leisure"~"park|garden|sports_centre|stadium|fitness_centre|club|sports_hall|theme_park|water_park"](around:$radius, $lat, $lng);
         
-        relation["amenity"~"restaurant|cafe|cinema|theatre"](around:$radius, $lat, $lng);
-        relation["tourism"~"museum|attraction"](around:$radius, $lat, $lng);
-        relation["leisure"~"park|garden|sports_centre|stadium|club"](around:$radius, $lat, $lng);
+        relation["amenity"~"restaurant|cafe|cinema|theatre|nightclub|food_court|fast_food"](around:$radius, $lat, $lng);
+        relation["tourism"~"museum|attraction|gallery|zoo|aquarium|theme_park"](around:$radius, $lat, $lng);
+        relation["leisure"~"park|garden|sports_centre|stadium|club|water_park"](around:$radius, $lat, $lng);
       """;
     } else {
       // بناء استعلام مخصص بناءً على فئة المكان المختار في التطبيق (نوادي، كافيهات، إلخ)
@@ -202,9 +202,9 @@ class OsmService {
         case AttractionCategory.restaurant:
           filter =
               """
-              node["amenity"~"restaurant|fast_food|food_court"](around:$radius, $lat, $lng);
-              way["amenity"~"restaurant|fast_food|food_court"](around:$radius, $lat, $lng);
-              relation["amenity"~"restaurant|fast_food|food_court"](around:$radius, $lat, $lng);
+              node["amenity"~"restaurant|fast_food|food_court|ice_cream|bakery"](around:$radius, $lat, $lng);
+              way["amenity"~"restaurant|fast_food|food_court|ice_cream|bakery"](around:$radius, $lat, $lng);
+              relation["amenity"~"restaurant|fast_food|food_court|ice_cream|bakery"](around:$radius, $lat, $lng);
               """;
           break;
         case AttractionCategory.cafe:
@@ -218,9 +218,9 @@ class OsmService {
         case AttractionCategory.museum:
           filter =
               """
-              node["tourism"~"museum|artwork|attraction|gallery"](around:$radius, $lat, $lng);
-              way["tourism"~"museum|artwork|attraction|gallery"](around:$radius, $lat, $lng);
-              relation["tourism"~"museum|artwork|attraction|gallery"](around:$radius, $lat, $lng);
+              node["tourism"~"museum|artwork|attraction|gallery|zoo|aquarium"](around:$radius, $lat, $lng);
+              way["tourism"~"museum|artwork|attraction|gallery|zoo|aquarium"](around:$radius, $lat, $lng);
+              relation["tourism"~"museum|artwork|attraction|gallery|zoo|aquarium"](around:$radius, $lat, $lng);
               """;
           break;
         case AttractionCategory.park:
@@ -244,8 +244,14 @@ class OsmService {
           filter =
               """
               node["amenity"~"cinema|theatre|nightclub|casino|arts_centre"](around:$radius, $lat, $lng);
+              node["tourism"~"theme_park"](around:$radius, $lat, $lng);
+              node["leisure"~"theme_park|water_park"](around:$radius, $lat, $lng);
               way["amenity"~"cinema|theatre|nightclub|casino|arts_centre"](around:$radius, $lat, $lng);
+              way["tourism"~"theme_park"](around:$radius, $lat, $lng);
+              way["leisure"~"theme_park|water_park"](around:$radius, $lat, $lng);
               relation["amenity"~"cinema|theatre|nightclub|casino|arts_centre"](around:$radius, $lat, $lng);
+              relation["tourism"~"theme_park"](around:$radius, $lat, $lng);
+              relation["leisure"~"theme_park|water_park"](around:$radius, $lat, $lng);
               """;
           break;
         default:
@@ -343,13 +349,21 @@ class OsmService {
     final tourism = tags['tourism'];
     final leisure = tags['leisure'];
 
-    if (amenity == 'restaurant' || amenity == 'fast_food') {
+    if (amenity == 'restaurant' ||
+        amenity == 'fast_food' ||
+        amenity == 'food_court' ||
+        amenity == 'ice_cream' ||
+        amenity == 'bakery') {
       category = AttractionCategory.restaurant;
       emoji = "🍔";
     } else if (amenity == 'cafe' || amenity == 'bar' || amenity == 'pub') {
       category = AttractionCategory.cafe;
       emoji = "☕";
-    } else if (tourism == 'museum') {
+    } else if (tourism == 'museum' ||
+        tourism == 'gallery' ||
+        tourism == 'artwork' ||
+        tourism == 'zoo' ||
+        tourism == 'aquarium') {
       category = AttractionCategory.museum;
       emoji = "🏛️";
     } else if (leisure == 'park' || leisure == 'garden') {
@@ -369,7 +383,10 @@ class OsmService {
         amenity == 'theatre' ||
         amenity == 'nightclub' ||
         amenity == 'casino' ||
-        amenity == 'arts_centre') {
+        amenity == 'arts_centre' ||
+        tourism == 'theme_park' ||
+        leisure == 'theme_park' ||
+        leisure == 'water_park') {
       category = AttractionCategory.entertainment;
       emoji = "🎭";
     }
