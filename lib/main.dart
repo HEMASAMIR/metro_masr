@@ -9,9 +9,11 @@ import 'core/theme/theme_cubit.dart';
 import 'core/utils/notification_service.dart';
 import 'core/utils/voice_service.dart';
 import 'core/utils/offline_storage.dart';
+import 'core/utils/ad_service.dart';
 import 'features/metro/presentation/cubits/route_planner/route_planner_cubit.dart';
 import 'features/metro/presentation/cubits/arrival_alarm/arrival_alarm_cubit.dart';
 import 'features/shell/presentation/main_nav_shell.dart';
+import 'features/metro/presentation/pages/ticket_price_calculator_page.dart'; // Import the new page
 import 'core/utils/gamification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -71,6 +73,7 @@ void main() async {
   }
   await AppStorage.init();
   await GamificationService.init();
+  await AdService.init();
   await di.init();
 
   try {
@@ -221,6 +224,10 @@ class MetroApp extends StatelessWidget {
               ),
             ),
             home: const MainNavShell(),
+            routes: {
+              '/cost_calculator': (context) =>
+                  const TicketPriceCalculatorPage(), // مكانها الصح هنا جوه MaterialApp
+            },
           );
         },
       ),

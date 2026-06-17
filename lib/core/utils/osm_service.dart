@@ -1,5 +1,10 @@
+import 'dart:convert';
+import 'dart:math' as math;
 import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
 import 'tourism_data.dart';
+import 'connectivity_service.dart';
 
 /// خدمة جلب البيانات من OpenStreetMap عبر Overpass API
 class OsmService {
@@ -16,6 +21,139 @@ class OsmService {
   static final Map<String, List<TouristAttraction>> _cache = {};
   static final Map<String, DateTime> _cacheTime = {};
 
+  static Map<String, dynamic> _attractionToJson(TouristAttraction attr) {
+    return {
+      'id': attr.id,
+      'name': attr.name,
+      'description': attr.description,
+      'category': attr.category.name,
+      'emoji': attr.emoji,
+      'rating': attr.rating,
+      'openHours': attr.openHours,
+      'isFree': attr.isFree,
+      'admissionEGP': attr.admissionEGP,
+      'walkingMinutes': attr.walkingMinutes,
+      'boardingHint': attr.boardingHint,
+      'tags': attr.tags,
+      'lat': attr.lat,
+      'lng': attr.lng,
+      'imageUrl': attr.imageUrl,
+      'wikiUrl': attr.wikiUrl,
+      'galleryUrls': attr.galleryUrls,
+    };
+  }
+
+  static TouristAttraction _attractionFromJson(Map<String, dynamic> json) {
+    return TouristAttraction(
+      id: json['id'] as String,
+      name: Map<String, String>.from(json['name'] ?? {}),
+      description: Map<String, String>.from(json['description'] ?? {}),
+      category: AttractionCategory.values.firstWhere(
+        (e) => e.name == json['category'],
+        orElse: () => AttractionCategory.landmark,
+      ),
+      emoji: json['emoji'] as String? ?? "📍",
+      rating: (json['rating'] as num?)?.toDouble() ?? 4.2,
+      openHours: json['openHours'] as String? ?? "Check locally",
+      isFree: json['isFree'] as bool? ?? true,
+      admissionEGP: json['admissionEGP'] as String? ?? "N/A",
+      walkingMinutes: json['walkingMinutes'] as String? ?? "5-10",
+      boardingHint: json['boardingHint'] != null
+          ? Map<String, String>.from(json['boardingHint'])
+          : null,
+      tags: List<String>.from(json['tags'] ?? []),
+      lat: (json['lat'] as num?)?.toDouble(),
+      lng: (json['lng'] as num?)?.toDouble(),
+      imageUrl: json['imageUrl'] as String?,
+      wikiUrl: json['wikiUrl'] as String?,
+      galleryUrls: json['galleryUrls'] != null
+          ? List<String>.from(json['galleryUrls'])
+          : null,
+    );
+  }
+
+  static double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+    const p = 0.017453292519943295; // math.pi / 180
+    final a = 0.5 - math.cos((lat2 - lat1) * p) / 2 +
+        math.cos(lat1 * p) * math.cos(lat2 * p) *
+            (1 - math.cos((lon2 - lon1) * p)) / 2;
+    return 12742 * math.asin(math.sqrt(a)) * 1000; // Returns meters
+  }
+
+  static Future<void> _saveToPersistentCache(String key, List<TouristAttraction> list) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonList = list.map((e) => _attractionToJson(e)).toList();
+      await prefs.setString("osm_cache_$key", jsonEncode(jsonList));
+      
+      final parts = key.split('_');
+      if (parts.length >= 2) {
+        final lat = double.tryParse(parts[0]);
+        final lng = double.tryParse(parts[1]);
+        if (lat != null && lng != null) {
+          List<String> keys = prefs.getStringList("osm_cache_keys") ?? [];
+          if (!keys.contains(key)) {
+            keys.add(key);
+            await prefs.setStringList("osm_cache_keys", keys);
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Failed to save OSM cache: $e");
+    }
+  }
+
+  static Future<List<TouristAttraction>?> _loadFromPersistentCache(String key) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final data = prefs.getString("osm_cache_$key");
+      if (data != null) {
+        final list = jsonDecode(data) as List;
+        return list.map((e) => _attractionFromJson(e as Map<String, dynamic>)).toList();
+      }
+    } catch (e) {
+      debugPrint("Failed to load OSM cache: $e");
+    }
+    return null;
+  }
+
+  static Future<List<TouristAttraction>> _findClosestCachedPlaces(double lat, double lng, AttractionCategory? category) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final keys = prefs.getStringList("osm_cache_keys") ?? [];
+      String? bestKey;
+      double minDistance = double.infinity;
+
+      for (final key in keys) {
+        final parts = key.split('_');
+        if (parts.length >= 3) {
+          final kLat = double.tryParse(parts[0]);
+          final kLng = double.tryParse(parts[1]);
+          final kCat = parts[2];
+          final reqCatName = category?.name ?? 'all';
+          if (kLat != null && kLng != null && kCat == reqCatName) {
+            final distance = _calculateDistance(lat, lng, kLat, kLng);
+            if (distance < minDistance && distance < 3000) { // Within 3km
+              minDistance = distance;
+              bestKey = key;
+            }
+          }
+        }
+      }
+
+      if (bestKey != null) {
+        final cached = await _loadFromPersistentCache(bestKey);
+        if (cached != null) {
+          debugPrint("Offline Mode: Found closest cached places at distance ${minDistance.round()}m");
+          return cached;
+        }
+      }
+    } catch (e) {
+      debugPrint("Error finding offline cached places: $e");
+    }
+    return [];
+  }
+
   /// جلب الأماكن القريبة (مطاعم، كافيهات، متاحف، نوادي، ترفيه) حول نقطة معينة
   static Future<List<TouristAttraction>> fetchNearbyAmenities(
     double lat,
@@ -24,7 +162,13 @@ class OsmService {
     AttractionCategory? category,
     CancelToken? cancelToken,
   }) async {
-    final cacheKey = "${lat}_${lng}_${category?.index ?? 'all'}";
+    final reqCategoryName = category?.name ?? 'all';
+    final cacheKey = "${lat}_${lng}_$reqCategoryName";
+
+    // لو الجهاز أوفلاين، ابحث عن أقرب إحداثيات مخزنة فوراً
+    if (ConnectivityService.instance.isOffline) {
+      return await _findClosestCachedPlaces(lat, lng, category);
+    }
 
     // لو الداتا موجودة في الكاش ومعداش عليها 5 دقايق، هاتها فوراً
     if (_cache.containsKey(cacheKey)) {
@@ -115,6 +259,9 @@ class OsmService {
           _cache[cacheKey] = results;
           _cacheTime[cacheKey] = DateTime.now();
 
+          // حفظ في الكاش المستمر
+          await _saveToPersistentCache(cacheKey, results);
+
           return results;
         }
       } catch (e) {
@@ -124,6 +271,16 @@ class OsmService {
     }
     return _cache[cacheKey] ?? []; // لو كله فشل، رجع الكاش القديم لو متاح
   }
+
+  static const Map<AttractionCategory, String> categoryDefaultImages = {
+    AttractionCategory.restaurant: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=600",
+    AttractionCategory.cafe: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?q=80&w=600",
+    AttractionCategory.museum: "https://images.unsplash.com/photo-1582555172866-f73bb12a2ab3?q=80&w=600",
+    AttractionCategory.park: "https://images.unsplash.com/photo-1502082553048-f009c37129b9?q=80&w=600",
+    AttractionCategory.sport: "https://images.unsplash.com/photo-1517649763962-0c623066013b?q=80&w=600",
+    AttractionCategory.entertainment: "https://images.unsplash.com/photo-1513151233558-d860c5398176?q=80&w=600",
+    AttractionCategory.landmark: "https://images.unsplash.com/photo-1539650116574-8efeb43e2750?q=80&w=600",
+  };
 
   static TouristAttraction _mapOsmElementToAttraction(
     Map<String, dynamic> element,
@@ -196,6 +353,7 @@ class OsmService {
       tags: [amenity ?? tourism ?? leisure ?? "osm"],
       lat: lat,
       lng: lng,
+      imageUrl: categoryDefaultImages[category],
       wikiUrl: tags['wikipedia'] != null
           ? "https://en.wikipedia.org/wiki/${tags['wikipedia']}"
           : null,

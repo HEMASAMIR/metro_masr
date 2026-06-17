@@ -175,15 +175,18 @@ class VoiceCommandProcessor {
         // نستخدم pushNamed لسهولة التنقل
         Navigator.of(context).pushNamed(targetRoute).catchError((e) {
           debugPrint('Navigation error: Route $targetRoute not found.');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                isAr
-                    ? 'عذراً، لم أجد هذه الصفحة في التطبيق'
-                    : 'Sorry, page not found',
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  isAr
+                      ? 'عذراً، لم أجد هذه الصفحة في التطبيق'
+                      : 'Sorry, page not found',
+                ),
               ),
-            ),
-          );
+            );
+          }
+          return null;
         });
       }
     } else {

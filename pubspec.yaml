@@ -42,6 +42,7 @@ dependencies:
   dartz: ^0.10.1
   get_it: ^7.7.0
 
+  google_mobile_ads: ^5.2.0
   # Local Storage (Offline Mode)
   hive: ^2.2.3
   hive_flutter: ^1.1.0

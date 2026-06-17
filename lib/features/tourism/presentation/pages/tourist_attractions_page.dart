@@ -2,9 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:ui' as ui;
 import 'package:easy_localization/easy_localization.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:rafiq_metrro/core/utils/ad_service.dart';
 import 'package:rafiq_metrro/features/ai_assistant/presentation/pages/ai_chat_page.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/tourism_data.dart';
+import '../../../../core/utils/osm_service.dart';
+import '../../../../core/utils/metro_data.dart';
+import '../../../metro/domain/entities/station.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'attraction_detail_page.dart';
 import 'tourism_map_page.dart';
@@ -28,8 +33,12 @@ class TouristAttractionsPage extends StatefulWidget {
 }
 
 class _TouristAttractionsPageState extends State<TouristAttractionsPage>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late TabController _tabController;
+  late AnimationController _tabBarAnimCtrl;
+  late Animation<double> _tabBarFade;
+  late Animation<Offset> _tabBarSlide;
+
   final _searchCtrl = TextEditingController();
   String _selectedStation = '';
   AttractionCategory? _selectedCategory;
@@ -37,11 +46,49 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
   StationAttractions? _currentStationData;
   bool _showAllMode = true; // true = show all top picks, false = station mode
   SortOption _selectedSort = SortOption.recommended;
+  BannerAd? _bannerAd;
+  bool _isAdLoaded = false;
+
+  bool _isLoadingOsm = false;
+
+  // Threshold in minutes: attractions ≤ this are "Near Station"
+  static const int _nearThreshold = 15;
+
+  List<TouristAttraction> get _nearAttractions => _currentAttractions
+      .where((a) => (int.tryParse(a.walkingMinutes.split('-').first.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0) <= _nearThreshold)
+      .toList();
+
+  List<TouristAttraction> get _farAttractions => _currentAttractions
+      .where((a) => (int.tryParse(a.walkingMinutes.split('-').first.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0) > _nearThreshold)
+      .toList();
 
   @override
   void initState() {
     super.initState();
+    _bannerAd = AdService.createBannerAd(
+      onAdLoaded: (ad) {
+        if (mounted) setState(() => _isAdLoaded = true);
+      },
+      onAdFailedToLoad: (ad, error) {
+        if (mounted) {
+          setState(() {
+            _isAdLoaded = false;
+            _bannerAd = null;
+          });
+        }
+      },
+    );
     _tabController = TabController(length: 2, vsync: this);
+    _tabBarAnimCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 380),
+    );
+    _tabBarFade = CurvedAnimation(parent: _tabBarAnimCtrl, curve: Curves.easeOut);
+    _tabBarSlide = Tween<Offset>(
+      begin: const Offset(0, -0.4),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _tabBarAnimCtrl, curve: Curves.easeOutCubic));
+
     if (widget.preselectedStation != null) {
       _selectStationByName(widget.preselectedStation!);
     } else {
@@ -51,12 +98,15 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
 
   @override
   void dispose() {
+    _bannerAd?.dispose();
     _tabController.dispose();
+    _tabBarAnimCtrl.dispose();
     _searchCtrl.dispose();
     super.dispose();
   }
 
   void _loadAllTopPicks() {
+    _tabBarAnimCtrl.reverse();
     setState(() {
       _showAllMode = true;
       _currentAttractions = TourismDatabase.getAllAttractions();
@@ -64,20 +114,113 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
     });
   }
 
-  void _selectStationByName(String name) {
-    final found = TourismDatabase.findByStation(name);
-    setState(() {
-      _selectedStation = name;
-      _showAllMode = false;
-      if (found != null) {
-        _currentStationData = found;
-        _currentAttractions = found.attractions;
-        _selectedCategory = null;
-      } else {
-        _currentStationData = null;
-        _currentAttractions = [];
+  Station? _findStation(String query) {
+    final clean = query.trim().toLowerCase()
+        .replaceAll('el ', '')
+        .replaceAll('al ', '')
+        .replaceAll('el-', '')
+        .replaceAll('es ', '')
+        .replaceAll(' ', '');
+
+    final all = {...MetroData.stations, ...MetroData.capitalStations}.values;
+    for (final st in all) {
+      final sEn = st.nameEn.toLowerCase()
+          .replaceAll('el ', '')
+          .replaceAll('al ', '')
+          .replaceAll('el-', '')
+          .replaceAll('es ', '')
+          .replaceAll(' ', '');
+      final sAr = st.nameAr.toLowerCase().replaceAll(' ', '');
+
+      if (st.id == query || sEn == clean || sAr == clean) {
+        return st;
       }
+    }
+    return null;
+  }
+
+  Future<void> _selectStation(Station station) async {
+    setState(() {
+      _selectedStation = Localizations.localeOf(context).languageCode == 'ar'
+          ? station.nameAr
+          : station.nameEn;
+      _showAllMode = false;
+      _isLoadingOsm = true;
+      _selectedCategory = null;
+      _tabController.index = 0;
     });
+
+    _tabBarAnimCtrl.forward(from: 0);
+
+    // Merge static database with dynamic OSM database
+    List<TouristAttraction> combined = [];
+
+    // Check if there is curated local data
+    final localData = TourismDatabase.findByStation(station.id) ??
+                      TourismDatabase.findByStation(station.nameEn);
+    if (localData != null) {
+      combined.addAll(localData.attractions);
+    }
+
+    try {
+      final osmPlaces = await OsmService.fetchNearbyAmenities(
+        station.latitude,
+        station.longitude
+      );
+
+      for (final place in osmPlaces) {
+        final duplicate = combined.any((a) =>
+          a.name['en']?.toLowerCase() == place.name['en']?.toLowerCase() ||
+          a.name['ar'] == place.name['ar']
+        );
+        if (!duplicate) {
+          combined.add(place);
+        }
+      }
+    } catch (e) {
+      debugPrint("OSM dynamic fetch error: $e");
+    }
+
+    if (mounted) {
+      setState(() {
+        _currentStationData = StationAttractions(
+          stationId: station.id,
+          lineNumber: station.line.toString(),
+          stationName: {'ar': station.nameAr, 'en': station.nameEn},
+          attractions: combined,
+        );
+        _currentAttractions = combined;
+        _isLoadingOsm = false;
+      });
+    }
+  }
+
+  void _selectStationByName(String name) {
+    final station = _findStation(name);
+    if (station != null) {
+      _selectStation(station);
+    } else {
+      // Fallback to static lookup if no match in MetroData
+      final found = TourismDatabase.findByStation(name);
+      setState(() {
+        _selectedStation = name;
+        _showAllMode = false;
+        if (found != null) {
+          _currentStationData = found;
+          _currentAttractions = found.attractions;
+          _selectedCategory = null;
+          _tabController.index = 0;
+        } else {
+          _currentStationData = null;
+          _currentAttractions = [];
+        }
+      });
+      if (found != null) {
+        _tabBarAnimCtrl.forward(from: 0);
+      } else {
+        _tabBarAnimCtrl.reverse();
+      }
+    }
   }
 
   List<TouristAttraction> get _filteredAttractions {
@@ -177,70 +320,71 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
             if (!_showAllMode && _currentStationData == null)
               _buildNoResultsBanner(isAr),
 
-            // ── Sorting Row ───────────────────────────────────────────────────
-            _buildSortRow(
-              isAr,
-              lang,
-              filtered.length,
-              _currentAttractions.length,
-            ),
+            // ── Animated Proximity Tab Bar (station mode only) ────────────────
+            if (!_showAllMode && _currentStationData != null)
+              _buildProximityTabBar(isAr),
 
-            // ── Attractions list ──────────────────────────────────────────────
+            // ── Sorting Row (only in all-mode or when tabs not shown) ─────────
+            if (_showAllMode)
+              _buildSortRow(
+                isAr,
+                lang,
+                filtered.length,
+                _currentAttractions.length,
+              ),
+
+            // ── Content Area ──────────────────────────────────────────────────
             Expanded(
-              child: filtered.isEmpty
-                  ? _buildEmptyState(isAr)
-                  : LayoutBuilder(
-                      builder: (context, constraints) {
-                        int count = constraints.maxWidth > 1300
-                            ? 4
-                            : (constraints.maxWidth > 900
-                                  ? 3
-                                  : (constraints.maxWidth > 650 ? 2 : 1));
-                        if (count == 1) {
-                          return ListView.builder(
-                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-                            itemCount: filtered.length,
-                            itemBuilder: (_, i) => _buildAttractionCard(
-                              filtered[i],
-                              lang,
-                              isAr,
-                              i,
-                              stationName:
-                                  _currentStationData?.stationName["en".tr()] ??
-                                  '',
+              child: _isLoadingOsm
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                      ),
+                    )
+                  : _showAllMode
+                      // ── ALL MODE: single flat list ────────────────────────────
+                      ? (filtered.isEmpty
+                          ? _buildEmptyState(isAr)
+                          : _buildAttractionsList(filtered, lang, isAr))
+                      // ── STATION MODE: TabBarView with near/far split ───────────
+                      : _currentStationData == null
+                          ? _buildEmptyState(isAr)
+                          : TabBarView(
+                              controller: _tabController,
+                              children: [
+                                // Tab 0 — Near Station
+                                _buildTabContent(
+                                  _applyFiltersAndSort(_nearAttractions),
+                                  lang,
+                                  isAr,
+                                  emptyMsg: isAr
+                                      ? '🚶 لا توجد أماكن قريبة جداً من المحطة'
+                                      : '🚶 No places within walking distance',
+                                ),
+                                // Tab 1 — Farther Away
+                                _buildTabContent(
+                                  _applyFiltersAndSort(_farAttractions),
+                                  lang,
+                                  isAr,
+                                  emptyMsg: isAr
+                                      ? '🗺️ لا توجد أماكن بعيدة مسجلة لهذه المحطة'
+                                      : '🗺️ No farther places listed for this station',
+                                ),
+                              ],
                             ),
-                          );
-                        } else {
-                          double spacing = 16.0;
-                          double width =
-                              (constraints.maxWidth - (spacing * (count + 1))) /
-                              count;
-                          return SingleChildScrollView(
-                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-                            child: Wrap(
-                              spacing: spacing,
-                              runSpacing: spacing,
-                              children: List.generate(filtered.length, (i) {
-                                return SizedBox(
-                                  width: width,
-                                  child: _buildAttractionCard(
-                                    filtered[i],
-                                    lang,
-                                    isAr,
-                                    i,
-                                    stationName:
-                                        _currentStationData?.stationName["en"
-                                            .tr()] ??
-                                        '',
-                                  ),
-                                );
-                              }),
-                            ),
-                          );
-                        }
-                      },
-                    ),
             ),
+            // ── Ad Banner ────────────────────────────────────────────────────
+            if (_bannerAd != null && _isAdLoaded)
+              Container(
+                alignment: Alignment.center,
+                width: _bannerAd!.size.width.toDouble(),
+                height: _bannerAd!.size.height.toDouble(),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  border: Border(top: BorderSide(color: Colors.grey.withValues(alpha: 0.1))),
+                ),
+                child: AdWidget(ad: _bannerAd!),
+              ),
           ],
         ),
       ),
@@ -892,6 +1036,201 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
     );
   }
 
+  // ── Proximity Tab Bar (Near / Far) ─────────────────────────────────────────
+  Widget _buildProximityTabBar(bool isAr) {
+    final nearCount = _applyFiltersAndSort(_nearAttractions).length;
+    final farCount = _applyFiltersAndSort(_farAttractions).length;
+
+    return SlideTransition(
+      position: _tabBarSlide,
+      child: FadeTransition(
+        opacity: _tabBarFade,
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(16, 6, 16, 4),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
+          ),
+          child: TabBar(
+            controller: _tabController,
+            indicator: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              gradient: const LinearGradient(
+                colors: [AppColors.primary, Color(0xFF7B5EA7)],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.35),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            indicatorSize: TabBarIndicatorSize.tab,
+            indicatorPadding: const EdgeInsets.all(4),
+            dividerColor: Colors.transparent,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.grey,
+            labelStyle: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 12.5,
+            ),
+            unselectedLabelStyle: const TextStyle(fontSize: 12),
+            tabs: [
+              Tab(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text('🚶', style: TextStyle(fontSize: 14)),
+                    const SizedBox(width: 5),
+                    Flexible(
+                      child: Text(
+                        isAr ? 'قريب من المحطة' : 'Near Station',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '$nearCount',
+                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Tab(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text('🗺️', style: TextStyle(fontSize: 14)),
+                    const SizedBox(width: 5),
+                    Flexible(
+                      child: Text(
+                        isAr ? 'بعيد بعض الشيء' : 'Farther Away',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '$farCount',
+                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Apply category filter + sort to a sub-list ──────────────────────────────
+  List<TouristAttraction> _applyFiltersAndSort(List<TouristAttraction> source) {
+    var list = source;
+    if (_selectedCategory != null) {
+      list = list.where((a) => a.category == _selectedCategory).toList();
+    }
+    List<TouristAttraction> sorted = List.from(list);
+    switch (_selectedSort) {
+      case SortOption.recommended:
+        break;
+      case SortOption.priceLowToHigh:
+        sorted.sort((a, b) => _extractPrice(a.admissionEGP).compareTo(_extractPrice(b.admissionEGP)));
+        break;
+      case SortOption.priceHighToLow:
+        sorted.sort((a, b) => _extractPrice(b.admissionEGP).compareTo(_extractPrice(a.admissionEGP)));
+        break;
+      case SortOption.highestRated:
+        sorted.sort((a, b) => b.rating.compareTo(a.rating));
+        break;
+      case SortOption.newest:
+        break;
+    }
+    return sorted;
+  }
+
+  // ── Tab content page ────────────────────────────────────────────────────────
+  Widget _buildTabContent(
+    List<TouristAttraction> items,
+    String lang,
+    bool isAr, {
+    required String emptyMsg,
+  }) {
+    if (items.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('🔍', style: TextStyle(fontSize: 50)),
+            const SizedBox(height: 10),
+            Text(emptyMsg, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+          ],
+        ),
+      );
+    }
+    return _buildAttractionsList(items, lang, isAr);
+  }
+
+  // ── Responsive attractions list/grid ────────────────────────────────────────
+  Widget _buildAttractionsList(
+    List<TouristAttraction> items,
+    String lang,
+    bool isAr,
+  ) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final int count = constraints.maxWidth > 1300
+            ? 4
+            : constraints.maxWidth > 900
+                ? 3
+                : constraints.maxWidth > 650
+                    ? 2
+                    : 1;
+        final stationName = _currentStationData?.stationName["en".tr()] ?? '';
+        if (count == 1) {
+          return ListView.builder(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+            itemCount: items.length,
+            itemBuilder: (_, i) => _buildAttractionCard(items[i], lang, isAr, i, stationName: stationName),
+          );
+        }
+        final double spacing = 16.0;
+        final double width = (constraints.maxWidth - spacing * (count + 1)) / count;
+        return SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+          child: Wrap(
+            spacing: spacing,
+            runSpacing: spacing,
+            children: List.generate(
+              items.length,
+              (i) => SizedBox(
+                width: width,
+                child: _buildAttractionCard(items[i], lang, isAr, i, stationName: stationName),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildEmptyState(bool isAr) => Center(
     child: Column(
       mainAxisSize: MainAxisSize.min,
@@ -909,6 +1248,8 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
   // ── Station picker ─────────────────────────────────────────────────────────
   void _showStationPicker(BuildContext context, bool isAr) {
     final searchCtrl = TextEditingController();
+    final allStations = {...MetroData.stations, ...MetroData.capitalStations}.values.toList();
+    
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -916,15 +1257,15 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
       builder: (_) => StatefulBuilder(
         builder: (ctx, setLocalState) {
           final query = searchCtrl.text.toLowerCase();
-          // Show stations that have data + filter by search
-          final withData = TourismDatabase.data
+          final filtered = allStations
               .where(
                 (s) =>
                     query.isEmpty ||
-                    (s.stationName['ar'] ?? '').toLowerCase().contains(query) ||
-                    (s.stationName['en'] ?? '').toLowerCase().contains(query),
+                    s.nameAr.toLowerCase().contains(query) ||
+                    s.nameEn.toLowerCase().contains(query),
               )
               .toList();
+
           return Container(
             height: MediaQuery.of(context).size.height * 0.75,
             decoration: BoxDecoration(
@@ -955,8 +1296,8 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                 const SizedBox(height: 8),
                 Text(
                   isAr
-                      ? 'المحطات المتوفر لها بيانات سياحية'
-                      : "Stations with tourism data",
+                      ? 'اختر أي محطة في المترو لعرض المعالم القريبة منها'
+                      : "Choose any metro station to view nearby landmarks",
                   style: const TextStyle(color: Colors.grey, fontSize: 12),
                 ),
                 const SizedBox(height: 12),
@@ -969,7 +1310,7 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                       color: Theme.of(context).textTheme.bodyLarge?.color,
                     ),
                     decoration: InputDecoration(
-                      hintText: isAr ? 'بحث...' : "Search...",
+                      hintText: isAr ? 'بحث عن محطة...' : "Search station...",
                       hintStyle: const TextStyle(color: Colors.grey),
                       filled: true,
                       fillColor: Theme.of(context).scaffoldBackgroundColor,
@@ -999,10 +1340,9 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                 Expanded(
                   child: ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: withData.length,
+                    itemCount: filtered.length,
                     itemBuilder: (_, i) {
-                      final st = withData[i];
-                      final count = st.attractions.length;
+                      final st = filtered[i];
                       return ListTile(
                         leading: Container(
                           width: 40,
@@ -1018,7 +1358,7 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                           ),
                         ),
                         title: Text(
-                          st.stationName["en".tr()] ?? '',
+                          isAr ? st.nameAr : st.nameEn,
                           style: TextStyle(
                             color: Theme.of(
                               context,
@@ -1027,7 +1367,7 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                           ),
                         ),
                         subtitle: Text(
-                          isAr ? '$count أماكن سياحية' : '$count attractions',
+                          isAr ? 'الخط ${st.line}' : 'Line ${st.line}',
                           style: const TextStyle(
                             color: Colors.grey,
                             fontSize: 11,
@@ -1039,7 +1379,7 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
                         ),
                         onTap: () {
                           Navigator.pop(context);
-                          _selectStationByName(st.stationName['en']!);
+                          _selectStation(st);
                         },
                       );
                     },

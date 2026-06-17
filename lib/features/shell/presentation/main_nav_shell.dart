@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/gamification_service.dart';
 import '../../metro/presentation/pages/home_page.dart';
@@ -9,6 +10,7 @@ import '../../metro/presentation/pages/map_page.dart';
 import '../../metro/presentation/pages/ticket_price_page.dart';
 import '../../community/presentation/pages/community_page.dart';
 import '../../settings/presentation/pages/settings_page.dart';
+import '../../../core/utils/ad_service.dart';
 
 class MainNavShell extends StatefulWidget {
   const MainNavShell({super.key});
@@ -19,6 +21,8 @@ class MainNavShell extends StatefulWidget {
 
 class _MainNavShellState extends State<MainNavShell> {
   int _currentIndex = 0;
+  BannerAd? _bannerAd;
+  bool _isAdLoaded = false;
 
   final _pages = const [
     HomePage(),
@@ -31,7 +35,28 @@ class _MainNavShellState extends State<MainNavShell> {
   @override
   void initState() {
     super.initState();
+    _bannerAd = AdService.createBannerAd(
+      onAdLoaded: (ad) {
+        if (mounted) {
+          setState(() => _isAdLoaded = true);
+        }
+      },
+      onAdFailedToLoad: (ad, error) {
+        if (mounted) {
+          setState(() {
+            _isAdLoaded = false;
+            _bannerAd = null;
+          });
+        }
+      },
+    );
     _initGamification();
+  }
+
+  @override
+  void dispose() {
+    _bannerAd?.dispose();
+    super.dispose();
   }
 
   Future<void> _initGamification() async {
@@ -84,9 +109,38 @@ class _MainNavShellState extends State<MainNavShell> {
 
     return Scaffold(
       extendBody: true,
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _pages,
+      body: Stack(
+        children: [
+          IndexedStack(
+            index: _currentIndex,
+            children: _pages,
+          ),
+          // ✅ الإعلان بيظهر فقط لما يتحمل بنجاح — مش هيظهر شريط فاضي
+          if (_isAdLoaded && _bannerAd != null)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 100,
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 400),
+                opacity: _isAdLoaded ? 1.0 : 0.0,
+                child: Container(
+                  alignment: Alignment.center,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).scaffoldBackgroundColor,
+                    border: Border(
+                      top: BorderSide(
+                        color: Colors.grey.withValues(alpha: 0.12),
+                        width: 0.5,
+                      ),
+                    ),
+                  ),
+                  child: AdWidget(ad: _bannerAd!),
+                ),
+              ),
+            ),
+        ],
       ),
       bottomNavigationBar: SafeArea(
         child: Container(

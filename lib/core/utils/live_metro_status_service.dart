@@ -98,7 +98,7 @@ class LiveMetroStatusService {
     }
 
     final model = GenerativeModel(
-      model: 'gemini-1.5-flash-latest', // استخدام المعرف الأحدث والمستقر
+      model: 'gemini-2.5-flash',
       apiKey: apiKey,
     );
 

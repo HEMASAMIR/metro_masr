@@ -17,10 +17,30 @@ class NotificationService {
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
+    const DarwinInitializationSettings initializationSettingsDarwin =
+        DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
+
     const InitializationSettings initializationSettings =
-        InitializationSettings(android: initializationSettingsAndroid);
+        InitializationSettings(
+      android: initializationSettingsAndroid,
+      iOS: initializationSettingsDarwin,
+    );
 
     await _notificationsPlugin.initialize(initializationSettings);
+
+    // Request permissions explicitly for iOS
+    final iosPlugin = _notificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin>();
+    await iosPlugin?.requestPermissions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
 
     // تعريف القنوات لضمان عمل الأصوات المخصصة والاهتزاز
     const AndroidNotificationChannel tourismChannel =
@@ -73,13 +93,15 @@ class NotificationService {
     String? customSound,
   }) async {
     BigPictureStyleInformation? bigPictureStyleInformation;
+    String? bigPicturePath;
+
     // تحديد الصورة المستخدمة: الأصلية أو البديلة الشيك
     String imageToUse = (imageUrl != null && imageUrl.isNotEmpty)
         ? imageUrl
         : _chicPlaceholder;
 
     try {
-      final String bigPicturePath = await _downloadAndSaveFile(
+      bigPicturePath = await _downloadAndSaveFile(
         imageToUse,
         'notification_img_${imageToUse.hashCode}',
       );
@@ -107,8 +129,20 @@ class NotificationService {
           playSound: true,
         );
 
+    final DarwinNotificationDetails darwinPlatformChannelSpecifics =
+        DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+          sound: customSound != null ? '$customSound.wav' : null,
+          attachments: bigPicturePath != null
+              ? [DarwinNotificationAttachment(bigPicturePath)]
+              : null,
+        );
+
     final NotificationDetails platformChannelSpecifics = NotificationDetails(
       android: androidPlatformChannelSpecifics,
+      iOS: darwinPlatformChannelSpecifics,
     );
 
     await _notificationsPlugin.show(

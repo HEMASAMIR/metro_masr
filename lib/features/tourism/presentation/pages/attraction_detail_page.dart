@@ -8,6 +8,10 @@ import 'package:rafiq_metrro/features/news/presentation/pages/article_webview_pa
 import '../../../../core/models/user_review.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/tourism_data.dart';
+import '../../../../core/utils/wikipedia_image_service.dart';
+import '../../../../core/utils/place_enrichment_service.dart';
+import '../../../../core/widgets/offline_banner.dart';
+import 'package:shimmer/shimmer.dart';
 import '../widgets/attraction_reviews_section.dart';
 
 class AttractionDetailPage extends StatefulWidget {
@@ -49,6 +53,14 @@ class _AttractionDetailPageState extends State<AttractionDetailPage>
   double? _userAvgRating;
   int _reviewCount = 0;
 
+  // AI Enrichment & Wikipedia real photo
+  bool _isLoadingAiEnrichment = false;
+  String? _enrichedDescription;
+  String? _enrichedDidYouKnow;
+  List<_HighlightStat>? _enrichedHighlights;
+  List<String>? _enrichedTags;
+  final List<String> _galleryImages = [];
+
   // Quick questions in 4 languages
   late List<String> _quickQuestions;
 
@@ -82,6 +94,59 @@ class _AttractionDetailPageState extends State<AttractionDetailPage>
     _setupQuickQuestions();
     _addSystemMessage();
     _loadUserRating();
+    _enrichPlaceDetails();
+  }
+
+  Future<void> _enrichPlaceDetails() async {
+    final att = widget.attraction;
+    if (att.galleryUrls != null && att.galleryUrls!.isNotEmpty) {
+      _galleryImages.addAll(att.galleryUrls!);
+    } else if (att.imageUrl != null && att.imageUrl!.isNotEmpty) {
+      _galleryImages.add(att.imageUrl!);
+    }
+
+    // Fetch real Wikipedia image asynchronously
+    final name = att.name[widget.lang] ?? att.name['en'] ?? '';
+    if (name.isNotEmpty) {
+      WikipediaImageService.getRealImage(name).then((realImg) {
+        if (realImg != null && mounted) {
+          setState(() {
+            if (!_galleryImages.contains(realImg)) {
+              _galleryImages.insert(0, realImg);
+            }
+          });
+        }
+      });
+    }
+
+    final desc = att.description[widget.lang] ?? att.description['en'] ?? '';
+    final isOsm = att.id.startsWith('osm_');
+    if (isOsm || desc.length < 120) {
+      setState(() => _isLoadingAiEnrichment = true);
+      try {
+        final enriched = await PlaceEnrichmentService.enrichPlace(att, widget.lang);
+        if (mounted) {
+          setState(() {
+            _enrichedDescription = enriched.description;
+            _enrichedDidYouKnow = enriched.didYouKnow;
+            _enrichedHighlights = enriched.highlights
+                .map((h) => _HighlightStat(
+                      icon: h['icon']!,
+                      value: h['value']!,
+                      label: h['label']!,
+                    ))
+                .toList();
+            _enrichedTags = enriched.tags;
+            _isLoadingAiEnrichment = false;
+          });
+        }
+      } catch (e) {
+        debugPrint("Error enriching place: $e");
+        if (mounted) {
+          setState(() => _isLoadingAiEnrichment = false);
+        }
+      }
+    }
   }
 
   Future<void> _loadUserRating() async {
@@ -159,7 +224,7 @@ class _AttractionDetailPageState extends State<AttractionDetailPage>
     final a = widget.attraction;
     final lang = widget.lang;
     final name = a.name[lang] ?? a.name['en']!;
-    final desc = a.description[lang] ?? a.description['en']!;
+    final desc = _enrichedDescription ?? a.description[lang] ?? a.description['en']!;
     final q = question.toLowerCase();
 
     // Smart responses based on question keywords
@@ -314,14 +379,16 @@ class _AttractionDetailPageState extends State<AttractionDetailPage>
     final lang = widget.lang;
     final isAr = lang == 'ar';
     final name = a.name[lang] ?? a.name['en']!;
-    final desc = a.description[lang] ?? a.description['en']!;
+    final desc = _enrichedDescription ?? a.description[lang] ?? a.description['en']!;
     final color = Color(TourismDatabase.categoryColor[a.category]!);
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: CustomScrollView(
-        controller: _scrollCtrl,
-        slivers: [
+      body: Stack(
+        children: [
+          CustomScrollView(
+            controller: _scrollCtrl,
+            slivers: [
           // ── Hero ──────────────────────────────────────────────────────────
           SliverAppBar(
             expandedHeight: 300,
@@ -477,7 +544,7 @@ class _AttractionDetailPageState extends State<AttractionDetailPage>
                     padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
                     child: Wrap(
                       spacing: 8,
-                      children: a.tags
+                      children: (_enrichedTags ?? a.tags)
                           .map(
                             (t) => Container(
                               padding: const EdgeInsets.symmetric(
@@ -576,13 +643,19 @@ class _AttractionDetailPageState extends State<AttractionDetailPage>
           ),
         ],
       ),
-    );
+      const Positioned(
+        top: 80,
+        left: 0,
+        right: 0,
+        child: OfflineBanner(),
+      ),
+    ],
+  ),
+);
   }
 
   Widget _buildHero(TouristAttraction a, Color color, String name, bool isAr) {
-    final images = a.galleryUrls?.isNotEmpty == true
-        ? a.galleryUrls!
-        : (a.imageUrl != null ? [a.imageUrl!] : <String>[]);
+    final images = _galleryImages;
     final hasImage = images.isNotEmpty;
 
     return Container(
@@ -615,21 +688,38 @@ class _AttractionDetailPageState extends State<AttractionDetailPage>
                     colorBlendMode: BlendMode.darken,
                     color: Colors.black.withOpacity(0.5),
                     errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        color: Colors.grey[800],
-                        child: Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.broken_image_rounded, size: 40, color: Colors.grey[500]),
-                              const SizedBox(height: 8),
-                              Text(
-                                "Image not available",
-                                style: TextStyle(color: Colors.grey[500], fontSize: 12),
-                              )
-                            ],
+                      return Stack(
+                        children: [
+                          Positioned.fill(
+                            child: Opacity(
+                              opacity: 0.25,
+                              child: Image.asset(
+                                'assets/images/metro.jpg',
+                                fit: BoxFit.cover,
+                              ),
+                            ),
                           ),
-                        ),
+                          Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  a.emoji.isNotEmpty ? a.emoji : "📍",
+                                  style: const TextStyle(fontSize: 48),
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  isAr ? "الصورة غير متوفرة حالياً" : "Image unavailable",
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.8),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       );
                     },
                   );
@@ -822,8 +912,15 @@ class _AttractionDetailPageState extends State<AttractionDetailPage>
     bool isAr,
     String lang,
   ) {
-    final highlights = _extractHighlights(a, lang, isAr);
-    final didYouKnow = _getDidYouKnow(a, lang, isAr);
+    if (_isLoadingAiEnrichment) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: _buildShimmerAbout(color, isAr),
+      );
+    }
+
+    final highlights = _enrichedHighlights ?? _extractHighlights(a, lang, isAr);
+    final didYouKnow = _enrichedDidYouKnow ?? _getDidYouKnow(a, lang, isAr);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -851,6 +948,52 @@ class _AttractionDetailPageState extends State<AttractionDetailPage>
           // ── Expandable description ────────────────────────────────────
           _AboutExpandable(desc: desc, color: color, isAr: isAr),
           const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShimmerAbout(Color color, bool isAr) {
+    return Shimmer.fromColors(
+      baseColor: Theme.of(context).cardColor.withOpacity(0.5),
+      highlightColor: Theme.of(context).cardColor.withOpacity(0.2),
+      child: Column(
+        crossAxisAlignment: isAr ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        children: [
+          _buildAboutHeader(color, isAr),
+          const SizedBox(height: 24),
+          SizedBox(
+            height: 90,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: 4,
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (_, __) => Container(
+                width: 80,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Container(
+            height: 80,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Container(height: 14, width: double.infinity, color: Colors.white),
+          const SizedBox(height: 8),
+          Container(height: 14, width: double.infinity, color: Colors.white),
+          const SizedBox(height: 8),
+          Container(height: 14, width: double.infinity, color: Colors.white),
+          const SizedBox(height: 8),
+          Container(height: 14, width: 150, color: Colors.white),
         ],
       ),
     );

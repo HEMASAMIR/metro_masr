@@ -74,5 +74,24 @@
 	<string>نحتاج للوصول إلى موقعك لتحديد أقرب محطات المترو وحساب المسارات.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>نحتاج للوصول إلى موقعك لتنبيهك عند اقترابك من محطة الوصول وتحديد المحطات القريبة.</string>
+	<key>GADApplicationIdentifier</key>
+	<string>ca-app-pub-8627401759225156~1073602611</string>
+	<key>SKAdNetworkItems</key>
+	<array>
+		<dict>
+			<key>SKAdNetworkIdentifier</key>
+			<string>cstr6suwn9.skadnetwork</string>
+		</dict>
+		<dict>
+			<key>SKAdNetworkIdentifier</key>
+			<string>4fzdc2evr5.skadnetwork</string>
+		</dict>
+		<dict>
+			<key>SKAdNetworkIdentifier</key>
+			<string>2fnua5tdw4.skadnetwork</string>
+		</dict>
+	</array>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>يساعدنا هذا الإذن في عرض إعلانات تهمك وتحسين تجربة استخدام التطبيق.</string>
 </dict>
 </plist>

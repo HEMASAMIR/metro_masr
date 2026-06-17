@@ -578,12 +578,120 @@ class TourismDatabase {
           walkingMinutes: '15 (By Taxi)',
           tags: ['Nature', 'Hiking', 'Adventure'],
           wikiUrl: 'https://en.wikipedia.org/wiki/Wadi_Degla_Protectorate',
-          galleryUrls: [
-            'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Wadi_Degla_Protectorate_2017.jpg/1280px-Wadi_Degla_Protectorate_2017.jpg',
-          ],
+          lat: 29.9597,
+          lng: 31.3149,
+        ),
+        TouristAttraction(
+          id: 'sequoia_maadi',
+          name: {'ar': 'مطعم سيكويا المعادي', 'en': 'Sequoia Maadi'},
+          description: {
+            'ar':
+                'مطعم راقٍ على ضفاف النيل يقدم مأكولات بحرية ومشويات فاخرة مع إطلالة خلابة على النيل وأجواء مميزة جداً.',
+            'en':
+                'An upscale Nile-side restaurant famous for fresh seafood, grills, and a stunning waterfront atmosphere.',
+          },
+          category: AttractionCategory.restaurant,
+          emoji: '🍽️',
+          rating: 4.6,
+          openHours: '12:00 PM – 2:00 AM',
+          isFree: false,
+          admissionEGP: '300–600 EGP per person',
+          walkingMinutes: '12',
+          boardingHint: {
+            'ar': 'خذ تاكسي من المحطة باتجاه كورنيش المعادي.',
+            'en': 'Grab a taxi from the station towards Maadi Corniche.',
+          },
+          tags: ['Restaurant', 'Nile View', 'Seafood', 'Fine Dining'],
+          lat: 29.9612,
+          lng: 31.2398,
+        ),
+        TouristAttraction(
+          id: 'lucilles_maadi',
+          name: {'ar': 'لوسيل داينر المعادي', 'en': "Lucille's Diner"},
+          description: {
+            'ar':
+                'مطعم أمريكي شعبي جداً في المعادي، مشهور بالبرجر والباستا والكيك الأمريكي. مكان محبوب من الأجانب والمصريين.',
+            'en':
+                'A beloved American diner in Maadi, famous for its burgers, pasta, and homemade cake. Popular with expats and locals.',
+          },
+          category: AttractionCategory.restaurant,
+          emoji: '🍔',
+          rating: 4.5,
+          openHours: '10:00 AM – 11:00 PM',
+          isFree: false,
+          admissionEGP: '150–250 EGP per person',
+          walkingMinutes: '5',
+          tags: ['Restaurant', 'Burger', 'American', 'Casual'],
+          lat: 29.9585,
+          lng: 31.2517,
+        ),
+        TouristAttraction(
+          id: 'cilantro_maadi',
+          name: {'ar': 'كافيه سيلانترو المعادي', 'en': 'Cilantro Café Maadi'},
+          description: {
+            'ar':
+                'فرع من أشهر سلاسل الكافيهات في مصر، يقدم القهوة المتخصصة والمعجنات الطازجة وبيئة عمل هادئة مثالية.',
+            'en':
+                'A branch of Egypt\'s most popular specialty coffee chain, offering premium coffee, fresh pastries, and a quiet workspace.',
+          },
+          category: AttractionCategory.cafe,
+          emoji: '☕',
+          rating: 4.4,
+          openHours: '7:00 AM – 12:00 AM',
+          isFree: false,
+          admissionEGP: '80–150 EGP',
+          walkingMinutes: '3',
+          boardingHint: {
+            'ar': 'قريب جداً من محطة المعادي على شارع 9.',
+            'en': 'Very close to Maadi station on Road 9.',
+          },
+          tags: ['Cafe', 'Coffee', 'Work Space', 'Breakfast'],
+          lat: 29.9590,
+          lng: 31.2510,
+        ),
+        TouristAttraction(
+          id: 'road9_coffee_maadi',
+          name: {'ar': 'رود ناين كوفي', 'en': 'Road 9 Coffee'},
+          description: {
+            'ar':
+                'كافيه أنيق وعصري في قلب شارع 9، مشهور بقهوة الكولد برو والأجواء الهادئة ومناسب للعمل والاجتماعات.',
+            'en':
+                'A trendy specialty coffee shop on Road 9, known for cold brew, a relaxed vibe, and great for work or meetings.',
+          },
+          category: AttractionCategory.cafe,
+          emoji: '🧋',
+          rating: 4.6,
+          openHours: '8:00 AM – 11:00 PM',
+          isFree: false,
+          admissionEGP: '70–130 EGP',
+          walkingMinutes: '2',
+          tags: ['Cafe', 'Cold Brew', 'Specialty Coffee', 'Cozy'],
+          lat: 29.9592,
+          lng: 31.2512,
+        ),
+        TouristAttraction(
+          id: 'maadi_sporting_club',
+          name: {'ar': 'نادي المعادي الرياضي', 'en': 'Maadi Sporting Club'},
+          description: {
+            'ar':
+                'من أعرق النوادي الرياضية في القاهرة، يضم ملاعب تنس وسباحة وكرة قدم ومطاعم وحدائق خضراء واسعة.',
+            'en':
+                'One of Cairo\'s most prestigious sports clubs, featuring tennis courts, pools, football pitches, restaurants, and lush gardens.',
+          },
+          category: AttractionCategory.sport,
+          emoji: '🏆',
+          rating: 4.7,
+          openHours: '7:00 AM – 11:00 PM',
+          isFree: false,
+          admissionEGP: 'Members / Guest Pass 100 EGP',
+          walkingMinutes: '8',
+          tags: ['Sports', 'Swimming', 'Tennis', 'Club', 'Family'],
+          lat: 29.9619,
+          lng: 31.2561,
         ),
       ],
     ),
+
     StationAttractions(
       stationId: 'hadayek_el_maadi',
       lineNumber: '1',

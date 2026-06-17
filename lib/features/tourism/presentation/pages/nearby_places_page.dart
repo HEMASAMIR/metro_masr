@@ -3,14 +3,17 @@ import 'dart:async';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/metro_data.dart';
 import '../../../../core/utils/tourism_data.dart';
 import 'attraction_detail_page.dart';
 import '../../../../core/utils/osm_service.dart';
+import '../widgets/place_image_widget.dart';
+import '../../../../core/widgets/offline_banner.dart';
+import '../../../../core/utils/ad_service.dart';
 
 class NearbyPlacesPage extends StatefulWidget {
   const NearbyPlacesPage({super.key});
@@ -19,8 +22,17 @@ class NearbyPlacesPage extends StatefulWidget {
   State<NearbyPlacesPage> createState() => _NearbyPlacesPageState();
 }
 
-class _NearbyPlacesPageState extends State<NearbyPlacesPage> {
-  String? _selectedStationId = 'sadat';
+class _NearbyPlacesPageState extends State<NearbyPlacesPage>
+    with TickerProviderStateMixin {
+  late TabController _tabController;
+  late AnimationController _tabBarAnimCtrl;
+  late Animation<double> _tabBarFade;
+  late Animation<Offset> _tabBarSlide;
+  BannerAd? _bannerAd;
+  bool _isAdLoaded = false;
+
+  static const int _nearThreshold = 15;
+  String? _selectedStationId = '_current_location';
   AttractionCategory? _selectedCategory; // null means "All"
   bool _isAutoLocating = false;
   bool _isLoadingOsm = false;
@@ -32,12 +44,38 @@ class _NearbyPlacesPageState extends State<NearbyPlacesPage> {
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabBarAnimCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 380),
+    );
+    _tabBarFade = CurvedAnimation(parent: _tabBarAnimCtrl, curve: Curves.easeOut);
+    _tabBarSlide = Tween<Offset>(
+      begin: const Offset(0, -0.4),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _tabBarAnimCtrl, curve: Curves.easeOutCubic));
+    _bannerAd = AdService.createBannerAd(
+      onAdLoaded: (ad) {
+        if (mounted) setState(() => _isAdLoaded = true);
+      },
+      onAdFailedToLoad: (ad, error) {
+        if (mounted) {
+          setState(() {
+            _isAdLoaded = false;
+            _bannerAd = null;
+          });
+        }
+      },
+    );
     _initialize();
   }
 
   @override
   void dispose() {
+    _tabController.dispose();
+    _tabBarAnimCtrl.dispose();
     _searchCtrl.dispose();
+    _bannerAd?.dispose();
     super.dispose();
   }
 
@@ -57,41 +95,16 @@ class _NearbyPlacesPageState extends State<NearbyPlacesPage> {
           permission == LocationPermission.always) {
         Position position = await Geolocator.getCurrentPosition(
           locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.low,
+            accuracy: LocationAccuracy.medium,
           ),
         );
         _userPosition = position;
-
-        String? nearestId;
-        double minDistance = double.infinity;
-        final stationsWithData = TourismDatabase.data
-            .map((s) => s.stationId)
-            .toSet();
-
-        for (var entry in MetroData.stations.entries) {
-          // نحدد المعرف القصير المطابق من قاعدة بيانات السياحة
-          final matchedShortId = stationsWithData.cast<String?>().firstWhere(
-            (id) => entry.key == id || entry.key.endsWith('_$id'),
-            orElse: () => null,
-          );
-
-          if (matchedShortId != null) {
-            final station = entry.value;
-            double distance = Geolocator.distanceBetween(
-              position.latitude,
-              position.longitude,
-              station.latitude,
-              station.longitude,
-            );
-            if (distance < minDistance) {
-              minDistance = distance;
-              nearestId =
-                  matchedShortId; // نستخدم المعرف القصير ليتوافق مع الـ Dropdown
-            }
-          }
+        if (mounted) {
+          setState(() {
+            _selectedStationId = '_current_location';
+          });
+          _tabBarAnimCtrl.reverse();
         }
-        if (nearestId != null && mounted)
-          setState(() => _selectedStationId = nearestId);
       }
     } catch (e) {
       debugPrint("Auto-locate error: $e");
@@ -105,17 +118,43 @@ class _NearbyPlacesPageState extends State<NearbyPlacesPage> {
 
     setState(() => _isLoadingOsm = true);
     try {
-      // البحث عن كائن المحطة الصحيح من MetroData باستخدام الـ ID المختار لجلب الإحداثيات
-      final station = MetroData.stations.values.firstWhere(
-        (s) =>
-            s.id == _selectedStationId || s.id.endsWith('_$_selectedStationId'),
-        orElse: () => MetroData.stations.values.first,
-      );
+      double lat;
+      double lng;
+
+      if (_selectedStationId == '_current_location') {
+        if (_userPosition == null) {
+          LocationPermission permission = await Geolocator.checkPermission();
+          if (permission == LocationPermission.denied) {
+            permission = await Geolocator.requestPermission();
+          }
+          Position position = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.medium,
+            ),
+          );
+          _userPosition = position;
+        }
+        if (_userPosition != null) {
+          lat = _userPosition!.latitude;
+          lng = _userPosition!.longitude;
+        } else {
+          throw Exception("Location permission or services disabled");
+        }
+      } else {
+        final allMap = {...MetroData.stations, ...MetroData.capitalStations};
+        final station = allMap.values.firstWhere(
+          (s) =>
+              s.id == _selectedStationId || s.id.endsWith('_$_selectedStationId'),
+          orElse: () => allMap.values.first,
+        );
+        lat = station.latitude;
+        lng = station.longitude;
+      }
 
       final osmData = await OsmService.fetchNearbyAmenities(
-        station.latitude,
-        station.longitude,
-        radius: 1200,
+        lat,
+        lng,
+        radius: 1500,
         category: _selectedCategory,
       );
 
@@ -126,6 +165,17 @@ class _NearbyPlacesPageState extends State<NearbyPlacesPage> {
       }
     } catch (e) {
       debugPrint("OSM fetch error: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              context.locale.languageCode == 'ar'
+                  ? 'فشل جلب البيانات. تأكد من تفعيل خدمة الموقع والإنترنت.'
+                  : 'Failed to fetch places. Please check location services and internet.',
+            ),
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isLoadingOsm = false);
     }
@@ -196,11 +246,35 @@ class _NearbyPlacesPageState extends State<NearbyPlacesPage> {
       ),
       body: Column(
         children: [
+          const OfflineBanner(),
           _buildHeader(isAr),
           _buildCategoryFilters(isAr),
+          // ── Animated Proximity Tab Bar (station mode only) ───────────────
+          if (_selectedStationId != '_current_location')
+            _buildProximityTabBar(isAr, list),
+          // ── Content ────────────────────────────────────────────────────
           Expanded(
-            child: _buildList(list, isAr),
+            child: _selectedStationId != '_current_location'
+                ? TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildList(_nearOf(list), isAr),
+                      _buildList(_farOf(list), isAr),
+                    ],
+                  )
+                : _buildList(list, isAr),
           ),
+          if (_bannerAd != null && _isAdLoaded)
+            Container(
+              alignment: Alignment.center,
+              width: _bannerAd!.size.width.toDouble(),
+              height: _bannerAd!.size.height.toDouble(),
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                border: Border(top: BorderSide(color: Colors.grey.withValues(alpha: 0.1))),
+              ),
+              child: AdWidget(ad: _bannerAd!),
+            ),
         ],
       ),
     );
@@ -229,23 +303,43 @@ class _NearbyPlacesPageState extends State<NearbyPlacesPage> {
                       value: _selectedStationId,
                       isExpanded: true,
                       onChanged: (v) {
-                        setState(() => _selectedStationId = v);
-                        _fetchOsmData(); // جلب البيانات فور تغيير المحطة
+                        setState(() {
+                          _selectedStationId = v;
+                          _tabController.index = 0;
+                        });
+                        _fetchOsmData();
+                        if (v != '_current_location') {
+                          _tabBarAnimCtrl.forward(from: 0);
+                        } else {
+                          _tabBarAnimCtrl.reverse();
+                        }
                       },
-                      items: TourismDatabase.data
-                          .map(
-                            (s) => DropdownMenuItem(
-                              value: s.stationId,
-                              child: Text(
-                                s.stationName[isAr ? 'ar' : 'en']!,
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
+                      items: [
+                        DropdownMenuItem(
+                          value: '_current_location',
+                          child: Text(
+                            isAr ? '📍 موقعي الحالي (كل العالم)' : '📍 My Current Location (Global)',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                        ...{...MetroData.stations, ...MetroData.capitalStations}.values
+                            .map(
+                              (s) => DropdownMenuItem(
+                                value: s.id,
+                                child: Text(
+                                  isAr ? s.nameAr : s.nameEn,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                             ),
-                          )
-                          .toList(),
+                      ],
                     ),
                   ),
                 ),
@@ -356,6 +450,112 @@ class _NearbyPlacesPageState extends State<NearbyPlacesPage> {
     );
   }
 
+  // ── Near / Far helpers ────────────────────────────────────────────────────
+  List<TouristAttraction> _nearOf(List<TouristAttraction> src) => src
+      .where((a) => (int.tryParse(a.walkingMinutes.split('-').first.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0) <= _nearThreshold)
+      .toList();
+
+  List<TouristAttraction> _farOf(List<TouristAttraction> src) => src
+      .where((a) => (int.tryParse(a.walkingMinutes.split('-').first.replaceAll(RegExp(r'[^0-9]'), '')) ?? 99) > _nearThreshold)
+      .toList();
+
+  // ── Animated Proximity Tab Bar ────────────────────────────────────────────
+  Widget _buildProximityTabBar(bool isAr, List<TouristAttraction> list) {
+    final nearCount = _nearOf(list).length;
+    final farCount = _farOf(list).length;
+    return SlideTransition(
+      position: _tabBarSlide,
+      child: FadeTransition(
+        opacity: _tabBarFade,
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(16, 6, 16, 4),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
+          ),
+          child: TabBar(
+            controller: _tabController,
+            indicator: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              gradient: const LinearGradient(
+                colors: [AppColors.primary, Color(0xFF7B5EA7)],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.35),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            indicatorSize: TabBarIndicatorSize.tab,
+            indicatorPadding: const EdgeInsets.all(4),
+            dividerColor: Colors.transparent,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.grey,
+            labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+            unselectedLabelStyle: const TextStyle(fontSize: 12),
+            tabs: [
+              Tab(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text('🚶', style: TextStyle(fontSize: 14)),
+                    const SizedBox(width: 5),
+                    Flexible(
+                      child: Text(
+                        isAr ? 'قريب من المحطة' : 'Near Station',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text('$nearCount',
+                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
+              Tab(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text('🗺️', style: TextStyle(fontSize: 14)),
+                    const SizedBox(width: 5),
+                    Flexible(
+                      child: Text(
+                        isAr ? 'بعيد بعض الشيء' : 'Farther Away',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text('$farCount',
+                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildList(List<TouristAttraction> list, bool isAr) {
     if (_isLoadingOsm && list.isEmpty) {
       return ListView.builder(
@@ -388,11 +588,17 @@ class _NearbyPlacesPageState extends State<NearbyPlacesPage> {
           builder: (_) => AttractionDetailPage(
             attraction: place,
             lang: isAr ? 'ar' : 'en',
-            stationName:
-                TourismDatabase.findByStation(
-                  _selectedStationId!,
-                )?.stationName[isAr ? 'ar' : 'en'] ??
-                "",
+            stationName: _selectedStationId == '_current_location'
+                ? (isAr ? "موقعي الحالي" : "My Location")
+                : (() {
+                    final all = {...MetroData.stations, ...MetroData.capitalStations};
+                    final st = all[_selectedStationId];
+                    if (st != null) {
+                      return isAr ? st.nameAr : st.nameEn;
+                    }
+                    return TourismDatabase.findByStation(_selectedStationId!)
+                            ?.stationName[isAr ? 'ar' : 'en'] ?? "";
+                  })(),
           ),
         ),
       ),
@@ -418,29 +624,10 @@ class _NearbyPlacesPageState extends State<NearbyPlacesPage> {
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(24),
                   ),
-                  child: CachedNetworkImage(
-                    imageUrl:
-                        place.imageUrl ??
-                        'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=600',
+                  child: PlaceImageWidget(
+                    place: place,
                     height: 180,
                     width: double.infinity,
-                    fit: BoxFit.cover,
-                    fadeInDuration: const Duration(milliseconds: 500),
-                    placeholder: (context, url) => Shimmer.fromColors(
-                      baseColor: Colors.grey[300]!,
-                      highlightColor: Colors.grey[100]!,
-                      child: Container(
-                        height: 180,
-                        width: double.infinity,
-                        color: Colors.white,
-                      ),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      height: 180,
-                      width: double.infinity,
-                      color: Colors.grey[200],
-                      child: const Icon(Icons.broken_image, color: Colors.grey),
-                    ),
                   ),
                 ),
                 Positioned(

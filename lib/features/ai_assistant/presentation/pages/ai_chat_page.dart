@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:animate_do/animate_do.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:rafiq_metrro/core/utils/gamification_service.dart';
 import 'package:geolocator/geolocator.dart'; // Import Geolocator
 import 'package:url_launcher/url_launcher.dart';
@@ -14,6 +16,9 @@ import '../../../../core/utils/crowd_prediction_service.dart';
 import '../../../../core/utils/tourism_data.dart';
 import '../../../../core/utils/metro_data.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/connectivity_service.dart';
+import '../../../../core/widgets/offline_banner.dart';
+import '../../../../core/utils/ad_service.dart';
 
 class ChatMessage {
   final String text;
@@ -61,11 +66,26 @@ class _AiChatPageState extends State<AiChatPage>
   File? _selectedImage;
   Position? _currentLocation; // User's current location
   bool _isLocatingUser = false; // To prevent multiple location requests
+  BannerAd? _bannerAd;
+  bool _isAdLoaded = false;
 
   @override
   void initState() {
     super.initState();
     _initGemini();
+    _bannerAd = AdService.createBannerAd(
+      onAdLoaded: (ad) {
+        if (mounted) setState(() => _isAdLoaded = true);
+      },
+      onAdFailedToLoad: (ad, error) {
+        if (mounted) {
+          setState(() {
+            _isAdLoaded = false;
+            _bannerAd = null;
+          });
+        }
+      },
+    );
 
     if (widget.initialMessage != null && widget.initialMessage!.isNotEmpty) {
       // لو فيه رسالة جاية من الهوم، رفيق هيرد عليها فوراً أول ما يفتح
@@ -89,6 +109,7 @@ class _AiChatPageState extends State<AiChatPage>
   void dispose() {
     _textController.dispose();
     _scrollController.dispose();
+    _bannerAd?.dispose();
     super.dispose();
   }
 
@@ -107,7 +128,7 @@ class _AiChatPageState extends State<AiChatPage>
     }
 
     _model = GenerativeModel(
-      model: 'gemini-1.5-flash-latest', // حل نهائي لمشكلة v1beta not found
+      model: 'gemini-2.5-flash',
       apiKey: apiKey,
       systemInstruction: Content.system(
         'إنت "رفيق"، عبقري الـ AI اللي ملوش حدود وصاحب جدع (ChatGPT Style). '
@@ -241,6 +262,48 @@ class _AiChatPageState extends State<AiChatPage>
     TouristAttraction? detectedAttraction;
     String? detectedMapLabel;
 
+    if (ConnectivityService.instance.isOffline) {
+      final responseText = _generateLocalOfflineResponse(text, context.locale.languageCode == 'ar');
+      
+      final loc = _detectLocationInText(
+        responseText,
+        context.locale.languageCode == 'ar',
+      );
+      if (loc.isNotEmpty && _currentLocation != null) {
+        distanceToTarget = Geolocator.distanceBetween(
+          _currentLocation!.latitude,
+          _currentLocation!.longitude,
+          loc['lat'],
+          loc['lng'],
+        );
+        detectedAttraction = loc['attraction'];
+        detectedMapLabel = loc['label'];
+      }
+
+      await Future.delayed(const Duration(milliseconds: 600));
+
+      if (mounted) {
+        setState(() {
+          _isTyping = false;
+          _messages.insert(
+            0,
+            ChatMessage(
+              text: responseText,
+              isUser: false,
+              featuredAttraction: detectedAttraction,
+              lat: loc['lat'],
+              lng: loc['lng'],
+              mapLabel: detectedMapLabel,
+              distanceToUser: distanceToTarget,
+            ),
+          );
+        });
+        _scrollToBottom();
+        HapticFeedback.mediumImpact();
+      }
+      return;
+    }
+
     try {
       // إرسال الرسالة مباشرة لـ Gemini لضمان ذكاء كامل (ChatGPT style)
       GenerateContentResponse response;
@@ -311,6 +374,81 @@ class _AiChatPageState extends State<AiChatPage>
   }
 
   // Moved _buildMapButton outside _buildChatBubble to resolve the error
+  String _generateLocalOfflineResponse(String text, bool isAr) {
+    final q = text.toLowerCase().trim();
+    if (isAr) {
+      if (q.contains('تذكر') || q.contains('سعر') || q.contains('بكام') || q.contains('اسعار')) {
+        return "💸 أسعار التذاكر الحالية يسطا:\n"
+            "• حتى 9 محطات: 8 جنيه (التذكرة الصفراء)\n"
+            "• من 10 إلى 16 محطة: 10 جنيه (التذكرة الخضراء)\n"
+            "• من 17 إلى 23 محطة: 15 جنيه (التذكرة الحمراء)\n"
+            "• أكثر من 23 محطة: 20 جنيه (التذكرة البنفسجية)\n\n"
+            "💡 كبار السن فوق الـ 60 والـ 70 والطلاب ليهم اشتراكات وتذاكر مخفضة جداً في شباك التذاكر يا باشا!";
+      }
+      if (q.contains('خط') || q.contains('خطوط') || q.contains('محطة') || q.contains('محطات')) {
+        return "🚇 خطوط المترو العاملة حالياً:\n"
+            "• الخط الأول (حلوان - المرج الجديدة): 35 محطة، يربط أقصى الجنوب بأقصى الشمال الشرقي.\n"
+            "• الخط الثاني (شبرا الخيمة - المنيب): 20 محطة، يربط شبرا بالجيزة وهو شريان رئيسي.\n"
+            "• الخط الثالث (عدلي منصور - روض الفرج / جامعة القاهرة): خط ذكي مكيف ومصمم بأعلى المعايير العالمية.";
+      }
+      if (q.contains('خروج') || q.contains('فسح') || q.contains('مكان') || q.contains('اماكن') || q.contains('سياح') || q.contains('متحف')) {
+        return "✨ اقتراحات لأماكن خروج مميزة جنب محطات المترو يسطا:\n"
+            "• محطة الأوبرا: دار الأوبرا المصرية 🎭 وبرج القاهرة 🗼 وممشى أهل مصر\n"
+            "• محطة السادات: المتحف المصري بالتحرير 🏛️ وميدان التحرير ووسط البلد\n"
+            "• محطة مارجرجس: مجمع الأديان، الكنيسة المعلقة ⛪، جامع عمرو بن العاص، والمتحف القبطي\n"
+            "• محطة باب الشعرية: شارع المعز، الحسين، وخان الخليلي 🕌 والجمالية";
+      }
+      if (q.contains('اروح ازاي') || q.contains('طريقة') || q.contains('أروح') || q.contains('اوصل')) {
+        return "🗺️ عشان تخطط لرحلتك وتعرف هتركب إيه وتحول فين، ارجع لـ 'مخطط الرحلة' (Route Planner) في الصفحة الرئيسية للتطبيق. شغال أوفلاين 100% وهيجيبلك المسار والتكلفة والزمن بالتفصيل بدون نت!";
+      }
+      if (q.contains('نكت') || q.contains('نكته') || q.contains('ضحك') || q.contains('هزار')) {
+        final jokes = [
+          "مرة واحد صعيدي نزل محطة السادات لقى المترو زحمة موت، قالهم: وسعوا يا رجالة عشان نازل المحطة الجاية! 🚂",
+          "مرة كمسري اتجوز كمسرية، كتبوا الكتاب في دفتر الغرامات والتحصيلات! 😂",
+          "مرة واحد سأل كمسري المترو: هو القطر ده بيوقف في كل المحطات؟ الكمسري قاله: لا، بيوقف بس لما تفتح الباب وتنط! 🏃‍♂️",
+          "واحد ركب المترو ولقى كل الناس نايمة، قالهم: جماعة حد يصحيني لما نوصل التحرير. صحي لقى نفسه في ورشة حلوان! 😴"
+        ];
+        return "😂 خد النكتة دي يا ريس:\n\n${jokes[math.Random().nextInt(jokes.length)]}";
+      }
+      return "📴 يا باشا، أنا شغال حالياً في 'وضع رفيق الأوفلاين' عشان مفيش إنترنت دلوقتي.\n"
+          "أول ما الشبكة ترجع هكون معاك بكامل ذكائي وهرد على أي سؤال في الكوكب!\n\n"
+          "💡 تقدر تسألني دلوقتي عن أسعار التذاكر، خطوط المترو، أماكن خروج، أو قولي 'احكيلي نكتة'!";
+    } else {
+      if (q.contains('ticket') || q.contains('price') || q.contains('cost') || q.contains('fare')) {
+        return "💸 Current Cairo Metro Ticket Prices:\n"
+            "• Up to 9 stations: 8 EGP (Yellow ticket)\n"
+            "• 10 to 16 stations: 10 EGP (Green ticket)\n"
+            "• 17 to 23 stations: 15 EGP (Red ticket)\n"
+            "• More than 23 stations: 20 EGP (Purple ticket)\n\n"
+            "💡 Discounts apply for seniors and students at any ticket office!";
+      }
+      if (q.contains('line') || q.contains('lines') || q.contains('station') || q.contains('stations')) {
+        return "🚇 Current Cairo Metro Lines:\n"
+            "• Line 1 (Helwan - El Marg): 35 stations connecting South and North-East Cairo.\n"
+            "• Line 2 (Shubra El Kheima - El Mounib): 20 stations connecting Giza and Cairo.\n"
+            "• Line 3 (Adly Mansour - Rod El Farag / Cairo University): Modern, air-conditioned smart line.";
+      }
+      if (q.contains('place') || q.contains('tourist') || q.contains('visit') || q.contains('museum') || q.contains('attraction')) {
+        return "✨ Top sights near Metro Stations:\n"
+            "• Opera Station: Cairo Opera House 🎭 & Cairo Tower 🗼\n"
+            "• Sadat Station: The Egyptian Museum 🏛️ & Tahrir Square\n"
+            "• Mar Girgis Station: The Hanging Church ⛪ & Coptic Museum\n"
+            "• Bab El Shaariya Station: Al-Muizz Street & Khan El Khalili 🕌";
+      }
+      if (q.contains('go') || q.contains('route') || q.contains('navigate') || q.contains('how to')) {
+        return "🗺️ To navigate and plan your metro trips offline, use the 'Route Planner' on the homepage. It works 100% offline and provides exact stations, transfers, duration, and ticket price!";
+      }
+      if (q.contains('joke') || q.contains('laugh')) {
+        return "😂 Here is a metro joke for you:\n\n"
+            "A passenger asked the conductor: 'Does this train stop at Sadat station?'\n"
+            "The conductor replied: 'Only if you jump out of the window when we pass by!' 🏃‍♂️";
+      }
+      return "📴 I am currently running in 'Offline Mode' because there is no internet connection.\n"
+          "Once you are online, I will be back with full Generative AI capabilities!\n\n"
+          "💡 You can ask me now about ticket prices, metro lines, top tourist sights, or ask for a joke!";
+    }
+  }
+
   Widget _buildMapButton(
     double lat,
     double lng,
@@ -395,6 +533,7 @@ class _AiChatPageState extends State<AiChatPage>
       ),
       body: Column(
         children: [
+          const OfflineBanner(),
           // منطقة عرض الرسائل
           Expanded(
             child: ListView.builder(
@@ -420,6 +559,17 @@ class _AiChatPageState extends State<AiChatPage>
 
           // شريط إدخال النص والصوت
           _buildInputArea(isAr),
+          if (_bannerAd != null)
+            Container(
+              alignment: Alignment.center,
+              width: _bannerAd!.size.width.toDouble(),
+              height: _bannerAd!.size.height.toDouble(),
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                border: Border(top: BorderSide(color: Colors.grey.withValues(alpha: 0.1))),
+              ),
+              child: AdWidget(ad: _bannerAd!),
+            ),
         ],
       ),
     );
