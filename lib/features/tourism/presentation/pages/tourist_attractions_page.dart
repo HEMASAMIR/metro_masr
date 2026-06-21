@@ -4,7 +4,6 @@ import 'dart:ui' as ui;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:rafiq_metrro/core/utils/ad_service.dart';
-import 'package:rafiq_metrro/features/ai_assistant/presentation/pages/ai_chat_page.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/tourism_data.dart';
 import '../../../../core/utils/osm_service.dart';
@@ -389,31 +388,13 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
         ),
       ),
 
-      // ── FAB: Browse all stations ──────────────────────────────────────────
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // زر رفيق الذكي الجديد
-          FloatingActionButton(
-            heroTag: 'ai_chat_fab',
-            backgroundColor: Colors.black,
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AiChatPage()),
-            ),
-            child: const Text('🤖', style: TextStyle(fontSize: 24)),
-          ),
-          const SizedBox(height: 12),
-          // زر اختيار المحطة (تم تصغيره قليلاً ليعطي الأولوية للذكاء الاصطناعي)
-          FloatingActionButton.extended(
-            heroTag: 'station_picker_fab',
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-            icon: const Icon(Icons.train_rounded),
-            label: Text(isAr ? 'اختر محطة' : "Pick Station"),
-            onPressed: () => _showStationPicker(context, isAr),
-          ),
-        ],
+      floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'station_picker_fab',
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.train_rounded),
+        label: Text(isAr ? 'اختر محطة' : "Pick Station"),
+        onPressed: () => _showStationPicker(context, isAr),
       ),
     );
   }

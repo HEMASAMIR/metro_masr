@@ -189,17 +189,6 @@ class _HomePageState extends State<_HomePageView> {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          HapticFeedback.lightImpact();
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const AiChatPage()),
-          );
-        },
-        backgroundColor: AppColors.primary,
-        child: const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white),
-      ),
     );
   }
 
@@ -1058,90 +1047,6 @@ class _HomePageState extends State<_HomePageView> {
     void speak(String text) => VoiceService.speak(text, lang);
 
     return [
-      FeatureCard(
-        title: isAr ? "مساعد رفيق الذكي 🤖" : "Rafiq AI Assistant 🤖",
-        subtitle: isAr ? "اسألني في أي حاجة في الكوكب" : "Ask me anything in the world",
-        icon: Icons.chat_bubble_rounded,
-        color: AppColors.primary,
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const AiChatPage()),
-          );
-        },
-      ),
-      FeatureCard(
-        title: isAr ? "مستكشف المعالم بالـ AI 📸" : "AI Landmark Explorer 📸",
-        subtitle: isAr ? "استكشف وصور معالم مصر بالـ AI" : "Identify sights & landmarks via AI camera",
-        icon: Icons.camera_alt_outlined,
-        color: const Color(0xFF8B5CF6),
-        onTap: () {
-          Navigator.push(
-            context,
-            RafiqPageRoute(page: const AiCameraExplorerPage()),
-          );
-        },
-      ),
-      FeatureCard(
-        title: isAr ? "مخطط خروجات الـ AI 🗺️" : "AI Tour Planner 🗺️",
-        subtitle: isAr ? "خطط فسحتك الذكية بخطوط المترو" : "Plan customized metro itineraries",
-        icon: Icons.auto_awesome_rounded,
-        color: const Color(0xFFEC4899),
-        onTap: () {
-          Navigator.push(
-            context,
-            RafiqPageRoute(page: const AiTourPlannerPage()),
-          );
-        },
-      ),
-      FeatureCard(
-        title: isAr ? "مستشار التذاكر بالـ AI 💳" : "AI Ticket Advisor 💳",
-        subtitle: isAr ? "احسب ووفر اشتراك المترو الأنسب لك" : "Find optimal ticket & subscription strategy",
-        icon: Icons.credit_card_rounded,
-        color: const Color(0xFF10B981),
-        onTap: () {
-          Navigator.push(
-            context,
-            RafiqPageRoute(page: const AiTicketAdvisorPage()),
-          );
-        },
-      ),
-      FeatureCard(
-        title: isAr ? "تحدي أسئلة المترو 🎮" : "Metro Trivia Challenge 🎮",
-        subtitle: isAr ? "جاوب على أسئلة رفيق التاريخية" : "Test your Cairo Metro history & facts",
-        icon: Icons.sports_esports_outlined,
-        color: const Color(0xFFF59E0B),
-        onTap: () {
-          Navigator.push(
-            context,
-            RafiqPageRoute(page: const AiTriviaChallengePage()),
-          );
-        },
-      ),
-      FeatureCard(
-        title: isAr ? "دليل الخروجات بالـ AI 🔍" : "AI Hangouts Guide 🔍",
-        subtitle: isAr ? "ابحث بأسلوبك عن أماكن حول المحطات" : "Find outings & cafes near stations",
-        icon: Icons.saved_search_rounded,
-        color: const Color(0xFF06B6D4),
-        onTap: () {
-          Navigator.push(
-            context,
-            RafiqPageRoute(page: const AiHangoutsGuidePage()),
-          );
-        },
-      ),
-      FeatureCard(
-        title: isAr ? "مذيع المحطة بالـ AI 🔊" : "AI Metro Announcer 🔊",
-        subtitle: isAr ? "شغل إعلانات المحطة الصوتي ومحاكي الرصيف" : "Simulate spoken metro platform alerts",
-        icon: Icons.volume_up_rounded,
-        color: const Color(0xFFFBBF24),
-        onTap: () {
-          Navigator.push(
-            context,
-            RafiqPageRoute(page: const AiStationAnnouncerPage()),
-          );
-        },
-      ),
       FeatureCard(
         title: 'route_planner'.tr(),
         subtitle: 'route_subtitle'.tr(),

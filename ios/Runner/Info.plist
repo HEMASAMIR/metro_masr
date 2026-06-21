@@ -67,13 +67,13 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>NSCameraUsageDescription</key>
-	<string>نحتاج الكاميرا لتصوير المفقودات وحالة الزحام في المترو.</string>
+	<string>نحتاج الكاميرا لتصوير المفقودات وحالة الزحام ومشاركتها في مجتمع المترو. We need camera access to take photos of lost items or crowd conditions to share with the community.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>نحتاج للوصول للصور لاختيار صور المفقودات.</string>
+	<string>نحتاج للوصول للصور لاختيار صور المفقودات ومشاركتها. We require photo library access so you can select and upload photos of lost items to the community board.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>نحتاج للوصول إلى موقعك لتحديد أقرب محطات المترو وحساب المسارات.</string>
+	<string>نحتاج للوصول إلى موقعك لتحديد أقرب محطات المترو وحساب المسارات وعرضها على الخريطة. We need your location to identify the nearest metro stations and compute optimal routes on the map.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>نحتاج للوصول إلى موقعك لتنبيهك عند اقترابك من محطة الوصول وتحديد المحطات القريبة.</string>
+	<string>نحتاج للوصول إلى موقعك لتنبيهك عند اقترابك من محطة الوصول وتحديد المحطات القريبة. We access your location to send arrival alarms and notify you when you are near your destination station.</string>
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-8627401759225156~1073602611</string>
 	<key>SKAdNetworkItems</key>
@@ -92,6 +92,6 @@
 		</dict>
 	</array>
 	<key>NSUserTrackingUsageDescription</key>
-	<string>يساعدنا هذا الإذن في عرض إعلانات تهمك وتحسين تجربة استخدام التطبيق.</string>
+	<string>يساعدنا هذا الإذن في عرض إعلانات تهمك وتحسين تجربة استخدام التطبيق. This permission allows us to deliver personalized ads and enhance your overall application experience.</string>
 </dict>
 </plist>

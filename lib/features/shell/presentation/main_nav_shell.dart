@@ -8,7 +8,6 @@ import '../../../core/utils/gamification_service.dart';
 import '../../metro/presentation/pages/home_page.dart';
 import '../../metro/presentation/pages/map_page.dart';
 import '../../metro/presentation/pages/ticket_price_page.dart';
-import '../../community/presentation/pages/community_page.dart';
 import '../../settings/presentation/pages/settings_page.dart';
 import '../../../core/utils/ad_service.dart';
 
@@ -28,7 +27,6 @@ class _MainNavShellState extends State<MainNavShell> {
     HomePage(),
     TicketPricePage(),
     MapPage(),
-    CommunityPage(),
     SettingsPage(),
   ];
 
@@ -92,12 +90,6 @@ class _MainNavShellState extends State<MainNavShell> {
         activeIcon: Icons.map_rounded,
         label: "Metro Lines".tr(),
         color: AppColors.line3,
-      ),
-      _NavItem(
-        icon: Icons.people_outline_rounded,
-        activeIcon: Icons.people_rounded,
-        label: "Community".tr(),
-        color: AppColors.line2,
       ),
       _NavItem(
         icon: Icons.settings_outlined,
