@@ -430,7 +430,11 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
         ? AppColors.line1
         : line == 2
             ? AppColors.line2
-            : AppColors.line3;
+            : line == 3
+                ? AppColors.line3
+                : line == 4
+                    ? const Color(0xFF8B5CF6)
+                    : const Color(0xFF06B6D4);
     return Container(
       width: 12,
       height: 12,
@@ -601,7 +605,11 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
         ? AppColors.line1
         : line == 2
             ? AppColors.line2
-            : AppColors.line3;
+            : line == 3
+                ? AppColors.line3
+                : line == 4
+                    ? const Color(0xFF8B5CF6)
+                    : const Color(0xFF06B6D4);
   }
 
   // ── Blind Assist Mode launcher ────────────────────────────────────────────

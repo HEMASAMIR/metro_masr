@@ -863,7 +863,11 @@ class _HomePageState extends State<_HomePageView> {
                       ? AppColors.line1
                       : selectedStation.line == 2
                       ? AppColors.line2
-                      : AppColors.line3,
+                      : selectedStation.line == 3
+                      ? AppColors.line3
+                      : selectedStation.line == 4
+                      ? const Color(0xFF8B5CF6)
+                      : const Color(0xFF06B6D4),
                   shape: BoxShape.circle,
                 ),
               ),
