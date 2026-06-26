@@ -112,7 +112,7 @@ class _MainNavShellState extends State<MainNavShell> {
             Positioned(
               left: 0,
               right: 0,
-              bottom: 100,
+              bottom: 100 + MediaQuery.of(context).padding.bottom,
               child: AnimatedOpacity(
                 duration: const Duration(milliseconds: 400),
                 opacity: _isAdLoaded ? 1.0 : 0.0,

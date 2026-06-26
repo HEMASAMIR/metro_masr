@@ -10,6 +10,7 @@ import 'core/utils/notification_service.dart';
 import 'core/utils/voice_service.dart';
 import 'core/utils/offline_storage.dart';
 import 'core/utils/ad_service.dart';
+import 'core/utils/gemini_ai_service.dart';
 import 'features/metro/presentation/cubits/route_planner/route_planner_cubit.dart';
 import 'features/metro/presentation/cubits/arrival_alarm/arrival_alarm_cubit.dart';
 import 'features/shell/presentation/main_nav_shell.dart';
@@ -22,7 +23,11 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
     if (task == 'lineAlertsTask') {
-      await NotificationService.init();
+      try {
+        await NotificationService.init();
+      } catch (e) {
+        debugPrint("⚠️ Background NotificationService init failed: $e");
+      }
       final prefs = await SharedPreferences.getInstance();
       final saved = prefs.getStringList('line_alert_subscriptions') ?? [];
       final alertDelays = prefs.getBool('alert_delays') ?? true;
@@ -65,13 +70,18 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await EasyLocalization.ensureInitialized();
-  await NotificationService.init();
+  try {
+    await NotificationService.init();
+  } catch (e) {
+    debugPrint("⚠️ Notification Service initialization failed: $e");
+  }
   try {
     await VoiceService.init();
   } catch (e) {
     debugPrint("⚠️ Voice Service initialization failed: $e");
   }
   await AppStorage.init();
+  await GeminiAiService.init();
   await GamificationService.init();
   await AdService.init();
   await di.init();

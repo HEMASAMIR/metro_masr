@@ -14,56 +14,60 @@ class NotificationService {
       "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=500";
 
   static Future<void> init() async {
-    const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+    try {
+      const AndroidInitializationSettings initializationSettingsAndroid =
+          AndroidInitializationSettings('@mipmap/ic_launcher');
 
-    const DarwinInitializationSettings initializationSettingsDarwin =
-        DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
-    );
+      const DarwinInitializationSettings initializationSettingsDarwin =
+          DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
+      );
 
-    const InitializationSettings initializationSettings =
-        InitializationSettings(
-      android: initializationSettingsAndroid,
-      iOS: initializationSettingsDarwin,
-    );
+      const InitializationSettings initializationSettings =
+          InitializationSettings(
+        android: initializationSettingsAndroid,
+        iOS: initializationSettingsDarwin,
+      );
 
-    await _notificationsPlugin.initialize(initializationSettings);
+      await _notificationsPlugin.initialize(initializationSettings);
 
-    // Request permissions explicitly for iOS
-    final iosPlugin = _notificationsPlugin
-        .resolvePlatformSpecificImplementation<
-            IOSFlutterLocalNotificationsPlugin>();
-    await iosPlugin?.requestPermissions(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+      // Request permissions explicitly for iOS
+      final iosPlugin = _notificationsPlugin
+          .resolvePlatformSpecificImplementation<
+              IOSFlutterLocalNotificationsPlugin>();
+      await iosPlugin?.requestPermissions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
 
-    // تعريف القنوات لضمان عمل الأصوات المخصصة والاهتزاز
-    const AndroidNotificationChannel tourismChannel =
-        AndroidNotificationChannel(
-          'rafiq_metro_tourism',
-          'Metro Tourism Alerts',
-          importance: Importance.max,
-        );
+      // تعريف القنوات لضمان عمل الأصوات المخصصة والاهتزاز
+      const AndroidNotificationChannel tourismChannel =
+          AndroidNotificationChannel(
+            'rafiq_metro_tourism',
+            'Metro Tourism Alerts',
+            importance: Importance.max,
+          );
 
-    const AndroidNotificationChannel sportsChannel = AndroidNotificationChannel(
-      'sports_clubs_channel',
-      'Sports Club Alerts',
-      importance: Importance.max,
-      sound: RawResourceAndroidNotificationSound('club_alert'),
-      playSound: true,
-    );
+      const AndroidNotificationChannel sportsChannel = AndroidNotificationChannel(
+        'sports_clubs_channel',
+        'Sports Club Alerts',
+        importance: Importance.max,
+        sound: RawResourceAndroidNotificationSound('club_alert'),
+        playSound: true,
+      );
 
-    final androidPlugin = _notificationsPlugin
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >();
-    await androidPlugin?.createNotificationChannel(tourismChannel);
-    await androidPlugin?.createNotificationChannel(sportsChannel);
+      final androidPlugin = _notificationsPlugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      await androidPlugin?.createNotificationChannel(tourismChannel);
+      await androidPlugin?.createNotificationChannel(sportsChannel);
+    } catch (e) {
+      debugPrint("⚠️ NotificationService initialization failed: $e");
+    }
   }
 
   /// تحميل الصورة وحفظها مؤقتاً لعرضها في الإشعار
@@ -145,13 +149,17 @@ class NotificationService {
       iOS: darwinPlatformChannelSpecifics,
     );
 
-    await _notificationsPlugin.show(
-      id,
-      title,
-      body,
-      platformChannelSpecifics,
-      payload: payload,
-    );
+    try {
+      await _notificationsPlugin.show(
+        id,
+        title,
+        body,
+        platformChannelSpecifics,
+        payload: payload,
+      );
+    } catch (e) {
+      debugPrint("⚠️ Failed to show notification (possibly permission denied): $e");
+    }
   }
 
   /// إرسال تنبيه بوجود تأخير في أحد الخطوط

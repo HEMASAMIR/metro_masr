@@ -5,6 +5,7 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'tourism_data.dart';
 import 'connectivity_service.dart';
+import 'gemini_ai_service.dart';
 
 class EnrichedPlaceData {
   final String description;
@@ -97,11 +98,8 @@ class PlaceEnrichmentService {
 
     // 4. Fetch from Gemini API
     try {
-      String? apiKey = const String.fromEnvironment('GEMINI_API_KEY');
+      String apiKey = GeminiAiService.apiKey;
       if (apiKey.isEmpty) {
-        apiKey = dotenv.env['GEMINI_API_KEY'];
-      }
-      if (apiKey == null || apiKey.isEmpty) {
         throw Exception("Gemini API key is not configured.");
       }
 

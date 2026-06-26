@@ -116,7 +116,7 @@ class _HomePageState extends State<_HomePageView> {
                 left: padding,
                 right: padding,
                 top: padding,
-                bottom: padding + 100,
+                bottom: padding + 170 + MediaQuery.of(context).padding.bottom,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

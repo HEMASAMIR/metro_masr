@@ -17,6 +17,7 @@ import '../../../../core/utils/tourism_data.dart';
 import '../../../../core/utils/metro_data.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/connectivity_service.dart';
+import '../../../../core/utils/gemini_ai_service.dart';
 import '../../../../core/widgets/offline_banner.dart';
 import '../../../../core/utils/ad_service.dart';
 
@@ -114,18 +115,7 @@ class _AiChatPageState extends State<AiChatPage>
   }
 
   void _initGemini() {
-    // بنجرب نجيب المفتاح من الـ Environment أولاً (أكثر أماناً)
-    String apiKey = const String.fromEnvironment('GEMINI_API_KEY');
-
-    if (apiKey.isEmpty) {
-      try {
-        apiKey = dotenv.get('GEMINI_API_KEY', fallback: '');
-      } catch (e) {
-        debugPrint(
-          "Rafiq AI: Dotenv not initialized. Please ensure 'await dotenv.load()' is called in main.dart",
-        );
-      }
-    }
+    String apiKey = GeminiAiService.apiKey;
 
     _model = GenerativeModel(
       model: 'gemini-2.5-flash',
@@ -356,15 +346,41 @@ class _AiChatPageState extends State<AiChatPage>
         HapticFeedback.mediumImpact();
       }
     } catch (e) {
-      debugPrint("Gemini Error: $e"); // هيطبعلك السبب الحقيقي في الـ Console
+      debugPrint("Gemini Error: $e");
       if (mounted) {
+        final isAr = context.locale.languageCode == 'ar';
+        final localText = _generateLocalOfflineResponse(text, isAr);
+        final responseText = isAr
+            ? '⚠️ تم الرد محلياً لعدم استقرار اتصال الذكاء الاصطناعي:\n\n$localText'
+            : '⚠️ Replied locally due to AI connection instability:\n\n$localText';
+
+        final loc = _detectLocationInText(
+          localText,
+          isAr,
+        );
+        if (loc.isNotEmpty && _currentLocation != null) {
+          distanceToTarget = Geolocator.distanceBetween(
+            _currentLocation!.latitude,
+            _currentLocation!.longitude,
+            loc['lat'],
+            loc['lng'],
+          );
+          detectedAttraction = loc['attraction'];
+          detectedMapLabel = loc['label'];
+        }
+
         setState(() {
           _isTyping = false;
           _messages.insert(
             0,
             ChatMessage(
-              text: 'عذراً يا غالي، رفيق مهنج شوية في الاتصال. اتأكد إن الـ API Key شغال وإن فيه إنترنت. 🚇',
+              text: responseText,
               isUser: false,
+              featuredAttraction: detectedAttraction,
+              lat: loc['lat'],
+              lng: loc['lng'],
+              mapLabel: detectedMapLabel,
+              distanceToUser: distanceToTarget,
             ),
           );
         });
@@ -372,7 +388,6 @@ class _AiChatPageState extends State<AiChatPage>
       }
     }
   }
-
   // Moved _buildMapButton outside _buildChatBubble to resolve the error
   String _generateLocalOfflineResponse(String text, bool isAr) {
     final q = text.toLowerCase().trim();
@@ -560,15 +575,18 @@ class _AiChatPageState extends State<AiChatPage>
           // شريط إدخال النص والصوت
           _buildInputArea(isAr),
           if (_bannerAd != null)
-            Container(
-              alignment: Alignment.center,
-              width: _bannerAd!.size.width.toDouble(),
-              height: _bannerAd!.size.height.toDouble(),
-              decoration: BoxDecoration(
-                color: Theme.of(context).scaffoldBackgroundColor,
-                border: Border(top: BorderSide(color: Colors.grey.withValues(alpha: 0.1))),
+            SafeArea(
+              top: false,
+              child: Container(
+                alignment: Alignment.center,
+                width: _bannerAd!.size.width.toDouble(),
+                height: _bannerAd!.size.height.toDouble(),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  border: Border(top: BorderSide(color: Colors.grey.withValues(alpha: 0.1))),
+                ),
+                child: AdWidget(ad: _bannerAd!),
               ),
-              child: AdWidget(ad: _bannerAd!),
             ),
         ],
       ),

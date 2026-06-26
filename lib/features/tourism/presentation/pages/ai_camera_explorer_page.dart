@@ -13,6 +13,8 @@ import '../../../../core/utils/connectivity_service.dart';
 import '../../../../core/utils/gemini_ai_service.dart';
 import '../../../../core/widgets/offline_banner.dart';
 import '../../../ai_assistant/presentation/pages/ai_chat_page.dart';
+import '../../../../core/utils/tourism_data.dart';
+import '../../../../core/utils/metro_data.dart';
 
 class AiCameraExplorerPage extends StatefulWidget {
   const AiCameraExplorerPage({super.key});
@@ -121,12 +123,11 @@ class _AiCameraExplorerPageState extends State<AiCameraExplorerPage> {
       final response = await model.generateContent(prompt);
       final rawText = response.text?.trim() ?? '';
 
-      // Clean up markdown block if model ignored request
-      String cleanJson = rawText;
-      if (cleanJson.startsWith('```')) {
-        cleanJson = cleanJson.replaceAll(RegExp(r'^```(json)?|```$'), '').trim();
-      }
-
+      // Extract JSON using regex for maximum robustness
+      final jsonRegex = RegExp(r'\{[\s\S]*\}');
+      final match = jsonRegex.firstMatch(rawText);
+      if (match == null) throw Exception("No JSON block found in response");
+      final cleanJson = match.group(0)!;
       final Map<String, dynamic> data = json.decode(cleanJson);
 
       setState(() {
@@ -163,6 +164,217 @@ class _AiCameraExplorerPageState extends State<AiCameraExplorerPage> {
     }
   }
 
+  void _setLandmarkFromAttraction(TouristAttraction attraction) {
+    String stationNameAr = "محطة قريبة";
+    String stationNameEn = "Nearby Station";
+    for (final stationData in TourismDatabase.allStationsData) {
+      if (stationData.attractions.any((att) => att.id == attraction.id)) {
+        final station = MetroData.stations[stationData.stationId] ?? MetroData.capitalStations[stationData.stationId];
+        if (station != null) {
+          stationNameAr = station.nameAr;
+          stationNameEn = station.nameEn;
+        } else {
+          stationNameAr = stationData.stationId;
+          stationNameEn = stationData.stationId;
+        }
+        break;
+      }
+    }
+
+    setState(() {
+      _errorMessage = null;
+      _isAnalyzing = false;
+      _isLandmark = true;
+      _nameAr = attraction.name['ar'];
+      _nameEn = attraction.name['en'];
+      _descAr = attraction.description['ar'];
+      _descEn = attraction.description['en'];
+      
+      _nearestStationAr = stationNameAr;
+      _nearestStationEn = stationNameEn;
+      
+      _walkingMinutes = int.tryParse(attraction.walkingMinutes) ?? 10;
+      _admissionAr = attraction.isFree ? "دخول مجاني" : attraction.admissionEGP;
+      _admissionEn = attraction.isFree ? "Free Entry" : attraction.admissionEGP;
+      
+      _safetyTipsAr = attraction.boardingHint?['ar'] ?? "زيارة ممتعة! انتبه لمواعيد المترو.";
+      _safetyTipsEn = attraction.boardingHint?['en'] ?? "Have a nice visit! Pay attention to metro schedules.";
+      
+      _lat = attraction.lat;
+      _lng = attraction.lng;
+    });
+  }
+
+  void _showManualLandmarkSelector(BuildContext context, bool isAr) {
+    final attractions = TourismDatabase.getAllAttractions();
+    
+    final filtered = attractions.where((a) {
+      return a.category == AttractionCategory.landmark ||
+             a.category == AttractionCategory.palace ||
+             a.category == AttractionCategory.monument ||
+             a.category == AttractionCategory.museum ||
+             a.category == AttractionCategory.mosque ||
+             a.category == AttractionCategory.church;
+    }).toList();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        String searchQuery = "";
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final searchResults = filtered.where((a) {
+              final name = (isAr ? a.name['ar'] : a.name['en']) ?? '';
+              return name.toLowerCase().contains(searchQuery.toLowerCase());
+            }).toList();
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.75,
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 12),
+                  Container(
+                    width: 40,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[400],
+                      borderRadius: BorderRadius.circular(2.5),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    isAr ? "اختر معلماً سياحياً 🏛️" : "Select a Tourist Landmark 🏛️",
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: TextField(
+                      decoration: InputDecoration(
+                        hintText: isAr ? "ابحث عن معلم..." : "Search landmark...",
+                        prefixIcon: const Icon(Icons.search),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      onChanged: (val) {
+                        setModalState(() {
+                          searchQuery = val;
+                        });
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: searchResults.length,
+                      itemBuilder: (context, idx) {
+                        final a = searchResults[idx];
+                        final name = isAr ? a.name['ar'] : a.name['en'];
+                        final desc = isAr ? a.description['ar'] : a.description['en'];
+                        return ListTile(
+                          leading: Text(a.emoji, style: const TextStyle(fontSize: 24)),
+                          title: Text(name ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
+                          subtitle: Text(
+                            desc ?? '',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          onTap: () {
+                            Navigator.pop(context);
+                            _setLandmarkFromAttraction(a);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showApiKeyDialog(BuildContext context, bool isAr) {
+    final controller = TextEditingController(text: GeminiAiService.apiKey);
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(isAr ? "مفتاح API الخاص بك 🔑" : "Your Gemini API Key 🔑"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                isAr
+                    ? "مفتاح الـ API الحالي معطل أو مسرب من جوجل. يرجى إدخال مفتاح API صالح لاستعادة ميزات الذكاء الاصطناعي."
+                    : "The current API key is leaked or blocked. Please input a valid API key to restore AI features.",
+                style: const TextStyle(fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                decoration: InputDecoration(
+                  labelText: isAr ? "مفتاح Gemini API Key" : "Gemini API Key",
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                await GeminiAiService.clearCustomApiKey();
+                Navigator.pop(context);
+                setState(() {
+                  _errorMessage = null;
+                });
+              },
+              child: Text(isAr ? "استعادة الافتراضي" : "Restore Default"),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(isAr ? "إلغاء" : "Cancel"),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () async {
+                final key = controller.text.trim();
+                if (key.isNotEmpty) {
+                  await GeminiAiService.setCustomApiKey(key);
+                  Navigator.pop(context);
+                  setState(() {
+                    _errorMessage = null;
+                  });
+                  if (_selectedImage != null) {
+                    setState(() {
+                      _isAnalyzing = true;
+                    });
+                    _analyzeImage();
+                  }
+                }
+              },
+              child: Text(isAr ? "حفظ وتجربة" : "Save & Retry"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _openInMaps() async {
     if (_lat == null || _lng == null) return;
     final url = 'https://www.google.com/maps/search/?api=1&query=$_lat,$_lng';
@@ -195,6 +407,13 @@ class _AiCameraExplorerPageState extends State<AiCameraExplorerPage> {
       appBar: AppBar(
         elevation: 0,
         title: Text(isAr ? "مستكشف المعالم بالـ AI 📸" : "AI Landmark Explorer 📸"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.vpn_key_outlined),
+            tooltip: isAr ? "مفتاح API" : "API Key",
+            onPressed: () => _showApiKeyDialog(context, isAr),
+          ),
+        ],
       ),
       body: Stack(
         children: [
@@ -300,34 +519,92 @@ class _AiCameraExplorerPageState extends State<AiCameraExplorerPage> {
                   ),
                 ),
 
+                if (_selectedImage == null) ...[
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary.withOpacity(0.08),
+                      foregroundColor: AppColors.primary,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    onPressed: () => _showManualLandmarkSelector(context, isAr),
+                    icon: const Icon(Icons.search_rounded),
+                    label: Text(
+                      isAr ? "أو اختر معلماً يدوياً من القائمة 🏛️" : "Or Select Landmark Manually 🏛️",
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+
                 const SizedBox(height: 20),
 
                 // Error message
                 if (_errorMessage != null)
                   FadeInUp(
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.red.withOpacity(0.3)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.error_outline_rounded, color: Colors.red),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              _errorMessage!,
-                              style: const TextStyle(
-                                color: Colors.redAccent,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.red.withOpacity(0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.error_outline_rounded, color: Colors.red),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  _errorMessage!,
+                                  style: const TextStyle(
+                                    color: Colors.redAccent,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  elevation: 0,
+                                ),
+                                onPressed: () => _showManualLandmarkSelector(context, isAr),
+                                icon: const Icon(Icons.search, size: 18),
+                                label: Text(isAr ? "اختر يدوياً 🏛️" : "Select Manually 🏛️"),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.primary,
+                                  side: const BorderSide(color: AppColors.primary),
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                ),
+                                onPressed: () => _showApiKeyDialog(context, isAr),
+                                icon: const Icon(Icons.vpn_key, size: 18),
+                                label: Text(isAr ? "تعديل الـ API Key 🔑" : "Edit API Key 🔑"),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/metro_data.dart';
 import '../../../../core/utils/notification_service.dart';
@@ -22,6 +23,24 @@ class _LastTrainAlarmPageState extends State<LastTrainAlarmPage>
   bool _isAlarmSet = false;
   int _reminderMinutes = 30;
   late AnimationController _pulseController;
+  bool _permissionDenied = false;
+
+  Future<void> _checkPermission() async {
+    final status = await Permission.notification.status;
+    if (status.isDenied || status.isPermanentlyDenied) {
+      if (mounted) {
+        setState(() {
+          _permissionDenied = true;
+        });
+      }
+    } else {
+      if (mounted) {
+        setState(() {
+          _permissionDenied = false;
+        });
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -30,6 +49,7 @@ class _LastTrainAlarmPageState extends State<LastTrainAlarmPage>
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     );
+    _checkPermission();
   }
 
   @override
@@ -38,7 +58,33 @@ class _LastTrainAlarmPageState extends State<LastTrainAlarmPage>
     super.dispose();
   }
 
-  void _setAlarm() {
+  void _setAlarm() async {
+    final status = await Permission.notification.status;
+    if (status.isDenied) {
+      final reqStatus = await Permission.notification.request();
+      _checkPermission();
+      if (!reqStatus.isGranted) {
+        return;
+      }
+    } else if (status.isPermanentlyDenied) {
+      _checkPermission();
+      if (mounted) {
+        final isAr = context.locale.languageCode == 'ar';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(isAr 
+              ? 'يرجى تفعيل الإشعارات من إعدادات الهاتف لتلقي التنبيهات' 
+              : 'Please enable notifications from system settings to receive alerts'),
+            action: SnackBarAction(
+              label: isAr ? 'الإعدادات' : 'Settings',
+              onPressed: () => openAppSettings(),
+            ),
+          ),
+        );
+      }
+      return;
+    }
+
     if (_selectedStationId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -185,6 +231,75 @@ class _LastTrainAlarmPageState extends State<LastTrainAlarmPage>
               ),
             ),
             const SizedBox(height: 24),
+
+            if (_permissionDenied) ...[
+              FadeInDown(
+                child: Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 20),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.amber.withOpacity(0.3)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 24),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              isAr ? "الإشعارات غير مفعلة ⚠️" : "Notifications Disabled ⚠️",
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                                color: Colors.amber,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        isAr
+                            ? "لقد قمت برفض إذن الإشعارات لهذا التطبيق. لتتمكن من ضبط منبه آخر قطار واستلام التنبيهات، يرجى تفعيل الإذن من إعدادات النظام."
+                            : "You have denied notification permissions for this app. To set the last train alarm and receive alerts, please enable them in settings.",
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.8),
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 40,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.amber,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            elevation: 0,
+                          ),
+                          onPressed: () async {
+                            await openAppSettings();
+                            _checkPermission();
+                          },
+                          icon: const Icon(Icons.settings, size: 18),
+                          label: Text(
+                            isAr ? "فتح الإعدادات" : "Open Settings",
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
 
             // ── Alarm Icon ─────────────────────────────────────────────────
             FadeInDown(

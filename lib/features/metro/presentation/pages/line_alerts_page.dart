@@ -3,6 +3,7 @@ import 'package:animate_do/animate_do.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/notification_service.dart';
 import '../../../../core/utils/crowd_prediction_service.dart';
@@ -38,6 +39,24 @@ class _LineAlertsPageState extends State<LineAlertsPage>
   static const _prefsKey = 'line_alert_subscriptions';
 
   late AnimationController _pulseCtrl;
+  bool _permissionDenied = false;
+
+  Future<void> _checkPermission() async {
+    final status = await Permission.notification.status;
+    if (status.isDenied || status.isPermanentlyDenied) {
+      if (mounted) {
+        setState(() {
+          _permissionDenied = true;
+        });
+      }
+    } else {
+      if (mounted) {
+        setState(() {
+          _permissionDenied = false;
+        });
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -48,6 +67,7 @@ class _LineAlertsPageState extends State<LineAlertsPage>
     )..repeat(reverse: true);
     _loadPrefs();
     _startMonitor();
+    _checkPermission();
   }
 
   @override
@@ -135,7 +155,33 @@ class _LineAlertsPageState extends State<LineAlertsPage>
   }
 
   // ── Toggle subscription ───────────────────────────────────────────────────
-  void _toggleLine(int line) {
+  void _toggleLine(int line) async {
+    final status = await Permission.notification.status;
+    if (status.isDenied) {
+      final reqStatus = await Permission.notification.request();
+      _checkPermission();
+      if (!reqStatus.isGranted) {
+        return;
+      }
+    } else if (status.isPermanentlyDenied) {
+      _checkPermission();
+      if (mounted) {
+        final isAr = context.locale.languageCode == 'ar';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(isAr 
+              ? 'يرجى تفعيل الإشعارات من إعدادات الهاتف لتلقي التنبيهات' 
+              : 'Please enable notifications from system settings to receive alerts'),
+            action: SnackBarAction(
+              label: isAr ? 'الإعدادات' : 'Settings',
+              onPressed: () => openAppSettings(),
+            ),
+          ),
+        );
+      }
+      return;
+    }
+
     setState(() => _subscribed[line] = !(_subscribed[line] ?? false));
     _savePrefs();
 
@@ -256,6 +302,75 @@ class _LineAlertsPageState extends State<LineAlertsPage>
                 ),
               ),
             ),
+
+            if (_permissionDenied) ...[
+              const SizedBox(height: 16),
+              FadeInDown(
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.amber.withOpacity(0.3)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 24),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              isAr ? "الإشعارات غير مفعلة ⚠️" : "Notifications Disabled ⚠️",
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                                color: Colors.amber,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        isAr
+                            ? "لقد قمت برفض إذن الإشعارات لهذا التطبيق. لتتمكن من استلام تنبيهات الخطوط، يرجى تفعيل الإذن من إعدادات النظام."
+                            : "You have denied notification permissions for this app. To receive live line alerts, please enable them in settings.",
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.8),
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 40,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.amber,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            elevation: 0,
+                          ),
+                          onPressed: () async {
+                            await openAppSettings();
+                            _checkPermission();
+                          },
+                          icon: const Icon(Icons.settings, size: 18),
+                          label: Text(
+                            isAr ? "فتح الإعدادات" : "Open Settings",
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
 
             const SizedBox(height: 24),
 

@@ -635,15 +635,18 @@ class _AiTriviaChallengePageState extends State<AiTriviaChallengePage> {
             ),
           ),
           if (_bannerAd != null && _isAdLoaded)
-            Container(
-              alignment: Alignment.center,
-              width: _bannerAd!.size.width.toDouble(),
-              height: _bannerAd!.size.height.toDouble(),
-              decoration: BoxDecoration(
-                color: Theme.of(context).scaffoldBackgroundColor,
-                border: Border(top: BorderSide(color: Colors.grey.withValues(alpha: 0.1))),
+            SafeArea(
+              top: false,
+              child: Container(
+                alignment: Alignment.center,
+                width: _bannerAd!.size.width.toDouble(),
+                height: _bannerAd!.size.height.toDouble(),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  border: Border(top: BorderSide(color: Colors.grey.withValues(alpha: 0.1))),
+                ),
+                child: AdWidget(ad: _bannerAd!),
               ),
-              child: AdWidget(ad: _bannerAd!),
             ),
         ],
       ),

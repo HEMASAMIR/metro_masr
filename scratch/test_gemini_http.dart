@@ -2,7 +2,7 @@ import 'dart:io';
 import 'dart:convert';
 
 void main() async {
-  final apiKey = 'AIzaSyBQ847pLfiA4gW2jlmTUgS1su1Zlw7FylE';
+  final apiKey = 'AIzaSyAqUr3eSodPnVq5glBKMw0RnbWGpTAOvuE';
   final url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey';
   final client = HttpClient();
   try {

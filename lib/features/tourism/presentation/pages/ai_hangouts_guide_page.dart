@@ -14,6 +14,7 @@ import '../../../../core/widgets/offline_banner.dart';
 import '../../../metro/domain/entities/station.dart';
 import '../../../../core/utils/location_utils.dart';
 import '../../../ai_assistant/presentation/pages/ai_chat_page.dart';
+import '../../../../core/utils/tourism_data.dart';
 
 class AiHangoutsGuidePage extends StatefulWidget {
   const AiHangoutsGuidePage({super.key});
@@ -108,10 +109,13 @@ class _AiHangoutsGuidePageState extends State<AiHangoutsGuidePage> {
     }
 
     if (ConnectivityService.instance.isOffline) {
+      final localResults = _calculateOfflineHangouts(_selectedStation!, query, isAr);
       setState(() {
-        _errorMessage = isAr 
-            ? "الخدمة دي محتاجة اتصال بالإنترنت للبحث بالذكاء الاصطناعي! 🌐" 
-            : "This feature requires an active internet connection to search outings! 🌐";
+        _isLoading = false;
+        _places = localResults;
+        _errorMessage = localResults.isEmpty
+            ? (isAr ? "ملقناش خروجات مناسبة للطلب ده في وضع الأوفلاين!" : "No matches found in offline mode!")
+            : (isAr ? "💡 وضع أوفلاين: عرض نتائج دليل الأماكن محلياً!" : "💡 Offline Mode: Showing local place guide results!");
       });
       return;
     }
@@ -154,11 +158,11 @@ class _AiHangoutsGuidePageState extends State<AiHangoutsGuidePage> {
       final response = await model.generateContent([Content.text(prompt)]);
       final rawText = response.text?.trim() ?? '';
 
-      String cleanJson = rawText;
-      if (cleanJson.startsWith('```')) {
-        cleanJson = cleanJson.replaceAll(RegExp(r'^```(json)?|```$'), '').trim();
-      }
-
+      // Extract JSON using regex for maximum robustness
+      final jsonRegex = RegExp(r'\{[\s\S]*\}');
+      final match = jsonRegex.firstMatch(rawText);
+      if (match == null) throw Exception("No JSON block found in response");
+      final cleanJson = match.group(0)!;
       final Map<String, dynamic> data = json.decode(cleanJson);
       
       setState(() {
@@ -174,13 +178,121 @@ class _AiHangoutsGuidePageState extends State<AiHangoutsGuidePage> {
       });
     } catch (e) {
       debugPrint("❌ Hangouts Guide Error: $e");
+      
+      // Fallback to local planner
+      final localResults = _calculateOfflineHangouts(_selectedStation!, query, isAr);
       setState(() {
         _isLoading = false;
+        _places = localResults;
         _errorMessage = isAr 
-            ? "حصلت مشكلة أثناء البحث الذكي. جرب تعيد البحث مجدداً!" 
-            : "An error occurred during search. Please try again!";
+            ? "⚠️ تم العثور على الأماكن محلياً لعدم استقرار اتصال الذكاء الاصطناعي!" 
+            : "⚠️ Venues found locally due to AI connection instability!";
+        if (_places.isEmpty) {
+          _errorMessage = isAr 
+              ? "ملقناش خروجات مناسبة للطلب ده جنب المحطة دي. جرب تكتب كلمات تانية!" 
+              : "No matches found near this station. Try writing other keywords!";
+        }
       });
     }
+  }
+
+  List<Map<String, dynamic>> _calculateOfflineHangouts(
+    Station station,
+    String query,
+    bool isAr,
+  ) {
+    final List<Map<String, dynamic>> results = [];
+    final lowerQuery = query.toLowerCase();
+
+    final stationData = TourismDatabase.findByStation(station.id);
+    final List<TouristAttraction> candidates = [];
+    
+    if (stationData != null) {
+      candidates.addAll(stationData.attractions);
+    }
+
+    for (final sd in TourismDatabase.data) {
+      if (sd.lineNumber == station.line.toString() && sd.stationId != station.id) {
+        candidates.addAll(sd.attractions);
+      }
+    }
+
+    if (candidates.isEmpty) {
+      candidates.addAll(TourismDatabase.getAllAttractions());
+    }
+
+    for (final attr in candidates) {
+      final String nameAr = attr.name['ar'] ?? '';
+      final String nameEn = attr.name['en'] ?? '';
+      final String descAr = attr.description['ar'] ?? '';
+      final String descEn = attr.description['en'] ?? '';
+
+      if (query.isNotEmpty) {
+        final matchesQuery = nameAr.contains(query) ||
+            nameEn.toLowerCase().contains(lowerQuery) ||
+            descAr.contains(query) ||
+            descEn.toLowerCase().contains(lowerQuery) ||
+            attr.tags.any((tag) => tag.toLowerCase().contains(lowerQuery));
+        if (!matchesQuery) continue;
+      }
+
+      String cat = 'explore';
+      switch (attr.category) {
+        case AttractionCategory.cafe:
+          cat = 'cafe';
+          break;
+        case AttractionCategory.restaurant:
+          cat = 'restaurant';
+          break;
+        case AttractionCategory.park:
+          cat = 'park';
+          break;
+        case AttractionCategory.market:
+          cat = 'shopping';
+          break;
+        case AttractionCategory.museum:
+        case AttractionCategory.monument:
+        case AttractionCategory.palace:
+        case AttractionCategory.church:
+        case AttractionCategory.mosque:
+          cat = 'museum';
+          break;
+        case AttractionCategory.entertainment:
+          cat = 'cinema';
+          break;
+        case AttractionCategory.sport:
+          cat = 'gym';
+          break;
+        default:
+          cat = 'explore';
+      }
+
+      int cost = 50;
+      if (!attr.isFree) {
+        final costStr = attr.admissionEGP.replaceAll(RegExp(r'[^0-9]'), '');
+        cost = int.tryParse(costStr) ?? 50;
+      } else {
+        cost = 0;
+      }
+
+      int minutes = int.tryParse(attr.walkingMinutes.replaceAll(RegExp(r'[^0-9]'), '')) ?? 8;
+
+      results.add({
+        'nameAr': nameAr,
+        'nameEn': nameEn,
+        'category': cat,
+        'descAr': descAr,
+        'descEn': descEn,
+        'walkingMinutes': minutes,
+        'avgCostEgp': cost,
+        'lat': attr.lat ?? station.latitude,
+        'lng': attr.lng ?? station.longitude,
+      });
+
+      if (results.length >= 10) break;
+    }
+
+    return results;
   }
 
   void _openInMaps(double lat, double lng) async {

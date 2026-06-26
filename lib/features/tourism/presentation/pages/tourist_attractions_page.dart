@@ -49,6 +49,8 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
   bool _isAdLoaded = false;
 
   bool _isLoadingOsm = false;
+  late ScrollController _scrollController;
+  bool _isCollapsed = false;
 
   // Threshold in minutes: attractions ≤ this are "Near Station"
   static const int _nearThreshold = 15;
@@ -64,6 +66,15 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
   @override
   void initState() {
     super.initState();
+    _scrollController = ScrollController();
+    _scrollController.addListener(() {
+      final isCollapsed = _scrollController.hasClients && _scrollController.offset > 80;
+      if (isCollapsed != _isCollapsed) {
+        setState(() {
+          _isCollapsed = isCollapsed;
+        });
+      }
+    });
     _bannerAd = AdService.createBannerAd(
       onAdLoaded: (ad) {
         if (mounted) setState(() => _isAdLoaded = true);
@@ -97,6 +108,7 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _bannerAd?.dispose();
     _tabController.dispose();
     _tabBarAnimCtrl.dispose();
@@ -284,10 +296,11 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: NestedScrollView(
+        controller: _scrollController,
         headerSliverBuilder: (_, __) => [
           // ── App bar ──────────────────────────────────────────────────────────
           SliverAppBar(
-            expandedHeight: 160,
+            expandedHeight: 200,
             pinned: true,
             stretch: true,
             backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
@@ -296,12 +309,16 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
               stretchModes: const [StretchMode.zoomBackground],
               background: _buildHeader(isAr),
             ),
-            title: Text(
-              isAr ? '🗺️ المعالم السياحية' : "🗺️ Tourist Attractions",
-              style: TextStyle(
-                color: Theme.of(context).textTheme.titleLarge?.color,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
+            title: AnimatedOpacity(
+              opacity: _isCollapsed ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 200),
+              child: Text(
+                isAr ? '🗺️ المعالم السياحية' : "🗺️ Tourist Attractions",
+                style: TextStyle(
+                  color: Theme.of(context).textTheme.titleLarge?.color,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
               ),
             ),
             bottom: PreferredSize(
@@ -374,15 +391,18 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
             ),
             // ── Ad Banner ────────────────────────────────────────────────────
             if (_bannerAd != null && _isAdLoaded)
-              Container(
-                alignment: Alignment.center,
-                width: _bannerAd!.size.width.toDouble(),
-                height: _bannerAd!.size.height.toDouble(),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).scaffoldBackgroundColor,
-                  border: Border(top: BorderSide(color: Colors.grey.withValues(alpha: 0.1))),
+              SafeArea(
+                top: false,
+                child: Container(
+                  alignment: Alignment.center,
+                  width: _bannerAd!.size.width.toDouble(),
+                  height: _bannerAd!.size.height.toDouble(),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).scaffoldBackgroundColor,
+                    border: Border(top: BorderSide(color: Colors.grey.withValues(alpha: 0.1))),
+                  ),
+                  child: AdWidget(ad: _bannerAd!),
                 ),
-                child: AdWidget(ad: _bannerAd!),
               ),
           ],
         ),
@@ -401,11 +421,14 @@ class _TouristAttractionsPageState extends State<TouristAttractionsPage>
 
   // ── Header ─────────────────────────────────────────────────────────────────
   Widget _buildHeader(bool isAr) {
+    final double topPadding = MediaQuery.of(context).padding.top + 16;
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
-      child: SafeArea(
+      child: AnimatedOpacity(
+        opacity: _isCollapsed ? 0.0 : 1.0,
+        duration: const Duration(milliseconds: 200),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 50, 20, 0),
+          padding: EdgeInsets.fromLTRB(20, topPadding, 20, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

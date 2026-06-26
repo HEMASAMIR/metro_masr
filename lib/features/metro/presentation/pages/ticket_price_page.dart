@@ -93,7 +93,7 @@ class _TicketPriceViewState extends State<_TicketPriceView> {
                 left: r.pagePadding,
                 right: r.pagePadding,
                 top: r.pagePadding,
-                bottom: r.pagePadding + 100, // Extra bottom padding for the floating navigation bar!
+                bottom: r.pagePadding + 170 + MediaQuery.of(context).padding.bottom, // Extra bottom padding for the floating navigation bar!
               ),
               child: Column(
                 children: [

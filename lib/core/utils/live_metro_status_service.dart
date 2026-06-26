@@ -4,6 +4,7 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
+import 'gemini_ai_service.dart';
 
 class LiveMetroStatusService {
   static const String _cacheKey = 'live_metro_status_cache';
@@ -92,8 +93,8 @@ class LiveMetroStatusService {
   }
 
   static Future<String> _analyzeWithGemini(List<String> titles) async {
-    final apiKey = dotenv.env['GEMINI_API_KEY'];
-    if (apiKey == null || apiKey.isEmpty) {
+    final apiKey = GeminiAiService.apiKey;
+    if (apiKey.isEmpty) {
       throw Exception('Missing Gemini API Key');
     }
 

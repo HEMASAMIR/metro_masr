@@ -187,12 +187,25 @@ class _AiStationAnnouncerPageState extends State<AiStationAnnouncerPage>
       }
     } catch (e) {
       debugPrint("❌ Station Announcer Error: $e");
-      setState(() {
-        _isLoading = false;
-        _errorMessage = e.toString().contains("Exception") 
-            ? e.toString().replaceAll("Exception:", "")
-            : (isAr ? "حصل خطأ في صياغة الإعلان." : "An error occurred generating script.");
-      });
+      if (_announcementType == 'custom') {
+        final rawText = _customTextController.text.trim();
+        setState(() {
+          _isLoading = false;
+          _announcementText = isAr 
+              ? "انتباه من رفيق: $rawText. نتمنى لكم رحلة سعيدة." 
+              : "Attention passengers: $rawText. Wish you a happy journey.";
+          _errorMessage = isAr 
+              ? "⚠️ تم الصياغة محلياً لعدم استقرار اتصال الذكاء الاصطناعي!" 
+              : "⚠️ Formatted locally due to AI connection instability!";
+        });
+      } else {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = e.toString().contains("Exception") 
+              ? e.toString().replaceAll("Exception:", "")
+              : (isAr ? "حصل خطأ في صياغة الإعلان." : "An error occurred generating script.");
+        });
+      }
     }
   }
 

@@ -65,11 +65,11 @@ class _SettingsPageState extends State<SettingsPage> {
     return Scaffold(
       appBar: AppBar(title: Text("Settings".tr()), centerTitle: true),
       body: ListView(
-        padding: const EdgeInsets.only(
+        padding: EdgeInsets.only(
           left: 16,
           right: 16,
           top: 16,
-          bottom: 116, // Extra bottom padding for the floating navigation bar!
+          bottom: 170 + MediaQuery.of(context).padding.bottom, // Extra bottom padding for the floating navigation bar!
         ),
         children: [
           // ── Appearance ────────────────────────────────────────────────────

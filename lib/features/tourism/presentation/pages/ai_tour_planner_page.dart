@@ -12,6 +12,7 @@ import '../../../../core/utils/gemini_ai_service.dart';
 import '../../../../core/widgets/offline_banner.dart';
 import '../../../metro/domain/entities/station.dart';
 import '../../../../core/utils/ad_service.dart';
+import '../../../../core/utils/tourism_data.dart';
 
 class AiTourPlannerPage extends StatefulWidget {
   const AiTourPlannerPage({super.key});
@@ -99,10 +100,26 @@ class _AiTourPlannerPageState extends State<AiTourPlannerPage> {
     }
 
     if (ConnectivityService.instance.isOffline) {
+      final localResult = _calculateOfflineItinerary(
+        _selectedStation!,
+        _hours,
+        _budget,
+        _selectedInterests,
+        isAr,
+      );
+
       setState(() {
+        _isLoading = false;
         _errorMessage = isAr 
-            ? "الخدمة دي محتاجة اتصال بالإنترنت لتخطيط الرحلة بالذكاء الاصطناعي! 🌐" 
-            : "This service requires an active internet connection to plan your trip! 🌐";
+            ? "💡 وضع أوفلاين: تم التخطيط محلياً بنجاح!" 
+            : "💡 Offline Mode: Planned locally successfully!";
+        _totalCost = localResult['totalCost'];
+        _totalDuration = localResult['totalDurationHours'] != null 
+            ? double.tryParse(localResult['totalDurationHours'].toString()) 
+            : null;
+        _summaryAr = localResult['summaryAr'];
+        _summaryEn = localResult['summaryEn'];
+        _timeline = List<Map<String, dynamic>>.from(localResult['timeline']);
       });
       return;
     }
@@ -158,11 +175,11 @@ class _AiTourPlannerPageState extends State<AiTourPlannerPage> {
       final response = await model.generateContent([Content.text(prompt)]);
       final rawText = response.text?.trim() ?? '';
 
-      String cleanJson = rawText;
-      if (cleanJson.startsWith('```')) {
-        cleanJson = cleanJson.replaceAll(RegExp(r'^```(json)?|```$'), '').trim();
-      }
-
+      // Extract JSON using regex for maximum robustness
+      final jsonRegex = RegExp(r'\{[\s\S]*\}');
+      final match = jsonRegex.firstMatch(rawText);
+      if (match == null) throw Exception("No JSON block found in response");
+      final cleanJson = match.group(0)!;
       final Map<String, dynamic> data = json.decode(cleanJson);
 
       setState(() {
@@ -171,19 +188,272 @@ class _AiTourPlannerPageState extends State<AiTourPlannerPage> {
         _totalDuration = data['totalDurationHours'] != null ? double.tryParse(data['totalDurationHours'].toString()) : null;
         _summaryAr = data['summaryAr'];
         _summaryEn = data['summaryEn'];
-        
-        if (data['timeline'] != null) {
-          _timeline = List<Map<String, dynamic>>.from(data['timeline']);
-        }
+        _timeline = List<Map<String, dynamic>>.from(data['timeline']);
       });
     } catch (e) {
       debugPrint("❌ Tour Planner Error: $e");
+      
+      // Fallback to local planner
+      final localResult = _calculateOfflineItinerary(
+        _selectedStation!,
+        _hours,
+        _budget,
+        _selectedInterests,
+        isAr,
+      );
+
       setState(() {
         _isLoading = false;
         _errorMessage = isAr 
-            ? "حصل خطأ أثناء تخطيط الرحلة. جرب تختار محطة تانية أو قلل الوقت والطلبات!" 
-            : "An error occurred while generating the plan. Try another station or adjust inputs!";
+            ? "⚠️ تم التخطيط محلياً لعدم استقرار اتصال الذكاء الاصطناعي!" 
+            : "⚠️ Planned locally due to AI connection instability!";
+        _totalCost = localResult['totalCost'];
+        _totalDuration = localResult['totalDurationHours'] != null 
+            ? double.tryParse(localResult['totalDurationHours'].toString()) 
+            : null;
+        _summaryAr = localResult['summaryAr'];
+        _summaryEn = localResult['summaryEn'];
+        _timeline = List<Map<String, dynamic>>.from(localResult['timeline']);
       });
+    }
+  }
+
+  Map<String, dynamic> _calculateOfflineItinerary(
+    Station startStation,
+    double hours,
+    double budget,
+    List<String> interests,
+    bool isAr,
+  ) {
+    final Set<AttractionCategory> targetCategories = {};
+    for (final interest in interests) {
+      switch (interest) {
+        case 'historical':
+          targetCategories.addAll([
+            AttractionCategory.museum,
+            AttractionCategory.monument,
+            AttractionCategory.palace,
+            AttractionCategory.mosque,
+            AttractionCategory.church,
+            AttractionCategory.landmark,
+          ]);
+          break;
+        case 'nature':
+          targetCategories.add(AttractionCategory.park);
+          break;
+        case 'food':
+          targetCategories.addAll([
+            AttractionCategory.restaurant,
+            AttractionCategory.cafe,
+          ]);
+          break;
+        case 'entertainment':
+          targetCategories.addAll([
+            AttractionCategory.entertainment,
+            AttractionCategory.sport,
+          ]);
+          break;
+        case 'shopping':
+          targetCategories.add(AttractionCategory.market);
+          break;
+      }
+    }
+
+    final List<Map<String, dynamic>> scoredAttractions = [];
+    for (final stationData in TourismDatabase.data) {
+      final bool isSameLine = stationData.lineNumber == startStation.line.toString();
+      final bool isSameStation = stationData.stationId == startStation.id;
+
+      for (final attr in stationData.attractions) {
+        if (targetCategories.isNotEmpty && !targetCategories.contains(attr.category)) {
+          continue;
+        }
+
+        int admissionCost = 0;
+        if (!attr.isFree) {
+          final costStr = attr.admissionEGP.replaceAll(RegExp(r'[^0-9]'), '');
+          admissionCost = int.tryParse(costStr) ?? 0;
+        }
+
+        if (admissionCost > budget) {
+          continue;
+        }
+
+        int score = 0;
+        if (isSameStation) {
+          score += 100;
+        } else if (isSameLine) {
+          score += 50;
+        }
+        score += (attr.rating * 10).round();
+
+        scoredAttractions.add({
+          'attraction': attr,
+          'stationNameAr': stationData.stationName['ar'] ?? '',
+          'stationNameEn': stationData.stationName['en'] ?? '',
+          'cost': admissionCost,
+          'score': score,
+        });
+      }
+    }
+
+    scoredAttractions.sort((a, b) => b['score'].compareTo(a['score']));
+    final List<Map<String, dynamic>> selected = scoredAttractions.take(3).toList();
+
+    if (selected.isEmpty) {
+      for (final stationData in TourismDatabase.data) {
+        final bool isSameLine = stationData.lineNumber == startStation.line.toString();
+        for (final attr in stationData.attractions) {
+          int admissionCost = 0;
+          if (!attr.isFree) {
+            final costStr = attr.admissionEGP.replaceAll(RegExp(r'[^0-9]'), '');
+            admissionCost = int.tryParse(costStr) ?? 0;
+          }
+          if (admissionCost <= budget) {
+            scoredAttractions.add({
+              'attraction': attr,
+              'stationNameAr': stationData.stationName['ar'] ?? '',
+              'stationNameEn': stationData.stationName['en'] ?? '',
+              'cost': admissionCost,
+              'score': isSameLine ? 50 : 10,
+            });
+          }
+        }
+      }
+      scoredAttractions.sort((a, b) => b['score'].compareTo(a['score']));
+      selected.addAll(scoredAttractions.take(3));
+    }
+
+    final List<Map<String, dynamic>> timeline = [];
+    int currentCost = 10;
+    double currentDuration = 0.5;
+
+    timeline.add({
+      'time': '10:00 AM - 10:30 AM',
+      'titleAr': 'التجمع في محطة ${startStation.nameAr} 🚇',
+      'titleEn': 'Meet at ${startStation.nameEn} Station 🚇',
+      'descAr': 'البداية من المحطة لشراء التذاكر وشحن كارت المحفظة للاستعداد للرحلة.',
+      'descEn': 'Start at the station to buy tickets and prepare for the tour.',
+      'stationAr': startStation.nameAr,
+      'stationEn': startStation.nameEn,
+      'costEgp': 10,
+      'icon': 'train',
+    });
+
+    String lastStationAr = startStation.nameAr;
+    String lastStationEn = startStation.nameEn;
+    DateTime currentTime = DateTime(2026, 1, 1, 10, 30);
+
+    for (int i = 0; i < selected.length; i++) {
+      final attr = selected[i]['attraction'] as TouristAttraction;
+      final String attrStationAr = selected[i]['stationNameAr'];
+      final String attrStationEn = selected[i]['stationNameEn'];
+      final int attrCost = selected[i]['cost'];
+
+      if (attrStationAr != lastStationAr) {
+        final travelStart = currentTime;
+        currentTime = currentTime.add(const Duration(minutes: 30));
+        timeline.add({
+          'time': '${_formatTime(travelStart)} - ${_formatTime(currentTime)}',
+          'titleAr': 'ركوب المترو إلى محطة $attrStationAr 🚇',
+          'titleEn': 'Take Metro to $attrStationEn Station 🚇',
+          'descAr': 'ركوب المترو للانتقال للمزار التالي. الطريق بياخد حوالي 20 لـ 30 دقيقة.',
+          'descEn': 'Ride the metro to reach the next tourist attraction.',
+          'stationAr': attrStationAr,
+          'stationEn': attrStationEn,
+          'costEgp': 10,
+          'icon': 'train',
+        });
+        currentCost += 10;
+        currentDuration += 0.5;
+      }
+
+      final visitStart = currentTime;
+      currentTime = currentTime.add(const Duration(hours: 1, minutes: 30));
+      timeline.add({
+        'time': '${_formatTime(visitStart)} - ${_formatTime(currentTime)}',
+        'titleAr': '${attr.emoji} زيارة ${attr.name['ar']}',
+        'titleEn': '${attr.emoji} Visit ${attr.name['en']}',
+        'descAr': attr.description['ar'] ?? '',
+        'descEn': attr.description['en'] ?? '',
+        'stationAr': attrStationAr,
+        'stationEn': attrStationEn,
+        'costEgp': attrCost,
+        'icon': _getCategoryIconName(attr.category),
+      });
+      currentCost += attrCost;
+      currentDuration += 1.5;
+
+      lastStationAr = attrStationAr;
+      lastStationEn = attrStationEn;
+
+      if (currentDuration >= hours - 0.5) {
+        break;
+      }
+    }
+
+    if (currentDuration < hours && (budget - currentCost) >= 40) {
+      final foodStart = currentTime;
+      currentTime = currentTime.add(const Duration(hours: 1));
+      timeline.add({
+        'time': '${_formatTime(foodStart)} - ${_formatTime(currentTime)}',
+        'titleAr': '🍔 استراحة وجبة لذيذة وشاي كشري',
+        'titleEn': '🍔 Delicious Local Meal & Tea Break',
+        'descAr': 'وقت الغداء في مطعم شعبى قريب وتجربة الكشري المصري الأصيل مع كوباية شاي بالنعناع.',
+        'descEn': 'Lunchtime at a nearby traditional restaurant. Try authentic Egyptian Koshary followed by mint tea.',
+        'stationAr': lastStationAr,
+        'stationEn': lastStationEn,
+        'costEgp': 50,
+        'icon': 'restaurant',
+      });
+      currentCost += 50;
+      currentDuration += 1.0;
+    }
+
+    final String summaryAr = 'خروجة روعة تبدأ من ${startStation.nameAr}، هنزور فيها أهم المعالم السياحية زي ' +
+        selected.map((e) => e['attraction'].name['ar']).join(' و ') +
+        '. الفسحة دي متفصلة على مقاس اهتماماتك وميزانيتك وهتلف فيها بمترو الأنفاق بطريقة سهلة وسريعة!';
+
+    final String summaryEn = 'A beautiful tour starting from ${startStation.nameEn} station. We will visit ' +
+        selected.map((e) => e['attraction'].name['en']).join(' and ') +
+        '. This customized trip fits your budget and duration perfectly using the Cairo Metro lines!';
+
+    return {
+      'totalCost': currentCost,
+      'totalDurationHours': currentDuration,
+      'summaryAr': summaryAr,
+      'summaryEn': summaryEn,
+      'timeline': timeline,
+    };
+  }
+
+  String _formatTime(DateTime time) {
+    int hour = time.hour;
+    final isPm = hour >= 12;
+    if (hour > 12) hour -= 12;
+    if (hour == 0) hour = 12;
+    final minuteStr = time.minute.toString().padLeft(2, '0');
+    final period = isPm ? 'PM' : 'AM';
+    return '$hour:$minuteStr $period';
+  }
+
+  String _getCategoryIconName(AttractionCategory cat) {
+    switch (cat) {
+      case AttractionCategory.museum:
+      case AttractionCategory.monument:
+        return 'museum';
+      case AttractionCategory.park:
+        return 'park';
+      case AttractionCategory.restaurant:
+      case AttractionCategory.cafe:
+        return 'restaurant';
+      case AttractionCategory.entertainment:
+      case AttractionCategory.sport:
+        return 'theater';
+      case AttractionCategory.market:
+        return 'shopping';
+      default:
+        return 'landmark';
     }
   }
 
@@ -594,15 +864,18 @@ class _AiTourPlannerPageState extends State<AiTourPlannerPage> {
             ),
           ),
           if (_bannerAd != null && _isAdLoaded)
-            Container(
-              alignment: Alignment.center,
-              width: _bannerAd!.size.width.toDouble(),
-              height: _bannerAd!.size.height.toDouble(),
-              decoration: BoxDecoration(
-                color: Theme.of(context).scaffoldBackgroundColor,
-                border: Border(top: BorderSide(color: Colors.grey.withValues(alpha: 0.1))),
+            SafeArea(
+              top: false,
+              child: Container(
+                alignment: Alignment.center,
+                width: _bannerAd!.size.width.toDouble(),
+                height: _bannerAd!.size.height.toDouble(),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  border: Border(top: BorderSide(color: Colors.grey.withValues(alpha: 0.1))),
+                ),
+                child: AdWidget(ad: _bannerAd!),
               ),
-              child: AdWidget(ad: _bannerAd!),
             ),
         ],
       ),
