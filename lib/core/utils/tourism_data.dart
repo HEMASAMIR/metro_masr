@@ -144,10 +144,32 @@ class TourismDatabase {
     return allAttractions;
   }
 
-  /// Finds StationAttractions data by station ID.
+  static String _normalize(String input) {
+    return input.toLowerCase()
+        .trim()
+        .replaceAll(RegExp(r'^l\d_'), '') // removes l1_, l2_, etc.
+        .replaceAll('el ', '')
+        .replaceAll('al ', '')
+        .replaceAll('el-', '')
+        .replaceAll('al-', '')
+        .replaceAll('es ', '')
+        .replaceAll(' ', '')
+        .replaceAll('_', '')
+        .replaceAll('-', '')
+        .replaceAll('أ', 'ا')
+        .replaceAll('إ', 'ا')
+        .replaceAll('آ', 'ا')
+        .replaceAll('ة', 'ه')
+        .replaceAll('ى', 'ي');
+  }
+
+  /// Finds StationAttractions data by station ID or names.
   static StationAttractions? findByStation(String stationId) {
+    final normQuery = _normalize(stationId);
     for (final stationData in allStationsData) {
-      if (stationData.stationId == stationId) {
+      if (_normalize(stationData.stationId) == normQuery ||
+          _normalize(stationData.stationName['en'] ?? '') == normQuery ||
+          _normalize(stationData.stationName['ar'] ?? '') == normQuery) {
         return stationData;
       }
     }
