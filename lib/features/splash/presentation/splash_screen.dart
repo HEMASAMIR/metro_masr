@@ -336,7 +336,7 @@ class _SplashScreenState extends State<SplashScreen>
                   ),
                   const SizedBox(width: 10),
                   const Text(
-                    'رفيق المترو',
+                    'مترو مصر بدون انترنت',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 14,
@@ -536,7 +536,7 @@ class _SplashScreenState extends State<SplashScreen>
             end: Alignment.bottomRight,
           ).createShader(rect),
           child: const Text(
-            'رفيق المترو',
+            'مترو مصر بدون انترنت',
             style: TextStyle(
               fontSize: 38,
               fontWeight: FontWeight.w900,

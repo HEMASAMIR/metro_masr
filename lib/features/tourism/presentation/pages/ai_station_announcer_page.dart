@@ -176,7 +176,7 @@ class _AiStationAnnouncerPageState extends State<AiStationAnnouncerPage>
               : "The next station is, $stationName. This is a transfer station for other metro lines. Please prepare to exit the train.";
         } else if (_announcementType == 'safety') {
           generated = _languageCode == 'ar' 
-              ? "تنبيه من رفيق مترو القاهرة: يرجى الوقوف خلف خط الأمان الأصفر على الرصيف وعدم الاقتراب من القطار أثناء دخوله."
+              ? "تنبيه من مترو مصر بدون انترنت: يرجى الوقوف خلف خط الأمان الأصفر على الرصيف وعدم الاقتراب من القطار أثناء دخوله."
               : "Attention Cairo Metro passengers: Please stand behind the yellow safety line on the platform and stay clear of the tracks.";
         }
 

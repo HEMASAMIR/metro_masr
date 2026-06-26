@@ -41,7 +41,7 @@ class RafiqLogo extends StatelessWidget {
         if (showText) ...[
           SizedBox(height: size * 0.15),
           Text(
-            'رفيق المترو',
+            'مترو مصر بدون انترنت',
             style: TextStyle(
               fontSize: size * 0.22,
               fontWeight: FontWeight.w900,
